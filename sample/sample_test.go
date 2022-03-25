@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package sample
@@ -6,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/facebookgo/inject"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
 )
 
 func TestDependencyInjection(t *testing.T) {

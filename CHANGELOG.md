@@ -1,11 +1,11 @@
-# Refinery Changelog
+# tracing-proxy Changelog
 
 ## 1.8.1 2022-01-06
 
 ### Maintenance
 
 - Add re-triage workflow (#368) | [@vreynolds](https://github.com/vreynolds)
-- Bump libhoney & golang (#373) | [@lizthegrey](https://github.com/lizthegrey)
+- Bump libtrace & golang (#373) | [@lizthegrey](https://github.com/lizthegrey)
 - Bump github.com/honeycombio/husky from 0.5.0 to 0.6.0 (#370)
 - Bump github.com/prometheus/client_golang from 0.9.4 to 1.11.0 (#357)
 
@@ -42,7 +42,7 @@
 
 ### Fixes
 
-- bump libhoney-go to v1.15.6
+- bump libtrace-go to v1.15.6
 - empower apply-labels action to apply labels (#344)
 - Bump github.com/honeycombio/libhoney-go from 1.15.4 to 1.15.5 (#327)
 - Re-add missing docker login when publishing (#338)
@@ -104,7 +104,7 @@
 
 ### Added
 
-- Add support for OTLP over HTTP/protobuf [#279](https://github.com/honeycombio/refinery/pull/279) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Add support for OTLP over HTTP/protobuf [#279](https://github.com/jirs5/tracing-proxy/pull/279) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
 
 ### Maintenance
 
@@ -120,11 +120,11 @@
 
 ### Added
 
-- Add support to "does-not-contain" operator on RulesBasedSampler [#267](https://github.com/honeycombio/refinery/pull/267) | [@tr-fteixeira](https://github.com/tr-fteixeira)
+- Add support to "does-not-contain" operator on RulesBasedSampler [#267](https://github.com/jirs5/tracing-proxy/pull/267) | [@tr-fteixeira](https://github.com/tr-fteixeira)
 
 ### Fixes
 
-- Ensure span links and events generate events and get resource attrs [#264](https://github.com/honeycombio/refinery/pull/264) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Ensure span links and events generate events and get resource attrs [#264](https://github.com/jirs5/tracing-proxy/pull/264) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
 
 ## 1.2.1
 
@@ -137,7 +137,7 @@
 ### Added
 
 - Add `UseTLSInsecure` config option to skip TLS verification with Redis (#254) | [@beanieboi](https://github.com/beanieboi)
-- Add `AddHostMetadataToTrace` config option to add Refinery hostname information to spans (#250) | [@jharley](https://github.com/jharley)
+- Add `AddHostMetadataToTrace` config option to add tracing-proxy hostname information to spans (#250) | [@jharley](https://github.com/jharley)
 - Additional config validation: verify that sample rate trace field key is specified, if needed (#248) | [@paulosman](https://github.com/paulosman)
 
 ### Changed
@@ -163,7 +163,7 @@
 
 ### Fixes
 
-- Refinery startup issues in v1.1.0
+- tracing-proxy startup issues in v1.1.0
 
 ## 1.1.0
 
@@ -175,7 +175,7 @@
 
 ### Fixes
 
-- Pass along upstream and peer metrics configs to libhoney (#227)
+- Pass along upstream and peer metrics configs to libtrace (#227)
 - Guard against nil pointer dereference when processing OTLP span.Status (#223)
 - Fix YAML config parsing (#220)
 
@@ -185,4 +185,4 @@
 
 ## 1.0.0
 
-Initial GA release of Refinery
+Initial GA release of tracing-proxy

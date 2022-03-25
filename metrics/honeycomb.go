@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	libhoney "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/libhoney-go/transmission"
 
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
 )
 
 type HoneycombMetrics struct {
@@ -30,7 +30,7 @@ type HoneycombMetrics struct {
 	histogramsLock sync.Mutex
 	histograms     map[string]*histogram
 
-	libhClient *libhoney.Client
+	libhClient *libtrace.Client
 
 	latestMemStatsLock sync.RWMutex
 	latestMemStats     runtime.MemStats
@@ -72,7 +72,7 @@ func (h *HoneycombMetrics) Start() error {
 	}
 	h.reportingFreq = mc.MetricsReportingInterval
 
-	if err = h.initLibhoney(mc); err != nil {
+	if err = h.initlibtrace(mc); err != nil {
 		return err
 	}
 
@@ -98,24 +98,24 @@ func (h *HoneycombMetrics) reloadBuilder() {
 	h.libhClient.Close()
 	// cancel the two reporting goroutines and restart them
 	h.reportingCancelFunc()
-	h.initLibhoney(mc)
+	h.initlibtrace(mc)
 }
 
-func (h *HoneycombMetrics) initLibhoney(mc config.HoneycombMetricsConfig) error {
+func (h *HoneycombMetrics) initlibtrace(mc config.HoneycombMetricsConfig) error {
 	metricsTx := &transmission.Honeycomb{
 		// metrics are always sent as a single event, so don't wait for the timeout
 		MaxBatchSize:      1,
 		BlockOnSend:       true,
-		UserAgentAddition: "refinery/" + h.Version + " (metrics)",
+		UserAgentAddition: "tracing-proxy/" + h.Version + " (metrics)",
 		Transport:         h.UpstreamTransport,
 	}
-	libhClientConfig := libhoney.ClientConfig{
+	libhClientConfig := libtrace.ClientConfig{
 		APIHost:      mc.MetricsHoneycombAPI,
 		APIKey:       mc.MetricsAPIKey,
 		Dataset:      mc.MetricsDataset,
 		Transmission: metricsTx,
 	}
-	libhClient, err := libhoney.NewClient(libhClientConfig)
+	libhClient, err := libtrace.NewClient(libhClientConfig)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func (h *HoneycombMetrics) refreshMemStats(ctx context.Context) {
 	}
 }
 
-// readResponses reads the responses from the libhoney responses queue and logs
+// readResponses reads the responses from the libtrace responses queue and logs
 // any errors that come down it
 func (h *HoneycombMetrics) readResponses(ctx context.Context) {
 	resps := h.libhClient.TxResponses()
@@ -200,7 +200,7 @@ func (h *HoneycombMetrics) readResponses(ctx context.Context) {
 		case <-ctx.Done():
 			// bail out; we're refreshing the config and will launch a new
 			// response reader.
-			h.Logger.Debug().Logf("restarting honeycomb metrics read libhoney responses goroutine")
+			h.Logger.Debug().Logf("restarting honeycomb metrics read libtrace responses goroutine")
 			return
 		}
 	}

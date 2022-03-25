@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/internal/redimem"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/internal/redimem"
 	"github.com/sirupsen/logrus"
 )
 
@@ -59,13 +59,13 @@ func newRedisPeers(c config.Config) (Peers, error) {
 		IdleTimeout: 5 * time.Minute,
 		Wait:        true,
 		Dial: func() (redis.Conn, error) {
-			// if redis is started at the same time as refinery, connecting to redis can
-			// fail and cause refinery to error out.
+			// if redis is started at the same time as tracing-proxy, connecting to redis can
+			// fail and cause tracing-proxy to error out.
 			// Instead, we will try to connect to redis for up to 10 seconds with
 			// a 1 second delay between attempts to allow the redis process to init
 			var (
 				conn redis.Conn
-				err error
+				err  error
 			)
 			for timeout := time.After(10 * time.Second); ; {
 				select {
@@ -91,7 +91,7 @@ func newRedisPeers(c config.Config) (Peers, error) {
 
 	peers := &redisPeers{
 		store: &redimem.RedisMembership{
-			Prefix: "refinery",
+			Prefix: "tracing-proxy",
 			Pool:   pool,
 		},
 		peers:      make([]string, 1),

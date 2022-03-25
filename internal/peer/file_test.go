@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package peer
@@ -5,7 +6,7 @@ package peer
 import (
 	"testing"
 
-	"github.com/honeycombio/refinery/config"
+	"github.com/jirs5/tracing-proxy/config"
 )
 
 func TestFilePeers(t *testing.T) {

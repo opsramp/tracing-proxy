@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package transmit
@@ -6,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/facebookgo/inject"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
 
-	libhoney "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/honeycombio/libhoney-go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,14 +20,14 @@ func TestDefaultTransmissionUpdatesUserAgentAdditionAfterStart(t *testing.T) {
 		Config:     &config.MockConfig{},
 		Logger:     &logger.NullLogger{},
 		Metrics:    &metrics.NullMetrics{},
-		LibhClient: &libhoney.Client{},
+		LibhClient: &libtrace.Client{},
 		Version:    "test",
 	}
 
-	assert.Equal(t, libhoney.UserAgentAddition, "")
+	assert.Equal(t, libtrace.UserAgentAddition, "")
 	err := transmission.Start()
 	assert.Nil(t, err)
-	assert.Equal(t, libhoney.UserAgentAddition, "refinery/test")
+	assert.Equal(t, libtrace.UserAgentAddition, "tracing-proxy/test")
 }
 
 func TestDependencyInjection(t *testing.T) {

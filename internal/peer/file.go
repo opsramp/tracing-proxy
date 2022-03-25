@@ -1,6 +1,6 @@
 package peer
 
-import "github.com/honeycombio/refinery/config"
+import "github.com/jirs5/tracing-proxy/config"
 
 type filePeers struct {
 	c config.Config

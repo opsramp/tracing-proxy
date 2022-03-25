@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package logger
@@ -5,7 +6,7 @@ package logger
 import (
 	"testing"
 
-	"github.com/honeycombio/refinery/config"
+	"github.com/jirs5/tracing-proxy/config"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -5,13 +5,13 @@ import (
 	"os"
 	"sync"
 
-	libhoney "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/libhoney-go/transmission"
 
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/types"
 )
 
 type Transmission interface {
@@ -33,12 +33,12 @@ type DefaultTransmission struct {
 	Logger     logger.Logger   `inject:""`
 	Metrics    metrics.Metrics `inject:"metrics"`
 	Version    string          `inject:"version"`
-	LibhClient *libhoney.Client
+	LibhClient *libtrace.Client
 
 	// Type is peer or upstream, and used only for naming metrics
 	Name string
 
-	builder          *libhoney.Builder
+	builder          *libtrace.Builder
 	responseCanceler context.CancelFunc
 }
 
@@ -58,7 +58,7 @@ func (d *DefaultTransmission) Start() error {
 	if d.Config.GetAddHostMetadataToTrace() {
 		if hostname, err := os.Hostname(); err == nil && hostname != "" {
 			// add hostname to spans
-			d.LibhClient.AddField("meta.refinery.local_hostname", hostname)
+			d.LibhClient.AddField("meta.tracing-proxy.local_hostname", hostname)
 		}
 	}
 
@@ -66,7 +66,7 @@ func (d *DefaultTransmission) Start() error {
 	d.builder.APIHost = upstreamAPI
 
 	once.Do(func() {
-		libhoney.UserAgentAddition = "refinery/" + d.Version
+		libtrace.UserAgentAddition = "tracing-proxy/" + d.Version
 	})
 
 	d.Metrics.Register(d.Name+counterEnqueueErrors, "counter")
@@ -105,6 +105,8 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 	libhEv.Dataset = ev.Dataset
 	libhEv.SampleRate = ev.SampleRate
 	libhEv.Timestamp = ev.Timestamp
+	libhEv.APIToken = ev.APIToken
+	libhEv.APITenantId = ev.APITenantId
 
 	for k, v := range ev.Data {
 		libhEv.AddField(k, v)

@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package metrics
@@ -6,8 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -3,9 +3,9 @@ package cache
 import (
 	"time"
 
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/types"
 )
 
 // Cache is a non-threadsafe cache. It must not be used for concurrent access.

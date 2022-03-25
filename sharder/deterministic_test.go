@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package sharder
@@ -5,9 +6,9 @@ package sharder
 import (
 	"testing"
 
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/internal/peer"
-	"github.com/honeycombio/refinery/logger"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/internal/peer"
+	"github.com/jirs5/tracing-proxy/logger"
 	"github.com/stretchr/testify/assert"
 )
 

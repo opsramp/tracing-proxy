@@ -26,7 +26,7 @@ type Membership interface {
 }
 
 const (
-	globalPrefix       = "refinery"
+	globalPrefix       = "tracing-proxy"
 	defaultRepeatCount = 2
 
 	// redisScanTimeout indicates how long to attempt to scan for peers.

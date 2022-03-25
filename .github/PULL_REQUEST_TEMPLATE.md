@@ -7,7 +7,7 @@ Please make sure to:
 - Add unit tests
 - Mention any relevant issues in the PR description (e.g. "Fixes #123")
 
-Please see our [OSS process document](https://github.com/honeycombio/home/blob/main/honeycomb-oss-lifecycle-and-practices.md#) to get an idea of how we operate.
+Please see our [OSS process document](https://github.com/jirs5/home/blob/main/honeycomb-oss-lifecycle-and-practices.md#) to get an idea of how we operate.
 -->
 
 ## Which problem is this PR solving?

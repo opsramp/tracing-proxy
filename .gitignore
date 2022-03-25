@@ -11,7 +11,7 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-refinery
-!/cmd/refinery
+tracing-proxy
+!/cmd/tracing-proxy
 test_redimem
 !/cmd/test_redimem

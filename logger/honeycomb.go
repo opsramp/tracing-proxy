@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/honeycombio/dynsampler-go"
-	libhoney "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/libhoney-go/transmission"
 
-	"github.com/honeycombio/refinery/config"
+	"github.com/jirs5/tracing-proxy/config"
 )
 
 // HoneycombLogger is a Logger implementation that sends all logs to a Honeycomb
@@ -23,14 +23,14 @@ type HoneycombLogger struct {
 	UpstreamTransport *http.Transport `inject:"upstreamTransport"`
 	Version           string          `inject:"version"`
 	loggerConfig      config.HoneycombLoggerConfig
-	libhClient        *libhoney.Client
-	builder           *libhoney.Builder
+	libhClient        *libtrace.Client
+	builder           *libtrace.Builder
 	sampler           dynsampler.Sampler
 }
 
 type HoneycombEntry struct {
 	loggerConfig config.HoneycombLoggerConfig
-	builder      *libhoney.Builder
+	builder      *libtrace.Builder
 	sampler      dynsampler.Sampler
 }
 
@@ -63,9 +63,9 @@ func (h *HoneycombLogger) Start() error {
 			// logs are often sent in flurries; flush every half second
 			MaxBatchSize:        100,
 			BatchTimeout:        500 * time.Millisecond,
-			UserAgentAddition:   "refinery/" + h.Version + " (metrics)",
+			UserAgentAddition:   "tracing-proxy/" + h.Version + " (metrics)",
 			Transport:           h.UpstreamTransport,
-			PendingWorkCapacity: libhoney.DefaultPendingWorkCapacity,
+			PendingWorkCapacity: libtrace.DefaultPendingWorkCapacity,
 		}
 	}
 
@@ -81,13 +81,13 @@ func (h *HoneycombLogger) Start() error {
 		}
 	}
 
-	libhClientConfig := libhoney.ClientConfig{
+	libhClientConfig := libtrace.ClientConfig{
 		APIHost:      h.loggerConfig.LoggerHoneycombAPI,
 		APIKey:       h.loggerConfig.LoggerAPIKey,
 		Dataset:      h.loggerConfig.LoggerDataset,
 		Transmission: loggerTx,
 	}
-	libhClient, err := libhoney.NewClient(libhClientConfig)
+	libhClient, err := libtrace.NewClient(libhClientConfig)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (h *HoneycombLogger) reloadBuilder() {
 
 func (h *HoneycombLogger) Stop() error {
 	fmt.Printf("stopping honey logger\n")
-	libhoney.Flush()
+	libtrace.Flush()
 	return nil
 }
 

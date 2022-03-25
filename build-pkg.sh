@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build deb or rpm packages for Refinery.
+# Build deb or rpm packages for tracing-proxy.
 set -e
 
 function usage() {
@@ -30,14 +30,14 @@ if [ -z "$version" ]; then
     version=v0.0.0-dev
 fi
 
-fpm -s dir -n refinery \
-    -m "Honeycomb <team@honeycomb.io>" \
+fpm -s dir -n tracing-proxy \
+    -m "Opsramp <team@opsramp>" \
     -v ${version#v} \
     -t $pkg_type \
     -a $arch \
     --pre-install=./preinstall \
-    $GOPATH/bin/refinery-linux-${arch}=/usr/bin/refinery \
-    ./refinery.upstart=/etc/init/refinery.conf \
-    ./refinery.service=/lib/systemd/system/refinery.service \
-    ./config.toml=/etc/refinery/refinery.toml \
-    ./rules.toml=/etc/refinery/rules.toml
+    $GOPATH/bin/tracing-proxy-linux-${arch}=/usr/bin/tracing-proxy \
+    ./tracing-proxy.upstart=/etc/init/tracing-proxy.conf \
+    ./tracing-proxy.service=/lib/systemd/system/tracing-proxy.service \
+    ./config.toml=/etc/tracing-proxy/tracing-proxy.toml \
+    ./rules.toml=/etc/tracing-proxy/rules.toml

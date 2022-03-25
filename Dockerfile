@@ -17,11 +17,11 @@ RUN CGO_ENABLED=0 \
     GOOS=linux \
     GOARCH=amd64 \
     go build -ldflags "-X main.BuildID=${BUILD_ID}" \
-    -o refinery \
-    ./cmd/refinery
+    -o tracing-proxy \
+    ./cmd/tracing-proxy
 
 FROM scratch
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-COPY --from=builder /app/refinery /usr/bin/refinery
+COPY --from=builder /app/tracing-proxy /usr/bin/tracing-proxy

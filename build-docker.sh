@@ -21,4 +21,4 @@ ko publish \
   --tags "${TAGS}" \
   --base-import-paths \
   --platform "linux/amd64,linux/arm64" \
-  ./cmd/refinery
+  ./cmd/tracing-proxy

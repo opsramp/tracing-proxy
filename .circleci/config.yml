@@ -21,8 +21,8 @@ commands:
           GOOS=<< parameters.os >> \
           GOARCH=<< parameters.arch >> \
           go build -ldflags "-X main.BuildID=${CIRCLE_TAG:-${CIRCLE_SHA1:0:7}}" \
-          -o $GOPATH/bin/refinery-<< parameters.os >>-<< parameters.arch >> \
-          ./cmd/refinery
+          -o $GOPATH/bin/tracing-proxy-<< parameters.os >>-<< parameters.arch >> \
+          ./cmd/tracing-proxy
 
 jobs:
   test:
@@ -84,7 +84,7 @@ jobs:
           command: ./build-pkg.sh -m amd64 -v "${CIRCLE_TAG:-${CIRCLE_SHA1:0:7}}" -t rpm && mv *.rpm ~/artifacts
       - run:
           name: copy_binaries
-          command: cp $GOPATH/bin/refinery-* ~/artifacts
+          command: cp $GOPATH/bin/tracing-proxy-* ~/artifacts
       - run: echo "finished builds" && find ~/artifacts -ls
       - persist_to_workspace:
           root: ~/
@@ -120,7 +120,7 @@ jobs:
           command: |
             version=${CIRCLE_TAG:1}
             if [[ -z "$version" ]] ; then version=${CIRCLE_SHA1:0:7}; fi
-            aws s3 sync ~/artifacts s3://honeycomb-builds/honeycombio/refinery/$version/
+            aws s3 sync ~/artifacts s3://honeycomb-builds/honeycombio/tracing-proxy/$version/
 
   build_docker:
     docker:

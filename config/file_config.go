@@ -10,7 +10,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
-	libhoney "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/honeycombio/libhoney-go"
 	"github.com/sirupsen/logrus"
 	viper "github.com/spf13/viper"
 )
@@ -94,10 +94,10 @@ type PeerManagementConfig struct {
 func NewConfig(config, rules string, errorCallback func(error)) (Config, error) {
 	c := viper.New()
 
-	c.BindEnv("PeerManagement.RedisHost", "REFINERY_REDIS_HOST")
-	c.BindEnv("PeerManagement.RedisPassword", "REFINERY_REDIS_PASSWORD")
-	c.BindEnv("HoneycombLogger.LoggerAPIKey", "REFINERY_HONEYCOMB_API_KEY")
-	c.BindEnv("HoneycombMetrics.MetricsAPIKey", "REFINERY_HONEYCOMB_API_KEY")
+	c.BindEnv("PeerManagement.RedisHost", "tracing-proxy_REDIS_HOST")
+	c.BindEnv("PeerManagement.RedisPassword", "tracing-proxy_REDIS_PASSWORD")
+	c.BindEnv("HoneycombLogger.LoggerAPIKey", "tracing-proxy_HONEYCOMB_API_KEY")
+	c.BindEnv("HoneycombMetrics.MetricsAPIKey", "tracing-proxy_HONEYCOMB_API_KEY")
 	c.SetDefault("ListenAddr", "0.0.0.0:8080")
 	c.SetDefault("PeerListenAddr", "0.0.0.0:8081")
 	c.SetDefault("CompressPeerCommunication", true)
@@ -107,7 +107,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("PeerManagement.UseTLS", false)
 	c.SetDefault("PeerManagement.UseTLSInsecure", false)
 	c.SetDefault("PeerManagement.UseIPV6Identifier", false)
-	c.SetDefault("HoneycombAPI", "https://api.honeycomb.io")
+	c.SetDefault("HoneycombAPI", "https://api.jirs5")
 	c.SetDefault("Logger", "logrus")
 	c.SetDefault("LoggingLevel", "debug")
 	c.SetDefault("Collector", "InMemCollector")
@@ -116,8 +116,8 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("TraceTimeout", 60*time.Second)
 	c.SetDefault("MaxBatchSize", 500)
 	c.SetDefault("SendTicker", 100*time.Millisecond)
-	c.SetDefault("UpstreamBufferSize", libhoney.DefaultPendingWorkCapacity)
-	c.SetDefault("PeerBufferSize", libhoney.DefaultPendingWorkCapacity)
+	c.SetDefault("UpstreamBufferSize", libtrace.DefaultPendingWorkCapacity)
+	c.SetDefault("PeerBufferSize", libtrace.DefaultPendingWorkCapacity)
 	c.SetDefault("MaxAlloc", uint64(0))
 	c.SetDefault("HoneycombLogger.LoggerSamplerEnabled", false)
 	c.SetDefault("HoneycombLogger.LoggerSamplerThroughput", 5)
@@ -135,7 +135,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	r.SetDefault("Sampler", "DeterministicSampler")
 	r.SetDefault("SampleRate", 1)
 	r.SetDefault("DryRun", false)
-	r.SetDefault("DryRunFieldName", "refinery_kept")
+	r.SetDefault("DryRunFieldName", "tracing-proxy_kept")
 
 	r.SetConfigFile(rules)
 	err = r.ReadInConfig()

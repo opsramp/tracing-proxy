@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package sample
@@ -5,10 +6,10 @@ package sample
 import (
 	"testing"
 
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/types"
 	"github.com/stretchr/testify/assert"
 )
 

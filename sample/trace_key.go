@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/types"
 )
 
 type traceKey struct {

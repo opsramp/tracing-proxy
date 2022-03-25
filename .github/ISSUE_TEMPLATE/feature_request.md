@@ -10,7 +10,7 @@ assignees: ''
 <!---
 Thank you for contributing an idea to this project!
 
-Please see our [OSS process document](https://github.com/honeycombio/home/blob/main/honeycomb-oss-lifecycle-and-practices.md#) to get an idea of how we operate.
+Please see our [OSS process document](https://github.com/jirs5/home/blob/main/honeycomb-oss-lifecycle-and-practices.md#) to get an idea of how we operate.
 --->
 
 **Is your feature request related to a problem? Please describe.**

@@ -1,9 +1,9 @@
 [Unit]
-Description=Refinery Honeycomb Trace-Aware Sampling Proxy
+Description=tracing-proxy Honeycomb Trace-Aware Sampling Proxy
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/refinery -c /etc/refinery/refinery.toml -r /etc/refinery/rules.toml
+ExecStart=/usr/bin/tracing-proxy -c /etc/tracing-proxy/tracing-proxy.toml -r /etc/tracing-proxy/rules.toml
 KillMode=process
 Restart=on-failure
 User=honeycomb
@@ -11,4 +11,4 @@ Group=honeycomb
 LimitNOFILE=infinity
 
 [Install]
-Alias=refinery refinery.service
+Alias=tracing-proxy tracing-proxy.service

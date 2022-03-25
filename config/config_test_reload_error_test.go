@@ -1,3 +1,4 @@
+//go:build all || !race
 // +build all !race
 
 package config
@@ -28,7 +29,7 @@ func TestErrorReloading(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
