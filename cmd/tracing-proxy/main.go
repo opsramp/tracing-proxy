@@ -33,7 +33,7 @@ var BuildID string
 var version string
 
 type Options struct {
-	ConfigFile     string `short:"c" long:"config" description:"Path to config file" default:"/etc/tracing-proxy/tracing-proxy.toml"`
+	ConfigFile     string `short:"c" long:"config" description:"Path to config file" default:"/etc/tracing-proxy/config.toml"`
 	RulesFile      string `short:"r" long:"rules_config" description:"Path to rules config file" default:"/etc/tracing-proxy/rules.toml"`
 	Version        bool   `short:"v" long:"version" description:"Print version number and exit"`
 	Debug          bool   `short:"d" long:"debug" description:"If enabled, runs debug service (runs on the first open port between localhost:6060 and :6069 by default)"`
