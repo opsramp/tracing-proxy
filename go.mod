@@ -41,4 +41,4 @@ require (
 replace github.com/honeycombio/libhoney-go v1.15.8 => github.com/jirs5/libtrace-go v0.0.0-20220323133508-a1eeabcc5f98
 
 //replace github.com/honeycombio/husky v0.9.0 => github.com/jirs5/husky v0.9.1-0.20220302161820-fe16f58d3996
-replace github.com/honeycombio/husky v0.9.0 => github.com/jirs5/husky v0.9.1-0.20220317114134-7b752389d9eb
+replace github.com/honeycombio/husky v0.9.0 => github.com/jirs5/husky v0.9.1-0.20220325122121-523bfbec37a7

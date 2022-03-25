@@ -269,8 +269,8 @@ github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/jessevdk/go-flags v1.5.0 h1:1jKYvbxEjfUl0fmqTCOfonvskHHXMjBySTLW4y9LFvc=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
-github.com/jirs5/husky v0.9.1-0.20220317114134-7b752389d9eb h1:mWsrVcSHqkhd4oy6ht07rhb21nZsEzbrh8vrDxYJyQ4=
-github.com/jirs5/husky v0.9.1-0.20220317114134-7b752389d9eb/go.mod h1:2+Jrt6E/YFttamS1088JtvK9XalZJ8KcaAwaogPEouY=
+github.com/jirs5/husky v0.9.1-0.20220325122121-523bfbec37a7 h1:etPTWTKk/1S2dWAdOoW+c1smMqkrJwQZjkUoppbL/zc=
+github.com/jirs5/husky v0.9.1-0.20220325122121-523bfbec37a7/go.mod h1:2+Jrt6E/YFttamS1088JtvK9XalZJ8KcaAwaogPEouY=
 github.com/jirs5/libtrace-go v0.0.0-20220323133508-a1eeabcc5f98 h1:SllAt3oySFffDLd9/T4uwE9x7JnGu6PD0T+H7gvWMLU=
 github.com/jirs5/libtrace-go v0.0.0-20220323133508-a1eeabcc5f98/go.mod h1:7Z9QPLljLv8SW0BTttRBgHE969vQfy2bDAh0cnDXjBI=
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
