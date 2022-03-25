@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package sample
@@ -8,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/types"
 )
 
 // TestInitialization tests that sample rates are consistently returned

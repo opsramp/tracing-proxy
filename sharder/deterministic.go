@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/internal/peer"
-	"github.com/honeycombio/refinery/logger"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/internal/peer"
+	"github.com/jirs5/tracing-proxy/logger"
 	"github.com/pkg/errors"
 )
 
@@ -123,7 +123,7 @@ func (d *DeterministicSharder) Start() error {
 		}
 
 		// go through peer list, resolve each address, see if any of them match any
-		// local interface. Note that this assumes only one instance of Refinery per
+		// local interface. Note that this assumes only one instance of tracing-proxy per
 		// host can run.
 		for i, peerShard := range d.peers {
 			d.Logger.Debug().WithField("peer", peerShard).WithField("self", localAddrs).Logf("Considering peer looking for self")

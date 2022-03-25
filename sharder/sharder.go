@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/honeycombio/refinery/config"
+	"github.com/jirs5/tracing-proxy/config"
 )
 
-// Shard repreesents a single instance of Refinery.
+// Shard repreesents a single instance of tracing-proxy.
 type Shard interface {
 	Equals(Shard) bool
 	// GetAddress returns a string suitable for use in building a URL, eg
-	// http://refinery-1234:8080 or https://10.2.3.4
+	// http://tracing-proxy-1234:8080 or https://10.2.3.4
 	GetAddress() string
 }
 

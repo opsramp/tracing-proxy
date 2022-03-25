@@ -3,7 +3,7 @@ package logger
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/honeycombio/refinery/config"
+	"github.com/jirs5/tracing-proxy/config"
 )
 
 // LogrusLogger is a Logger implementation that sends all logs to stdout using

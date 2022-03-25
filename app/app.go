@@ -1,11 +1,11 @@
 package app
 
 import (
-	"github.com/honeycombio/refinery/collect"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/route"
+	"github.com/jirs5/tracing-proxy/collect"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/route"
 )
 
 type App struct {
@@ -16,7 +16,7 @@ type App struct {
 	Collector      collect.Collector `inject:""`
 	Metrics        metrics.Metrics   `inject:"metrics"`
 
-	// Version is the build ID for Refinery so that the running process may answer
+	// Version is the build ID for tracing-proxy so that the running process may answer
 	// requests for the version
 	Version string
 }

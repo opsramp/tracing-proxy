@@ -3,7 +3,7 @@ package logger
 import (
 	"fmt"
 
-	"github.com/honeycombio/refinery/config"
+	"github.com/jirs5/tracing-proxy/config"
 )
 
 type MockLogger struct {

@@ -1,7 +1,7 @@
 package sharder
 
 import (
-	"github.com/honeycombio/refinery/logger"
+	"github.com/jirs5/tracing-proxy/logger"
 )
 
 // SingleShard implements the Shard interface

@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package route
@@ -8,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/honeycombio/refinery/logger"
+	"github.com/jirs5/tracing-proxy/logger"
 )
 
 func TestHandlerReturnWithError(t *testing.T) {

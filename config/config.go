@@ -25,7 +25,7 @@ type Config interface {
 	// peer traffic
 	GetPeerListenAddr() (string, error)
 
-	// GetCompressPeerCommunication will be true if refinery should compress
+	// GetCompressPeerCommunication will be true if tracing-proxy should compress
 	// data before forwarding it to a peer.
 	GetCompressPeerCommunication() bool
 
@@ -108,11 +108,11 @@ type Config interface {
 	// GetPrometheusMetricsConfig returns the config specific to PrometheusMetrics
 	GetPrometheusMetricsConfig() (PrometheusMetricsConfig, error)
 
-	// GetUpstreamBufferSize returns the size of the libhoney buffer to use for the upstream
-	// libhoney client
+	// GetUpstreamBufferSize returns the size of the libtrace buffer to use for the upstream
+	// libtrace client
 	GetUpstreamBufferSize() int
-	// GetPeerBufferSize returns the size of the libhoney buffer to use for the peer forwarding
-	// libhoney client
+	// GetPeerBufferSize returns the size of the libtrace buffer to use for the peer forwarding
+	// libtrace client
 	GetPeerBufferSize() int
 
 	GetIdentifierInterfaceName() (string, error)

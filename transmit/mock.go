@@ -3,7 +3,7 @@ package transmit
 import (
 	"sync"
 
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/types"
 )
 
 type MockTransmission struct {

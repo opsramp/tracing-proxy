@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/honeycombio/refinery/config"
+	"github.com/jirs5/tracing-proxy/config"
 )
 
 type Metrics interface {

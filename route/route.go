@@ -27,13 +27,13 @@ import (
 	// grpc/gzip compressor, auto registers on import
 	_ "google.golang.org/grpc/encoding/gzip"
 
-	"github.com/honeycombio/refinery/collect"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/sharder"
-	"github.com/honeycombio/refinery/transmit"
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/collect"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/sharder"
+	"github.com/jirs5/tracing-proxy/transmit"
+	"github.com/jirs5/tracing-proxy/types"
 
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 )
@@ -243,7 +243,7 @@ func (r *Router) Stop() error {
 
 func (r *Router) alive(w http.ResponseWriter, req *http.Request) {
 	r.iopLogger.Debug().Logf("answered /x/alive check")
-	w.Write([]byte(`{"source":"refinery","alive":"yes"}`))
+	w.Write([]byte(`{"source":"tracing-proxy","alive":"yes"}`))
 }
 
 func (r *Router) panic(w http.ResponseWriter, req *http.Request) {
@@ -251,7 +251,7 @@ func (r *Router) panic(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) version(w http.ResponseWriter, req *http.Request) {
-	w.Write([]byte(fmt.Sprintf(`{"source":"refinery","version":"%s"}`, r.versionStr)))
+	w.Write([]byte(fmt.Sprintf(`{"source":"tracing-proxy","version":"%s"}`, r.versionStr)))
 }
 
 func (r *Router) debugTrace(w http.ResponseWriter, req *http.Request) {

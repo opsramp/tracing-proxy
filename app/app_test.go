@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package app
@@ -27,14 +28,14 @@ import (
 
 	"github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/libhoney-go/transmission"
-	"github.com/honeycombio/refinery/collect"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/internal/peer"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/sample"
-	"github.com/honeycombio/refinery/sharder"
-	"github.com/honeycombio/refinery/transmit"
+	"github.com/jirs5/tracing-proxy/collect"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/internal/peer"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/sample"
+	"github.com/jirs5/tracing-proxy/sharder"
+	"github.com/jirs5/tracing-proxy/transmit"
 )
 
 type countingWriterSender struct {
@@ -97,7 +98,7 @@ func (p *testPeers) RegisterUpdatedPeersCallback(callback func()) {
 
 func newStartedApp(
 	t testing.TB,
-	libhoneyT transmission.Sender,
+	libtraceT transmission.Sender,
 	basePort int,
 	peers peer.Peers,
 	enableHostMetadata bool,
@@ -114,7 +115,7 @@ func newStartedApp(
 		GetListenAddrVal:                     "127.0.0.1:" + strconv.Itoa(basePort),
 		GetPeerListenAddrVal:                 "127.0.0.1:" + strconv.Itoa(basePort+1),
 		GetAPIKeysVal:                        []string{"KEY"},
-		GetHoneycombAPIVal:                   "http://api.honeycomb.io",
+		GetHoneycombAPIVal:                   "http://jirs5",
 		GetInMemoryCollectorCacheCapacityVal: config.InMemoryCollectorCacheCapacity{CacheCapacity: 10000},
 		AddHostMetadataToTrace:               enableHostMetadata,
 	}
@@ -153,17 +154,17 @@ func newStartedApp(
 
 	samplerFactory := &sample.SamplerFactory{}
 
-	upstreamClient, err := libhoney.NewClient(libhoney.ClientConfig{
-		Transmission: libhoneyT,
+	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
+		Transmission: libtraceT,
 	})
 	assert.NoError(t, err)
 
-	sdPeer, _ := statsd.New(statsd.Prefix("refinery.peer"))
-	peerClient, err := libhoney.NewClient(libhoney.ClientConfig{
+	sdPeer, _ := statsd.New(statsd.Prefix("tracing-proxy.peer"))
+	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Honeycomb{
 			MaxBatchSize:         c.GetMaxBatchSize(),
-			BatchTimeout:         libhoney.DefaultBatchTimeout,
-			MaxConcurrentBatches: libhoney.DefaultMaxConcurrentBatches,
+			BatchTimeout:         libtrace.DefaultBatchTimeout,
+			MaxConcurrentBatches: libtrace.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:  uint(c.GetPeerBufferSize()),
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
@@ -298,7 +299,7 @@ func TestPeerRouting(t *testing.T) {
 		APIKey:     "KEY",
 		Dataset:    "dataset",
 		SampleRate: 2,
-		APIHost:    "http://api.honeycomb.io",
+		APIHost:    "http://api.jirs5",
 		Timestamp:  now,
 		Data: map[string]interface{}{
 			"trace.trace_id":  "1",
@@ -379,7 +380,7 @@ func TestHostMetadataSpanAdditions(t *testing.T) {
 		}
 	}
 
-	expectedSpan := `{"data":{"foo":"bar","meta.refinery.local_hostname":"%s","trace.trace_id":"1"},"dataset":"dataset"}` + "\n"
+	expectedSpan := `{"data":{"foo":"bar","meta.tracing-proxy.local_hostname":"%s","trace.trace_id":"1"},"dataset":"dataset"}` + "\n"
 	assert.Equal(t, fmt.Sprintf(expectedSpan, hostname), out.String())
 }
 
@@ -432,7 +433,7 @@ func TestEventsEndpoint(t *testing.T) {
 			APIKey:     "KEY",
 			Dataset:    "dataset",
 			SampleRate: 10,
-			APIHost:    "http://api.honeycomb.io",
+			APIHost:    "http://api.jirs5",
 			Timestamp:  now,
 			Data: map[string]interface{}{
 				"trace.trace_id": "1",
@@ -474,7 +475,7 @@ func TestEventsEndpoint(t *testing.T) {
 			APIKey:     "KEY",
 			Dataset:    "dataset",
 			SampleRate: 10,
-			APIHost:    "http://api.honeycomb.io",
+			APIHost:    "http://api.jirs5",
 			Timestamp:  now,
 			Data: map[string]interface{}{
 				"trace.trace_id": "1",

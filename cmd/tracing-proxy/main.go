@@ -11,21 +11,21 @@ import (
 
 	"github.com/facebookgo/inject"
 	"github.com/facebookgo/startstop"
-	libhoney "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/libhoney-go/transmission"
 	flag "github.com/jessevdk/go-flags"
 	"github.com/sirupsen/logrus"
 
-	"github.com/honeycombio/refinery/app"
-	"github.com/honeycombio/refinery/collect"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/internal/peer"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/sample"
-	"github.com/honeycombio/refinery/service/debug"
-	"github.com/honeycombio/refinery/sharder"
-	"github.com/honeycombio/refinery/transmit"
+	"github.com/jirs5/tracing-proxy/app"
+	"github.com/jirs5/tracing-proxy/collect"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/internal/peer"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/sample"
+	"github.com/jirs5/tracing-proxy/service/debug"
+	"github.com/jirs5/tracing-proxy/sharder"
+	"github.com/jirs5/tracing-proxy/transmit"
 )
 
 // set by travis.
@@ -33,8 +33,8 @@ var BuildID string
 var version string
 
 type Options struct {
-	ConfigFile     string `short:"c" long:"config" description:"Path to config file" default:"/etc/refinery/refinery.toml"`
-	RulesFile      string `short:"r" long:"rules_config" description:"Path to rules config file" default:"/etc/refinery/rules.toml"`
+	ConfigFile     string `short:"c" long:"config" description:"Path to config file" default:"/etc/tracing-proxy/tracing-proxy.toml"`
+	RulesFile      string `short:"r" long:"rules_config" description:"Path to rules config file" default:"/etc/tracing-proxy/rules.toml"`
 	Version        bool   `short:"v" long:"version" description:"Print version number and exit"`
 	Debug          bool   `short:"d" long:"debug" description:"If enabled, runs debug service (runs on the first open port between localhost:6060 and :6069 by default)"`
 	InterfaceNames bool   `long:"interface-names" description:"If set, print system's network interface names and exit."`
@@ -128,33 +128,35 @@ func main() {
 		TLSHandshakeTimeout: 1200 * time.Millisecond,
 	}
 
-	upstreamMetricsConfig := metrics.GetMetricsImplementation(c, "libhoney_upstream")
-	peerMetricsConfig := metrics.GetMetricsImplementation(c, "libhoney_peer")
+	upstreamMetricsConfig := metrics.GetMetricsImplementation(c, "libtrace_upstream")
+	peerMetricsConfig := metrics.GetMetricsImplementation(c, "libtrace_peer")
 
-	userAgentAddition := "refinery/" + version
-	upstreamClient, err := libhoney.NewClient(libhoney.ClientConfig{
+	userAgentAddition := "tracing-proxy/" + version
+	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Honeycomb{
 			MaxBatchSize:          c.GetMaxBatchSize(),
-			BatchTimeout:          libhoney.DefaultBatchTimeout,
-			MaxConcurrentBatches:  libhoney.DefaultMaxConcurrentBatches,
+			BatchTimeout:          libtrace.DefaultBatchTimeout,
+			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetUpstreamBufferSize()),
 			UserAgentAddition:     userAgentAddition,
 			Transport:             upstreamTransport,
 			BlockOnSend:           true,
-			EnableMsgpackEncoding: true,
+			EnableMsgpackEncoding: false,
 			Metrics:               upstreamMetricsConfig,
 		},
 	})
 	if err != nil {
-		fmt.Printf("unable to initialize upstream libhoney client")
+		fmt.Printf("unable to initialize upstream libtrace client")
 		os.Exit(1)
 	}
 
-	peerClient, err := libhoney.NewClient(libhoney.ClientConfig{
+	fmt.Println("upstream client created..")
+
+	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Honeycomb{
 			MaxBatchSize:          c.GetMaxBatchSize(),
-			BatchTimeout:          libhoney.DefaultBatchTimeout,
-			MaxConcurrentBatches:  libhoney.DefaultMaxConcurrentBatches,
+			BatchTimeout:          libtrace.DefaultBatchTimeout,
+			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetPeerBufferSize()),
 			UserAgentAddition:     userAgentAddition,
 			Transport:             peerTransport,
@@ -164,7 +166,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		fmt.Printf("unable to initialize upstream libhoney client")
+		fmt.Printf("unable to initialize upstream libtrace client")
 		os.Exit(1)
 	}
 

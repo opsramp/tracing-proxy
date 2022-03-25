@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/types"
 )
 
 // for generating request IDs
@@ -78,7 +78,7 @@ func (r *Router) panicCatcher(next http.Handler) http.Handler {
 	})
 }
 
-// requestLogger logs one line debug per request that comes through Refinery
+// requestLogger logs one line debug per request that comes through tracing-proxy
 func (r *Router) requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		arrivalTime := time.Now()

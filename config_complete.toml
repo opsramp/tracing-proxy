@@ -7,7 +7,7 @@
 # front to do the decryption.
 # Should be of the form 0.0.0.0:8080
 # Not eligible for live reload.
-ListenAddr = "0.0.0.0:8080"
+ListenAddr = "0.0.0.0:8082"
 
 # GRPCListenAddr is the IP and port on which to listen for incoming events over
 # gRPC. Incoming traffic is expected to be unencrypted, so if using SSL put
@@ -22,7 +22,7 @@ GRPCListenAddr = "0.0.0.0:9090"
 # ListenAddr
 # Should be of the form 0.0.0.0:8081
 # Not eligible for live reload.
-PeerListenAddr = "0.0.0.0:8081"
+PeerListenAddr = "0.0.0.0:8083"
 
 # CompressPeerCommunication determines whether refinery will compress span data
 # it forwards to peers. If it costs money to transmit data between refinery
@@ -47,7 +47,8 @@ APIKeys = [
 
 # HoneycombAPI is the URL for the upstream Honeycomb API.
 # Eligible for live reload.
-HoneycombAPI = "https://api.honeycomb.io"
+#HoneycombAPI = "localhost:50052"
+HoneycombAPI = "https://asura.opsramp.net"
 
 # SendDelay is a short timer that will be triggered when a trace is complete.
 # Refinery will wait this duration before actually sending the trace.  The
@@ -117,32 +118,32 @@ Collector = "InMemCollector"
 # Logger describes which logger to use for Refinery logs. Valid options are
 # "logrus" and "honeycomb". The logrus option will write logs to STDOUT and the
 # honeycomb option will send them to a Honeycomb dataset.
-Logger = "honeycomb"
+Logger = "logrus"
 
 # Metrics describes which service to use for Refinery metrics. Valid options are
 # "prometheus" and "honeycomb". The prometheus option starts a listener that
 # will reply to a request for /metrics. The honeycomb option will send summary
 # metrics to a Honeycomb dataset.
-Metrics = "honeycomb"
+Metrics = "prometheus"
 
 #########################
 ## Peer Management     ##
 #########################
 
-# [PeerManagement]
-# Type = "file"
+[PeerManagement]
+Type = "file"
 # Peers is the list of all servers participating in this proxy cluster. Events
 # will be sharded evenly across all peers based on the Trace ID. Values here
 # should be the base URL used to access the peer, and should include scheme,
 # hostname (or ip address) and port. All servers in the cluster should be in
 # this list, including this host.
-# Peers = [
-	# "http://127.0.0.1:8081",
-	# "http://127.0.0.1:8081",
+Peers = [
+	 "http://127.0.0.1:8083",
+	# "http://127.0.0.1:8083",
 	# "http://10.1.2.3.4:8080",
 	# "http://refinery-1231:8080",
 	# "http://peer-3.fqdn" // assumes port 80
-# ]
+ ]
 
 # [PeerManagement]
 # Type = "redis"
@@ -301,4 +302,4 @@ MetricsReportingInterval = 3
 # listen for requests for /metrics. Must be different from the main Refinery
 # listener.
 # Not eligible for live reload.
-# MetricsListenAddr = "localhost:2112"
+MetricsListenAddr = "localhost:2112"

@@ -13,10 +13,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	huskyotlp "github.com/honeycombio/husky/otlp"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/transmit"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/transmit"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
@@ -296,7 +296,7 @@ func TestOTLPHandler(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.postOTLP(w, request)
 		assert.Equal(t, w.Code, http.StatusNotImplemented)
-		assert.Equal(t, `{"source":"refinery","error":"invalid content-type - only 'application/protobuf' is supported"}`, string(w.Body.String()))
+		assert.Equal(t, `{"source":"tracing-proxy","error":"invalid content-type - only 'application/protobuf' is supported"}`, string(w.Body.String()))
 
 		assert.Equal(t, 0, len(mockTransmission.Events))
 		mockTransmission.Flush()

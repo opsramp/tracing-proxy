@@ -69,7 +69,7 @@ func (r *Router) handlerReturnWithError(w http.ResponseWriter, he handlerError, 
 		errmsg = ErrGenericMessage
 	}
 
-	jsonErrMsg := []byte(`{"source":"refinery","error":"` + errmsg + `"}`)
+	jsonErrMsg := []byte(`{"source":"tracing-proxy","error":"` + errmsg + `"}`)
 
 	w.Write(jsonErrMsg)
 }

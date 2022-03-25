@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package config
@@ -14,8 +15,8 @@ import (
 
 func TestRedisHostEnvVar(t *testing.T) {
 	host := "redis.magic:1337"
-	os.Setenv("REFINERY_REDIS_HOST", host)
-	defer os.Unsetenv("REFINERY_REDIS_HOST")
+	os.Setenv("tracing-proxy_REDIS_HOST", host)
+	defer os.Unsetenv("tracing-proxy_REDIS_HOST")
 
 	c, err := NewConfig("../config.toml", "../rules.toml", func(err error) {})
 
@@ -30,8 +31,8 @@ func TestRedisHostEnvVar(t *testing.T) {
 
 func TestRedisPasswordEnvVar(t *testing.T) {
 	password := ***REMOVED***
-	os.Setenv("REFINERY_REDIS_PASSWORD", password)
-	defer os.Unsetenv("REFINERY_REDIS_PASSWORD")
+	os.Setenv("tracing-proxy_REDIS_PASSWORD", password)
+	defer os.Unsetenv("tracing-proxy_REDIS_PASSWORD")
 
 	c, err := NewConfig("../config.toml", "../rules.toml", func(err error) {})
 
@@ -62,7 +63,7 @@ func TestReload(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -164,8 +165,8 @@ func TestReadDefaults(t *testing.T) {
 		t.Error("received", d, "expected", false)
 	}
 
-	if d := c.GetDryRunFieldName(); d != "refinery_kept" {
-		t.Error("received", d, "expected", "refinery_kept")
+	if d := c.GetDryRunFieldName(); d != "tracing-proxy_kept" {
+		t.Error("received", d, "expected", "tracing-proxy_kept")
 	}
 
 	if d := c.GetAddHostMetadataToTrace(); d != false {
@@ -241,14 +242,14 @@ func TestPeerManagementType(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
 
 	[PeerManagement]
 		Type = "redis"
-		Peers = ["http://refinery-1231:8080"]
+		Peers = ["http://tracing-proxy-1231:8080"]
 	`))
 
 	c, err := NewConfig(configFile.Name(), rulesFile.Name(), func(err error) {})
@@ -275,7 +276,7 @@ func TestAbsentTraceKeyField(t *testing.T) {
 			CacheCapacity=1000
 
 		[HoneycombMetrics]
-			MetricsHoneycombAPI="http://honeycomb.io"
+			MetricsHoneycombAPI="http://jirs5"
 			MetricsAPIKey="1234"
 			MetricsDataset="testDatasetName"
 			MetricsReportingInterval=3
@@ -317,7 +318,7 @@ func TestDebugServiceAddr(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -344,7 +345,7 @@ func TestDryRun(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -382,7 +383,7 @@ func TestMaxAlloc(t *testing.T) {
 		MaxAlloc=17179869184
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -410,7 +411,7 @@ func TestGetSamplerTypes(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -429,7 +430,7 @@ func TestGetSamplerTypes(t *testing.T) {
 		FieldList = ["request.method","response.status_code"]
 		UseTraceLength = true
 		AddSampleRateKeyToTrace = true
-		AddSampleRateKeyToTraceField = "meta.refinery.dynsampler_key"
+		AddSampleRateKeyToTraceField = "meta.tracing-proxy.dynsampler_key"
 		ClearFrequencySec = 60
 
 	[dataset2]
@@ -443,7 +444,7 @@ func TestGetSamplerTypes(t *testing.T) {
 		GoalSampleRate = 10
 		UseTraceLength = true
 		AddSampleRateKeyToTrace = true
-		AddSampleRateKeyToTraceField = "meta.refinery.dynsampler_key"
+		AddSampleRateKeyToTraceField = "meta.tracing-proxy.dynsampler_key"
 		FieldList = "[request.method]"
 		Weight = 0.3
 
@@ -501,7 +502,7 @@ func TestDefaultSampler(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -538,13 +539,13 @@ func TestHoneycombLoggerConfig(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
 
 	[HoneycombLogger]
-		LoggerHoneycombAPI="http://honeycomb.io"
+		LoggerHoneycombAPI="http://jirs5"
 		LoggerAPIKey="1234"
 		LoggerDataset="loggerDataset"
 		LoggerSamplerEnabled=true
@@ -563,7 +564,7 @@ func TestHoneycombLoggerConfig(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, "http://honeycomb.io", loggerConfig.LoggerHoneycombAPI)
+	assert.Equal(t, "http://jirs5", loggerConfig.LoggerHoneycombAPI)
 	assert.Equal(t, "1234", loggerConfig.LoggerAPIKey)
 	assert.Equal(t, "loggerDataset", loggerConfig.LoggerDataset)
 	assert.Equal(t, true, loggerConfig.LoggerSamplerEnabled)
@@ -586,13 +587,13 @@ func TestHoneycombLoggerConfigDefaults(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
+		MetricsHoneycombAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
 
 	[HoneycombLogger]
-		LoggerHoneycombAPI="http://honeycomb.io"
+		LoggerHoneycombAPI="http://jirs5"
 		LoggerAPIKey="1234"
 		LoggerDataset="loggerDataset"
 	`)

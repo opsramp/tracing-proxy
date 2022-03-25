@@ -7,7 +7,7 @@ import (
 
 const (
 	APIKeyHeader = "X-Honeycomb-Team"
-	// libhoney-js uses this
+	// libtrace-js uses this
 	APIKeyHeaderShort = "X-Hny-Team"
 	DatasetHeader     = "X-Honeycomb-Dataset"
 	SampleRateHeader  = "X-Honeycomb-Samplerate"
@@ -19,17 +19,19 @@ type RequestIDContextKey struct{}
 
 // event is not part of a trace - it's an event that showed up with no trace ID
 type Event struct {
-	Context    context.Context
-	APIHost    string
-	APIKey     string
-	Dataset    string
-	SampleRate uint
-	Timestamp  time.Time
-	Data       map[string]interface{}
+	Context     context.Context
+	APIHost     string
+	APIKey      string
+	APIToken    string
+	APITenantId string
+	Dataset     string
+	SampleRate  uint
+	Timestamp   time.Time
+	Data        map[string]interface{}
 }
 
 // Trace isn't something that shows up on the wire; it gets created within
-// Refinery. Traces are not thread-safe; only one goroutine should be working
+// tracing-proxy. Traces are not thread-safe; only one goroutine should be working
 // with a trace object at a time.
 type Trace struct {
 	APIHost string
@@ -47,7 +49,7 @@ type Trace struct {
 	SendBy time.Time
 
 	// StartTime is the server time when the first span arrived for this trace.
-	// Used to calculate how long traces spend sitting in Refinery
+	// Used to calculate how long traces spend sitting in tracing-proxy
 	StartTime time.Time
 
 	HasRootSpan bool

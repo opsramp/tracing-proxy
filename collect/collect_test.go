@@ -1,3 +1,4 @@
+//go:build all || race
 // +build all race
 
 package collect
@@ -12,13 +13,13 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/honeycombio/refinery/collect/cache"
-	"github.com/honeycombio/refinery/config"
-	"github.com/honeycombio/refinery/logger"
-	"github.com/honeycombio/refinery/metrics"
-	"github.com/honeycombio/refinery/sample"
-	"github.com/honeycombio/refinery/transmit"
-	"github.com/honeycombio/refinery/types"
+	"github.com/jirs5/tracing-proxy/collect/cache"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/jirs5/tracing-proxy/sample"
+	"github.com/jirs5/tracing-proxy/transmit"
+	"github.com/jirs5/tracing-proxy/types"
 )
 
 // TestAddRootSpan tests that adding a root span winds up with a trace object in
