@@ -69,7 +69,17 @@ func (s *RulesBasedSampler) GetSampleRate(trace *types.Trace) (rate uint, keep b
 		span:
 			for _, span := range trace.GetSpans() {
 				var match bool
-				value, exists := span.Data[condition.Field]
+				var value interface{}
+				var exists bool
+
+				if spanAttributes, ok := span.Data["spanAttributes"]; ok && spanAttributes != nil {
+					value, exists = spanAttributes.(map[string]interface{})[condition.Field]
+				}
+				if !exists {
+					if resourceAttributes, ok := span.Data["resourceAttributes"]; ok && resourceAttributes != nil {
+						value, exists = resourceAttributes.(map[string]interface{})[condition.Field]
+					}
+				}
 
 				switch exists {
 				case true:
