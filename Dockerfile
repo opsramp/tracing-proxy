@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 \
 
 FROM scratch
 
-COPY --from-builder /bin/bash /bin/bash
+COPY --from=builder /bin/bash /bin/bash
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
