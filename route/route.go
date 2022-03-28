@@ -400,7 +400,7 @@ func (r *Router) processEvent(ev *types.Event, reqID interface{}) error {
 	// extract trace ID, route to self or peer, pass on to collector
 	// TODO make trace ID field configurable
 	var traceID string
-	if trID, ok := ev.Data["trace.trace_id"]; ok {
+	if trID, ok := ev.Data["traceTraceID"]; ok {
 		traceID = trID.(string)
 	} else if trID, ok := ev.Data["traceId"]; ok {
 		traceID = trID.(string)
