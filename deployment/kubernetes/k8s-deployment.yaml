@@ -23,7 +23,7 @@ spec:
       containers:
         - name: opsramp-tracing-proxy
           image: lokeshopsramp/tracing-proxy
-          command: ["/usr/bin/tracing-proxy"]
+          imagePullPolicy: Always
           ports:
             - containerPort: 9090
           resources:
