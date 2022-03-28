@@ -29,4 +29,4 @@ COPY rules_complete.toml /etc/tracing-proxy/rules.toml
 
 COPY --from=builder /app/tracing-proxy /usr/bin/tracing-proxy
 
-CMD ["/usr/bin/tracing-proxy"]
+CMD ["/usr/bin/tracing-proxy", "--config", "/etc/tracing-proxy/config.toml", "--rules_config", "/etc/tracing-proxy/rules.toml"]
