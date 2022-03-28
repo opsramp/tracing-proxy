@@ -1,6 +1,6 @@
 FROM golang:alpine as builder
 
-RUN apk update && apk add --no-cache git ca-certificates && update-ca-certificates
+RUN apk update && apk add --no-cache git bash ca-certificates && update-ca-certificates
 
 ARG BUILD_ID=dev
 
@@ -21,6 +21,8 @@ RUN CGO_ENABLED=0 \
     ./cmd/tracing-proxy
 
 FROM scratch
+
+COPY --from-builder /bin/bash /bin/bash
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
