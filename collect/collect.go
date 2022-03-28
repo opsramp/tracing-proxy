@@ -392,7 +392,7 @@ func (i *InMemCollector) dealWithSentTrace(keep bool, sampleRate uint, sp *types
 }
 
 func isRootSpan(sp *types.Span) bool {
-	parentID := sp.Data["trace.parent_id"]
+	parentID := sp.Data["traceParentID"]
 	if parentID == nil {
 		parentID = sp.Data["parentId"]
 		if parentID == nil {
@@ -428,6 +428,8 @@ func (i *InMemCollector) send(trace *types.Trace) {
 	var sampler sample.Sampler
 	var found bool
 
+	fmt.Println("Trying to get sampler for data set : ", trace.Dataset)
+
 	if sampler, found = i.datasetSamplers[trace.Dataset]; !found {
 		sampler = i.SamplerFactory.GetSamplerImplementationForDataset(trace.Dataset)
 		// save sampler for later
@@ -438,6 +440,8 @@ func (i *InMemCollector) send(trace *types.Trace) {
 	rate, shouldSend := sampler.GetSampleRate(trace)
 	trace.SampleRate = rate
 	trace.KeepSample = shouldSend
+
+	fmt.Println("Trace shouldSend for data set : ", trace.Dataset, shouldSend)
 
 	// record this decision in the sent record LRU for future spans
 	sentRecord := traceSentRecord{
