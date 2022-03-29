@@ -42,7 +42,11 @@ type HoneycombMetrics struct {
 	prefix string
 }
 
-func (h *HoneycombMetrics) GaugeWithLabels(name string, label string, val map[string]interface{}) {
+func (h *HoneycombMetrics) GaugeWithLabels(name string, labels map[string]string, value float64) {
+	panic("implement me")
+}
+
+func (h *HoneycombMetrics) IncrementWithLabels(name string, labels map[string]string) {
 	panic("implement me")
 }
 

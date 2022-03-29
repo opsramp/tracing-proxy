@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"github.com/jirs5/tracing-proxy/types"
 	"os"
 
 	"github.com/jirs5/tracing-proxy/config"
@@ -15,7 +16,9 @@ type Metrics interface {
 	Count(name string, n interface{})
 	Histogram(name string, obs interface{})
 	RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string)
-	GaugeWithLabels(name string, label string, val map[string]interface{})
+
+	GaugeWithLabels(name string, labels map[string]string, value float64)
+	IncrementWithLabels(name string, labels map[string]string)
 }
 
 func GetMetricsImplementation(c config.Config, prefix string) Metrics {
@@ -73,4 +76,39 @@ func PrefixMetricName(prefix string, name string) string {
 		return fmt.Sprintf(`%s_%s`, prefix, name)
 	}
 	return name
+}
+
+func ExtractLabelsFromSpan(span *types.Span, labelToKeyMap map[string]string) map[string]string {
+
+	labels := map[string]string{}
+
+	attributeMapKeys := []string{"spanAttributes", "resourceAttributes", "eventAttributes"}
+
+	for labelName, searchKey := range labelToKeyMap {
+
+		// check of the higher level first
+		searchValue, exists := span.Data[searchKey]
+		if exists && searchValue != nil {
+			labels[labelName] = searchValue.(string)
+			continue
+		}
+
+		// check in the span, resource and event attributes when key is not found
+		for _, attributeKey := range attributeMapKeys {
+			if attribute, ok := span.Data[attributeKey]; ok && attribute != nil {
+				searchValue, exists = attribute.(map[string]interface{})[searchKey]
+				if exists && searchValue != nil {
+					labels[labelName] = searchValue.(string)
+					break
+				}
+			}
+		}
+
+		// if the key does not exist then set it to empty
+		if !exists {
+			labels[labelName] = ""
+		}
+	}
+
+	return labels
 }
