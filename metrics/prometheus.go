@@ -96,34 +96,29 @@ func (p *PromMetrics) RegisterWithDescriptionLabels(name string, metricType stri
 
 	switch metricType {
 	case "counter":
-		newmet = promauto.NewCounter(prometheus.CounterOpts{
+		newmet = promauto.NewCounterVec(prometheus.CounterOpts{
 			Name:      name,
 			Namespace: p.prefix,
-			Help:      name,
-		})
+			Help:      desc,
+		}, labels)
 	case "gauge":
-		newmet = promauto.NewGauge(prometheus.GaugeOpts{
-			Name:      name,
-			Namespace: p.prefix,
-			Help:      name,
-		})
+		newmet = promauto.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:      name,
+				Namespace: p.prefix,
+				Help:      desc,
+			},
+			labels)
 	case "histogram":
-		newmet = promauto.NewHistogram(prometheus.HistogramOpts{
+		newmet = promauto.NewHistogramVec(prometheus.HistogramOpts{
 			Name:      name,
 			Namespace: p.prefix,
-			Help:      name,
+			Help:      desc,
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
 			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
-		})
-	case "gauge_labels":
+		}, labels)
 
-		newmet = promauto.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: name,
-				Help: "Trace latency in ms group by operation",
-			},
-			labels)
 	}
 
 	p.metrics[name] = newmet
@@ -170,16 +165,24 @@ func (p *PromMetrics) Histogram(name string, obs interface{}) {
 	}
 }
 
-func (p *PromMetrics) GaugeWithLabels(name string, label string, val map[string]interface{}) {
+func (p *PromMetrics) GaugeWithLabels(name string, labels map[string]string, value float64) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
+
 	if gaugeIface, ok := p.metrics[name]; ok {
 		if gaugeVec, ok := gaugeIface.(*prometheus.GaugeVec); ok {
-			//gaugeVec.WithLabelValues()
-			for k, v := range val {
-				//gaugeVec.With(prometheus.Labels{"operation":k}).Set(ConvertNumeric(v))
-				gaugeVec.With(prometheus.Labels{label: k}).Set(ConvertNumeric(v))
-			}
+			gaugeVec.With(labels).Set(value)
+		}
+	}
+}
+
+func (p *PromMetrics) IncrementWithLabels(name string, labels map[string]string) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if gaugeIface, ok := p.metrics[name]; ok {
+		if gaugeVec, ok := gaugeIface.(*prometheus.CounterVec); ok {
+			gaugeVec.With(labels).Inc()
 		}
 	}
 }
