@@ -81,6 +81,54 @@ func (p *PromMetrics) Register(name string, metricType string) {
 	p.metrics[name] = newmet
 }
 
+// RegisterWithDescriptionLabels takes a name, a metric type, description, labels. The type should be one of "counter",
+// "gauge", or "histogram"
+func (p *PromMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	newmet, exists := p.metrics[name]
+
+	// don't attempt to add the metric again as this will cause a panic
+	if exists {
+		return
+	}
+
+	switch metricType {
+	case "counter":
+		newmet = promauto.NewCounter(prometheus.CounterOpts{
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      name,
+		})
+	case "gauge":
+		newmet = promauto.NewGauge(prometheus.GaugeOpts{
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      name,
+		})
+	case "histogram":
+		newmet = promauto.NewHistogram(prometheus.HistogramOpts{
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      name,
+			// This is an attempt at a usable set of buckets for a wide range of metrics
+			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
+			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
+		})
+	case "gauge_labels":
+
+		newmet = promauto.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: name,
+				Help: "Trace latency in ms group by operation",
+			},
+			labels)
+	}
+
+	p.metrics[name] = newmet
+}
+
 func (p *PromMetrics) Increment(name string) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -118,6 +166,20 @@ func (p *PromMetrics) Histogram(name string, obs interface{}) {
 	if histIface, ok := p.metrics[name]; ok {
 		if hist, ok := histIface.(prometheus.Histogram); ok {
 			hist.Observe(ConvertNumeric(obs))
+		}
+	}
+}
+
+func (p *PromMetrics) GaugeWithLabels(name string, label string, val map[string]interface{}) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+	if gaugeIface, ok := p.metrics[name]; ok {
+		if gaugeVec, ok := gaugeIface.(*prometheus.GaugeVec); ok {
+			//gaugeVec.WithLabelValues()
+			for k, v := range val {
+				//gaugeVec.With(prometheus.Labels{"operation":k}).Set(ConvertNumeric(v))
+				gaugeVec.With(prometheus.Labels{label: k}).Set(ConvertNumeric(v))
+			}
 		}
 	}
 }

@@ -14,6 +14,8 @@ type Metrics interface {
 	Gauge(name string, val interface{})
 	Count(name string, n interface{})
 	Histogram(name string, obs interface{})
+	RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string)
+	GaugeWithLabels(name string, label string, val map[string]interface{})
 }
 
 func GetMetricsImplementation(c config.Config, prefix string) Metrics {
