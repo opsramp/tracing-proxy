@@ -42,6 +42,14 @@ type HoneycombMetrics struct {
 	prefix string
 }
 
+func (h *HoneycombMetrics) GaugeWithLabels(name string, label string, val map[string]interface{}) {
+	panic("implement me")
+}
+
+func (h *HoneycombMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
+	panic("implement me")
+}
+
 type counter struct {
 	lock sync.Mutex
 	name string

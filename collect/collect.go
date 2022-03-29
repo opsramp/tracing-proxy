@@ -102,6 +102,7 @@ func (i *InMemCollector) Start() error {
 	i.Metrics.Register("trace_send_dropped", "counter")
 	i.Metrics.Register("trace_send_has_root", "counter")
 	i.Metrics.Register("trace_send_no_root", "counter")
+	i.Metrics.RegisterWithDescriptionLabels("trace_operation_latency_ms", "gauge_labels", "Trace latency wrt each trace operation", []string{"operation"})
 
 	stc, err := lru.New(imcConfig.CacheCapacity * 5) // keep 5x ring buffer size
 	if err != nil {
@@ -327,6 +328,18 @@ func (i *InMemCollector) processSpan(sp *types.Span) {
 		// create a new trace to hold it
 		i.Metrics.Increment("trace_accepted")
 
+		//Add metrics for latency/duration per operation
+		/*val := make(map[string]interface{})
+		    if sp.Data != nil {
+				if spanName, ok := sp.Data["spanName"].(string); ok {
+					val [spanName] = sp.Data["durationMs"]
+					i.Metrics.GaugeWithLabels("trace_operation_latency_ms", val)
+				}else{
+					fmt.Println("No Operation/Span Name found in trace")
+				}
+
+			}*/
+
 		timeout, err := i.Config.GetTraceTimeout()
 		if err != nil {
 			timeout = 60 * time.Second
@@ -424,6 +437,19 @@ func (i *InMemCollector) send(trace *types.Trace) {
 	} else {
 		i.Metrics.Increment("trace_send_no_root")
 	}
+
+	//Add metrics for latency/duration per operation
+	val := make(map[string]interface{})
+	for _, sp := range trace.GetSpans() {
+		if sp.Data != nil {
+			if spanName, ok := sp.Data["spanName"].(string); ok {
+				val[spanName] = sp.Data["durationMs"]
+			} else {
+				fmt.Println("No Operation/Span Name found in trace")
+			}
+		}
+	}
+	i.Metrics.GaugeWithLabels("trace_operation_latency_ms", "operation", val)
 
 	var sampler sample.Sampler
 	var found bool
