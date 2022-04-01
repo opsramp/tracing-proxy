@@ -1,16 +1,25 @@
 package metrics
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"github.com/golang/snappy"
+	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/prompb"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/mux"
+	"github.com/jirs5/tracing-proxy/config"
+	"github.com/jirs5/tracing-proxy/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
 )
 
 type PromMetrics struct {
@@ -185,4 +194,131 @@ func (p *PromMetrics) IncrementWithLabels(name string, labels map[string]string)
 			gaugeVec.With(labels).Inc()
 		}
 	}
+}
+
+func PushMetricsToOpsRamp(apiEndpoint, tenantID string, oauthToken OpsRampAuthTokenResponse) (int, error) {
+	metricFamilySlice, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		return -1, err
+	}
+
+	timeSeries := []*prompb.TimeSeries{}
+
+	for _, metricFamily := range metricFamilySlice {
+
+		for _, metric := range metricFamily.GetMetric() {
+			samples := []prompb.Sample{}
+			labels := []*prompb.Label{
+				{
+					Name:  "__name__",
+					Value: metricFamily.GetName(),
+				},
+			}
+			for _, label := range metric.GetLabel() {
+				labels = append(labels, &prompb.Label{
+					Name:  label.GetName(),
+					Value: label.GetValue(),
+				})
+			}
+
+			switch metricFamily.GetType() {
+			case io_prometheus_client.MetricType_COUNTER:
+				samples = append(samples, prompb.Sample{
+					Value:     metric.GetCounter().GetValue(),
+					Timestamp: time.Now().UnixMilli(),
+				})
+			case io_prometheus_client.MetricType_GAUGE:
+				samples = append(samples, prompb.Sample{
+					Value:     metric.GetGauge().GetValue(),
+					Timestamp: time.Now().UnixMilli(),
+				})
+
+			}
+			timeSeries = append(timeSeries, &prompb.TimeSeries{Labels: labels, Samples: samples})
+		}
+
+	}
+
+	request := prompb.WriteRequest{Timeseries: timeSeries}
+
+	out, err := proto.Marshal(&request)
+	if err != nil {
+		return -1, err
+	}
+
+	compressed := snappy.Encode(nil, out)
+
+	URL := fmt.Sprintf("%s/metricsql/api/v7/tenants/%s/metrics", strings.TrimRight(apiEndpoint, "/"), tenantID)
+
+	req, err := http.NewRequest(http.MethodPost, URL, bytes.NewBuffer(compressed))
+	if err != nil {
+		return -1, err
+	}
+
+	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
+	req.Header.Set("Connection", "close")
+	req.Header.Set("Content-Encoding", "snappy")
+	req.Header.Set("Content-Type", "application/x-protobuf")
+
+	if !strings.Contains(oauthToken.Scope, "metrics:write") {
+		return -1, fmt.Errorf("auth token provided not not have metrics:write scope")
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oauthToken.AccessToken))
+
+	client := http.Client{Timeout: time.Duration(10) * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return -1, err
+	}
+	defer resp.Body.Close()
+	// Depending on version and configuration of the PGW, StatusOK or StatusAccepted may be returned.
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		body, _ := ioutil.ReadAll(resp.Body) // Ignore any further error as this is for an error message only.
+		return resp.StatusCode, fmt.Errorf("unexpected status code %d while pushing: %s", resp.StatusCode, body)
+	}
+
+	return resp.StatusCode, nil
+}
+
+type OpsRampAuthTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	Scope       string `json:"scope"`
+}
+
+func GetOpsRampOAuthToken(apiEndpoint, apiKey, apiSecret string) (*OpsRampAuthTokenResponse, error) {
+
+	authTokenResponse := new(OpsRampAuthTokenResponse)
+
+	url := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(apiEndpoint, "/"))
+
+	requestBody := strings.NewReader("client_id=" + apiKey + "&client_secret=" + apiSecret + "&grant_type=client_credentials")
+
+	req, err := http.NewRequest(http.MethodPost, url, requestBody)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Set("Connection", "close")
+
+	client := http.Client{Timeout: time.Duration(10) * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	err = json.Unmarshal(respBody, authTokenResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return authTokenResponse, nil
 }

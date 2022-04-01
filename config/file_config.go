@@ -68,7 +68,13 @@ type HoneycombLoggerConfig struct {
 }
 
 type PrometheusMetricsConfig struct {
-	MetricsListenAddr string `validate:"required"`
+	MetricsListenAddr               string `validate:"required"`
+	OpsRampMetricsAPI               string `validate:"required,url"`
+	OpsRampTenantID                 string `validate:"required"`
+	OpsRampMetricsAPIKey            string `validate:"required"`
+	OpsRampMetricsAPISecret         string `validate:"required"`
+	OpsRampMetricsReportingInterval int64  `validate:"required"`
+	OpsRampMetricsRetryCount        int64  `validate:"required"`
 }
 
 type HoneycombMetricsConfig struct {
