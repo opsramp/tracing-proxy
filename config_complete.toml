@@ -126,6 +126,10 @@ Logger = "logrus"
 # metrics to a Honeycomb dataset.
 Metrics = "prometheus"
 
+# Metrics are sent to OpsRamp (The collection happens based on configuration specifie
+# in OpsRampMetrics and only works when the Metrics is set to "prometheus")
+SendMetricsToOpsRamp = false
+
 #########################
 ## Peer Management     ##
 #########################
@@ -297,7 +301,13 @@ MetricsReportingInterval = 3
 #####################@##
 
 [PrometheusMetrics]
+# MetricsListenAddr determines the interface and port on which Prometheus will
+# listen for requests for /metrics. Must be different from the main Refinery
+# listener.
+# Not eligible for live reload.
+MetricsListenAddr = "localhost:2112"
 
+[OpsRampMetrics]
 # OpsRampMetricsAPI is the URL for the upstream OpsRamp API.
 # Not Eligible for live reload.
 OpsRampMetricsAPI = ""
@@ -326,9 +336,3 @@ OpsRampMetricsReportingInterval = 10
 # OpsRampMetricsRetryCount is the number of times we retry incase the send fails
 # Not Eligible for live reload.
 OpsRampMetricsRetryCount = 2
-
-# MetricsListenAddr determines the interface and port on which Prometheus will
-# listen for requests for /metrics. Must be different from the main Refinery
-# listener.
-# Not eligible for live reload.
-MetricsListenAddr = "localhost:2112"

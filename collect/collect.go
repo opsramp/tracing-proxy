@@ -276,20 +276,42 @@ func (i *InMemCollector) collect() {
 	ticker := time.NewTicker(tickerDuration)
 	defer ticker.Stop()
 
-	metricsConfig, err := i.Config.GetPrometheusMetricsConfig()
-	if err != nil {
-		i.Logger.Error().Logf("Failed to Load Prometheus Config:", err)
-	}
-	if metricsConfig.OpsRampMetricsRetryCount > 10 || metricsConfig.OpsRampMetricsRetryCount < 0 {
-		metricsConfig.OpsRampMetricsRetryCount = 2
-	}
+	if i.Config.GetSendMetricsToOpsRamp() {
+		metricsConfig, err := i.Config.GetOpsRampMetricsConfig()
+		if err != nil {
+			i.Logger.Error().Logf("Failed to Load OpsRampMetrics Config:", err)
+		}
 
-	metricsTicker := time.NewTicker(time.Duration(metricsConfig.OpsRampMetricsReportingInterval) * time.Second)
-	defer metricsTicker.Stop()
+		go func() {
+			metricsTicker := time.NewTicker(time.Duration(metricsConfig.OpsRampMetricsReportingInterval) * time.Second)
+			defer metricsTicker.Stop()
 
-	metricsAuthToken, err := metrics.GetOpsRampOAuthToken(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampMetricsAPIKey, metricsConfig.OpsRampMetricsAPISecret)
-	if err != nil {
-		i.Logger.Error().Logf("Failed to get oauth token for OpsRamp Metrics err:", err)
+			metricsAuthToken, err := metrics.GetOpsRampOAuthToken(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampMetricsAPIKey, metricsConfig.OpsRampMetricsAPISecret)
+			if err != nil {
+				i.Logger.Error().Logf("Failed to get oauth token for OpsRamp Metrics err:", err)
+			}
+
+			for _ = range metricsTicker.C {
+				statusCode, err := metrics.PushMetricsToOpsRamp(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampTenantID, *metricsAuthToken)
+				if statusCode == http.StatusProxyAuthRequired { // 🤦‍ OpsRamp uses this for bad auth token
+					metricsAuthToken, err = metrics.GetOpsRampOAuthToken(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampMetricsAPIKey, metricsConfig.OpsRampMetricsAPISecret)
+					if err != nil {
+						i.Logger.Error().Logf("Failed to get oauth token for OpsRamp Metrics err:", err)
+					}
+				}
+				if err != nil {
+					i.Logger.Error().Logf("prom request failed: %v", err)
+					for retries := metricsConfig.OpsRampMetricsRetryCount; retries > 0; retries-- {
+						i.Logger.Debug().Logf("retry count: %d", retries)
+						statusCode, err = metrics.PushMetricsToOpsRamp(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampTenantID, *metricsAuthToken)
+						if err == nil {
+							break
+						}
+					}
+				}
+				i.Logger.Debug().Logf("Status Code: %v Err: %v", statusCode, err)
+			}
+		}()
 	}
 
 	// mutex is normally held by this goroutine at all times.
@@ -315,25 +337,6 @@ func (i *InMemCollector) collect() {
 			i.processSpan(sp)
 		default:
 			select {
-			case <-metricsTicker.C:
-				statusCode, err := metrics.PushMetricsToOpsRamp(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampTenantID, *metricsAuthToken)
-				if statusCode == http.StatusProxyAuthRequired { // 🤦‍ OpsRamp uses this for bad auth token
-					metricsAuthToken, err = metrics.GetOpsRampOAuthToken(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampMetricsAPIKey, metricsConfig.OpsRampMetricsAPISecret)
-					if err != nil {
-						i.Logger.Error().Logf("Failed to get oauth token for OpsRamp Metrics err:", err)
-					}
-				}
-				if err != nil {
-					i.Logger.Error().Logf("prom request failed: %v", err)
-					for retries := metricsConfig.OpsRampMetricsRetryCount; retries > 0; retries-- {
-						i.Logger.Debug().Logf("retry count: %d", retries)
-						statusCode, err = metrics.PushMetricsToOpsRamp(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampTenantID, *metricsAuthToken)
-						if err == nil {
-							break
-						}
-					}
-				}
-				i.Logger.Debug().Logf("Status Code: %v Err: %v", statusCode, err)
 			case <-ticker.C:
 				i.sendTracesInCache(time.Now())
 				i.checkAlloc()

@@ -48,6 +48,7 @@ type configContents struct {
 	PeerManagement            PeerManagementConfig           `validate:"required"`
 	InMemCollector            InMemoryCollectorCacheCapacity `validate:"required"`
 	AddHostMetadataToTrace    bool
+	SendMetricsToOpsRamp      bool
 }
 
 type InMemoryCollectorCacheCapacity struct {
@@ -68,7 +69,10 @@ type HoneycombLoggerConfig struct {
 }
 
 type PrometheusMetricsConfig struct {
-	MetricsListenAddr               string `validate:"required"`
+	MetricsListenAddr string `validate:"required"`
+}
+
+type OpsRampMetricsConfig struct {
 	OpsRampMetricsAPI               string `validate:"required,url"`
 	OpsRampTenantID                 string `validate:"required"`
 	OpsRampMetricsAPIKey            string `validate:"required"`
@@ -128,6 +132,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("HoneycombLogger.LoggerSamplerEnabled", false)
 	c.SetDefault("HoneycombLogger.LoggerSamplerThroughput", 5)
 	c.SetDefault("AddHostMetadataToTrace", false)
+	c.SetDefault("SendMetricsToOpsRamp", false)
 
 	c.SetConfigFile(config)
 	err := c.ReadInConfig()
@@ -638,6 +643,44 @@ func (f *fileConfig) GetPrometheusMetricsConfig() (PrometheusMetricsConfig, erro
 	return *pcConfig, errors.New("No config found for PrometheusMetrics")
 }
 
+func (f *fileConfig) GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	opsRampMetricsConfig := &OpsRampMetricsConfig{
+		OpsRampMetricsAPI:               "https://placeholder.api.com/",
+		OpsRampTenantID:                 "placeholder_tenantID",
+		OpsRampMetricsAPIKey:            "placeholder_key",
+		OpsRampMetricsAPISecret:         "placeholder_secret",
+		OpsRampMetricsReportingInterval: 60,
+		OpsRampMetricsRetryCount:        2,
+	}
+
+	if sub := f.config.Sub("OpsRampMetrics"); sub != nil {
+		err := sub.UnmarshalExact(opsRampMetricsConfig)
+		if err != nil {
+			return opsRampMetricsConfig, err
+		}
+
+		if opsRampMetricsConfig.OpsRampMetricsRetryCount < 0 || opsRampMetricsConfig.OpsRampMetricsRetryCount > 10 {
+			opsRampMetricsConfig.OpsRampMetricsRetryCount = 2
+		}
+
+		if opsRampMetricsConfig.OpsRampMetricsReportingInterval < 10 {
+			opsRampMetricsConfig.OpsRampMetricsReportingInterval = 10
+		}
+
+		v := validator.New()
+		err = v.Struct(opsRampMetricsConfig)
+		if err != nil {
+			return opsRampMetricsConfig, err
+		}
+
+		return opsRampMetricsConfig, nil
+	}
+	return nil, errors.New("No config found for OpsRampMetrics")
+}
+
 func (f *fileConfig) GetSendDelay() (time.Duration, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
@@ -725,4 +768,11 @@ func (f *fileConfig) GetAddHostMetadataToTrace() bool {
 	defer f.mux.RUnlock()
 
 	return f.conf.AddHostMetadataToTrace
+}
+
+func (f *fileConfig) GetSendMetricsToOpsRamp() bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.SendMetricsToOpsRamp
 }
