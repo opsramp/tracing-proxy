@@ -108,6 +108,9 @@ type Config interface {
 	// GetPrometheusMetricsConfig returns the config specific to PrometheusMetrics
 	GetPrometheusMetricsConfig() (PrometheusMetricsConfig, error)
 
+	// GetOpsRampMetricsConfig returns the config specific to PrometheusMetrics
+	GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error)
+
 	// GetUpstreamBufferSize returns the size of the libtrace buffer to use for the upstream
 	// libtrace client
 	GetUpstreamBufferSize() int
@@ -133,4 +136,6 @@ type Config interface {
 	GetDryRunFieldName() string
 
 	GetAddHostMetadataToTrace() bool
+
+	GetSendMetricsToOpsRamp() bool
 }
