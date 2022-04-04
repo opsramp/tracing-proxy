@@ -46,7 +46,7 @@ func (p *PromMetrics) Start() error {
 	p.Logger.Debug().Logf("Starting PromMetrics")
 	defer func() { p.Logger.Debug().Logf("Finished starting PromMetrics") }()
 
-	if p.Config.GetSendMetricsToOpsRamp() {
+	if p.prefix == "" && p.Config.GetSendMetricsToOpsRamp() {
 		metricsConfig, err := p.Config.GetOpsRampMetricsConfig()
 		if err != nil {
 			p.Logger.Error().Logf("Failed to Load OpsRampMetrics Config:", err)
@@ -412,20 +412,20 @@ func (p *PromMetrics) RenewOpsRampOAuthToken() error {
 func (p *PromMetrics) SendWithRetry(request *http.Request) (*http.Response, error) {
 
 	response, err := p.Client.Do(request)
-	if err == nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
+	if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 		return response, nil
 	}
-	if response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
+	if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
 		p.RenewOpsRampOAuthToken()
 	}
 
 	// retry if the error is not nil
 	for retries := p.retryCount; retries > 0; retries-- {
 		response, err = p.Client.Do(request)
-		if err == nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
+		if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 			return response, nil
 		}
-		if response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
+		if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
 			p.RenewOpsRampOAuthToken()
 		}
 	}
