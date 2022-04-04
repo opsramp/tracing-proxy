@@ -3,7 +3,6 @@ package collect
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"sort"
@@ -275,44 +274,6 @@ func (i *InMemCollector) collect() {
 	tickerDuration := i.Config.GetSendTickerValue()
 	ticker := time.NewTicker(tickerDuration)
 	defer ticker.Stop()
-
-	if i.Config.GetSendMetricsToOpsRamp() {
-		metricsConfig, err := i.Config.GetOpsRampMetricsConfig()
-		if err != nil {
-			i.Logger.Error().Logf("Failed to Load OpsRampMetrics Config:", err)
-		}
-
-		go func() {
-			metricsTicker := time.NewTicker(time.Duration(metricsConfig.OpsRampMetricsReportingInterval) * time.Second)
-			defer metricsTicker.Stop()
-
-			metricsAuthToken, err := metrics.GetOpsRampOAuthToken(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampMetricsAPIKey, metricsConfig.OpsRampMetricsAPISecret)
-			if err != nil {
-				i.Logger.Error().Logf("Failed to get oauth token for OpsRamp Metrics err:", err)
-			}
-
-			for _ = range metricsTicker.C {
-				statusCode, err := metrics.PushMetricsToOpsRamp(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampTenantID, *metricsAuthToken)
-				if statusCode == http.StatusProxyAuthRequired { // 🤦‍ OpsRamp uses this for bad auth token
-					metricsAuthToken, err = metrics.GetOpsRampOAuthToken(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampMetricsAPIKey, metricsConfig.OpsRampMetricsAPISecret)
-					if err != nil {
-						i.Logger.Error().Logf("Failed to get oauth token for OpsRamp Metrics err:", err)
-					}
-				}
-				if err != nil {
-					i.Logger.Error().Logf("prom request failed: %v", err)
-					for retries := metricsConfig.OpsRampMetricsRetryCount; retries > 0; retries-- {
-						i.Logger.Debug().Logf("retry count: %d", retries)
-						statusCode, err = metrics.PushMetricsToOpsRamp(metricsConfig.OpsRampMetricsAPI, metricsConfig.OpsRampTenantID, *metricsAuthToken)
-						if err == nil {
-							break
-						}
-					}
-				}
-				i.Logger.Debug().Logf("Status Code: %v Err: %v", statusCode, err)
-			}
-		}()
-	}
 
 	// mutex is normally held by this goroutine at all times.
 	// It is unlocked once per ticker cycle for tests.
