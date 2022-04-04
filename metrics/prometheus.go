@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -30,12 +31,48 @@ type PromMetrics struct {
 	metrics map[string]interface{}
 	lock    sync.RWMutex
 
+	Client      http.Client
+	oAuthToken  *OpsRampAuthTokenResponse
+	apiEndpoint string
+	tenantID    string
+	apiKey      string
+	apiSecret   string
+	retryCount  int64
+
 	prefix string
 }
 
 func (p *PromMetrics) Start() error {
 	p.Logger.Debug().Logf("Starting PromMetrics")
 	defer func() { p.Logger.Debug().Logf("Finished starting PromMetrics") }()
+
+	if p.Config.GetSendMetricsToOpsRamp() {
+		metricsConfig, err := p.Config.GetOpsRampMetricsConfig()
+		if err != nil {
+			p.Logger.Error().Logf("Failed to Load OpsRampMetrics Config:", err)
+		}
+
+		go func() {
+			metricsTicker := time.NewTicker(time.Duration(metricsConfig.OpsRampMetricsReportingInterval) * time.Second)
+			defer metricsTicker.Stop()
+			p.PopulateOpsRampMetrics(metricsConfig)
+
+			// populating the oAuth Token Initially
+			err := p.RenewOpsRampOAuthToken()
+			if err != nil {
+				p.Logger.Error().Logf("error while initializing oAuth Token Err: %v", err)
+			}
+
+			for _ = range metricsTicker.C {
+				statusCode, err := p.PushMetricsToOpsRamp()
+				if err != nil {
+					p.Logger.Error().Logf("error while pushing metrics with statusCode: %d and Error: %v", statusCode, err)
+				}
+			}
+		}()
+
+	}
+
 	pc, err := p.Config.GetPrometheusMetricsConfig()
 	if err != nil {
 		return err
@@ -196,7 +233,61 @@ func (p *PromMetrics) IncrementWithLabels(name string, labels map[string]string)
 	}
 }
 
-func PushMetricsToOpsRamp(apiEndpoint, tenantID string, oauthToken OpsRampAuthTokenResponse) (int, error) {
+type OpsRampMetrics struct {
+	Client      http.Client
+	oAuthToken  *OpsRampAuthTokenResponse
+	apiEndpoint string
+	tenantID    string
+	apiKey      string
+	apiSecret   string
+	retryCount  int64
+
+	Logger logger.Logger `inject:""`
+	lock   sync.RWMutex
+}
+
+type OpsRampAuthTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	Scope       string `json:"scope"`
+}
+
+func (p *PromMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMetricsConfig) {
+
+	p.apiEndpoint = metricsConfig.OpsRampMetricsAPI
+	p.apiKey = metricsConfig.OpsRampMetricsAPIKey
+	p.apiSecret = metricsConfig.OpsRampMetricsAPISecret
+	p.tenantID = metricsConfig.OpsRampTenantID
+	p.retryCount = metricsConfig.OpsRampMetricsRetryCount
+
+	proxyUrl := ""
+	if metricsConfig.ProxyServer != "" && metricsConfig.ProxyProtocol != "" {
+		proxyUrl = fmt.Sprintf("%s://%s:%d/", metricsConfig.ProxyProtocol, metricsConfig.ProxyServer, metricsConfig.ProxyPort)
+		if metricsConfig.ProxyUserName != "" && metricsConfig.ProxyPassword != "" {
+			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", metricsConfig.ProxyProtocol, metricsConfig.ProxyUserName, metricsConfig.ProxyPassword, metricsConfig.ProxyServer, metricsConfig.ProxyPort)
+			p.Logger.Debug().Logf("Using Authentication for Proxy Communication for Metrics")
+		}
+	}
+
+	p.Client = http.Client{
+		Transport: &http.Transport{Proxy: http.ProxyFromEnvironment},
+		Timeout:   time.Duration(10) * time.Second,
+	}
+	if proxyUrl != "" {
+		proxyURL, err := url.Parse(proxyUrl)
+		if err != nil {
+			p.Logger.Error().Logf("skipping proxy err: %v", err)
+		} else {
+			p.Client = http.Client{
+				Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
+				Timeout:   time.Duration(10) * time.Second,
+			}
+		}
+	}
+}
+
+func (p *PromMetrics) PushMetricsToOpsRamp() (int, error) {
 	metricFamilySlice, err := prometheus.DefaultGatherer.Gather()
 	if err != nil {
 		return -1, err
@@ -248,7 +339,7 @@ func PushMetricsToOpsRamp(apiEndpoint, tenantID string, oauthToken OpsRampAuthTo
 
 	compressed := snappy.Encode(nil, out)
 
-	URL := fmt.Sprintf("%s/metricsql/api/v7/tenants/%s/metrics", strings.TrimRight(apiEndpoint, "/"), tenantID)
+	URL := fmt.Sprintf("%s/metricsql/api/v7/tenants/%s/metrics", strings.TrimRight(p.apiEndpoint, "/"), p.tenantID)
 
 	req, err := http.NewRequest(http.MethodPost, URL, bytes.NewBuffer(compressed))
 	if err != nil {
@@ -260,65 +351,84 @@ func PushMetricsToOpsRamp(apiEndpoint, tenantID string, oauthToken OpsRampAuthTo
 	req.Header.Set("Content-Encoding", "snappy")
 	req.Header.Set("Content-Type", "application/x-protobuf")
 
-	if !strings.Contains(oauthToken.Scope, "metrics:write") {
+	if !strings.Contains(p.oAuthToken.Scope, "metrics:write") {
 		return -1, fmt.Errorf("auth token provided not not have metrics:write scope")
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oauthToken.AccessToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
 
-	client := http.Client{Timeout: time.Duration(10) * time.Second}
-	resp, err := client.Do(req)
+	resp, err := p.SendWithRetry(req)
 	if err != nil {
 		return -1, err
 	}
 	defer resp.Body.Close()
 	// Depending on version and configuration of the PGW, StatusOK or StatusAccepted may be returned.
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		p.Logger.Error().Logf("failed to parse response body Err: %v", err)
+	}
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-		body, _ := ioutil.ReadAll(resp.Body) // Ignore any further error as this is for an error message only.
 		return resp.StatusCode, fmt.Errorf("unexpected status code %d while pushing: %s", resp.StatusCode, body)
 	}
+	p.Logger.Debug().Logf("metrics push response: %v", string(body))
 
 	return resp.StatusCode, nil
 }
 
-type OpsRampAuthTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
-	Scope       string `json:"scope"`
-}
+func (p *PromMetrics) RenewOpsRampOAuthToken() error {
 
-func GetOpsRampOAuthToken(apiEndpoint, apiKey, apiSecret string) (*OpsRampAuthTokenResponse, error) {
+	p.oAuthToken = new(OpsRampAuthTokenResponse)
 
-	authTokenResponse := new(OpsRampAuthTokenResponse)
+	url := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(p.apiEndpoint, "/"))
 
-	url := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(apiEndpoint, "/"))
-
-	requestBody := strings.NewReader("client_id=" + apiKey + "&client_secret=" + apiSecret + "&grant_type=client_credentials")
+	requestBody := strings.NewReader("client_id=" + p.apiKey + "&client_secret=" + p.apiSecret + "&grant_type=client_credentials")
 
 	req, err := http.NewRequest(http.MethodPost, url, requestBody)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Set("Connection", "close")
 
-	client := http.Client{Timeout: time.Duration(10) * time.Second}
-	resp, err := client.Do(req)
+	resp, err := p.Client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 
-	err = json.Unmarshal(respBody, authTokenResponse)
+	err = json.Unmarshal(respBody, p.oAuthToken)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return authTokenResponse, nil
+	return nil
+}
+
+func (p *PromMetrics) SendWithRetry(request *http.Request) (*http.Response, error) {
+
+	response, err := p.Client.Do(request)
+	if err == nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
+		return response, nil
+	}
+	if response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
+		p.RenewOpsRampOAuthToken()
+	}
+
+	// retry if the error is not nil
+	for retries := p.retryCount; retries > 0; retries-- {
+		response, err = p.Client.Do(request)
+		if err == nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
+			return response, nil
+		}
+		if response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
+			p.RenewOpsRampOAuthToken()
+		}
+	}
+
+	return response, err
 }

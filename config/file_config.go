@@ -79,6 +79,11 @@ type OpsRampMetricsConfig struct {
 	OpsRampMetricsAPISecret         string `validate:"required"`
 	OpsRampMetricsReportingInterval int64  `validate:"required"`
 	OpsRampMetricsRetryCount        int64  `validate:"required"`
+	ProxyProtocol                   string
+	ProxyServer                     string
+	ProxyPort                       int64
+	ProxyUserName                   string
+	ProxyPassword                   string
 }
 
 type HoneycombMetricsConfig struct {
