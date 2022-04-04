@@ -336,3 +336,23 @@ OpsRampMetricsReportingInterval = 10
 # OpsRampMetricsRetryCount is the number of times we retry incase the send fails
 # Not Eligible for live reload.
 OpsRampMetricsRetryCount = 2
+
+# ProxyProtocol accepts http and https
+# Not Eligible for live reload.
+ProxyProtocol = ""
+
+# ProxyServer takes the proxy server address
+# Not Eligible for live reload.
+ProxyServer = ""
+
+# ProxyPort takes the proxy server port
+# Not Eligible for live reload.
+ProxyPort = 3128
+
+# ProxyUserName takes the proxy username
+# Not Eligible for live reload.
+ProxyUserName = ""
+
+# ProxyPassword takes the proxy password
+# Not Eligible for live reload.
+ProxyPassword = ""
