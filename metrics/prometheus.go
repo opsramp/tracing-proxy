@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/golang/snappy"
 	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/prompb"
 	"io/ioutil"
 	"net/http"
@@ -293,18 +294,14 @@ func (p *PromMetrics) PushMetricsToOpsRamp() (int, error) {
 		return -1, err
 	}
 
+	presentTime := time.Now().UnixMilli()
+
 	timeSeries := []*prompb.TimeSeries{}
 
 	for _, metricFamily := range metricFamilySlice {
 
 		for _, metric := range metricFamily.GetMetric() {
-			samples := []prompb.Sample{}
-			labels := []*prompb.Label{
-				{
-					Name:  "__name__",
-					Value: metricFamily.GetName(),
-				},
-			}
+			labels := []*prompb.Label{}
 			for _, label := range metric.GetLabel() {
 				labels = append(labels, &prompb.Label{
 					Name:  label.GetName(),
@@ -314,20 +311,127 @@ func (p *PromMetrics) PushMetricsToOpsRamp() (int, error) {
 
 			switch metricFamily.GetType() {
 			case io_prometheus_client.MetricType_COUNTER:
-				samples = append(samples, prompb.Sample{
-					Value:     metric.GetCounter().GetValue(),
-					Timestamp: time.Now().UnixMilli(),
+				timeSeries = append(timeSeries, &prompb.TimeSeries{
+					Labels: append(labels, &prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: metricFamily.GetName(),
+					}),
+					Samples: []prompb.Sample{
+						{
+							Value:     metric.GetCounter().GetValue(),
+							Timestamp: presentTime,
+						},
+					},
 				})
 			case io_prometheus_client.MetricType_GAUGE:
-				samples = append(samples, prompb.Sample{
-					Value:     metric.GetGauge().GetValue(),
-					Timestamp: time.Now().UnixMilli(),
+				timeSeries = append(timeSeries, &prompb.TimeSeries{
+					Labels: append(labels, &prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: metricFamily.GetName(),
+					}),
+					Samples: []prompb.Sample{
+						{
+							Value:     metric.GetGauge().GetValue(),
+							Timestamp: presentTime,
+						},
+					},
 				})
-
+			case io_prometheus_client.MetricType_HISTOGRAM:
+				// samples for all the buckets
+				for _, bucket := range metric.GetHistogram().GetBucket() {
+					timeSeries = append(timeSeries, &prompb.TimeSeries{
+						Labels: append(labels, []*prompb.Label{
+							{
+								Name:  model.MetricNameLabel,
+								Value: metricFamily.GetName(),
+							},
+							{
+								Name:  model.BucketLabel,
+								Value: fmt.Sprintf("%v", bucket.GetUpperBound()),
+							},
+						}...),
+						Samples: []prompb.Sample{
+							{
+								Value:     float64(bucket.GetCumulativeCount()),
+								Timestamp: presentTime,
+							},
+						},
+					})
+				}
+				// samples for count and sum
+				timeSeries = append(timeSeries, &prompb.TimeSeries{
+					Labels: append(labels, &prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
+					}),
+					Samples: []prompb.Sample{
+						{
+							Value:     metric.GetHistogram().GetSampleSum(),
+							Timestamp: presentTime,
+						},
+					},
+				})
+				timeSeries = append(timeSeries, &prompb.TimeSeries{
+					Labels: append(labels, &prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
+					}),
+					Samples: []prompb.Sample{
+						{
+							Value:     float64(metric.GetHistogram().GetSampleCount()),
+							Timestamp: presentTime,
+						},
+					},
+				})
+			case io_prometheus_client.MetricType_SUMMARY:
+				// samples for all the quantiles
+				for _, quantile := range metric.GetSummary().GetQuantile() {
+					timeSeries = append(timeSeries, &prompb.TimeSeries{
+						Labels: append(labels, []*prompb.Label{
+							{
+								Name:  model.MetricNameLabel,
+								Value: metricFamily.GetName(),
+							},
+							{
+								Name:  model.QuantileLabel,
+								Value: fmt.Sprintf("%v", quantile.GetQuantile()),
+							},
+						}...),
+						Samples: []prompb.Sample{
+							{
+								Value:     quantile.GetValue(),
+								Timestamp: presentTime,
+							},
+						},
+					})
+				}
+				// samples for count and sum
+				timeSeries = append(timeSeries, &prompb.TimeSeries{
+					Labels: append(labels, &prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
+					}),
+					Samples: []prompb.Sample{
+						{
+							Value:     metric.GetSummary().GetSampleSum(),
+							Timestamp: presentTime,
+						},
+					},
+				})
+				timeSeries = append(timeSeries, &prompb.TimeSeries{
+					Labels: append(labels, &prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
+					}),
+					Samples: []prompb.Sample{
+						{
+							Value:     float64(metric.GetSummary().GetSampleCount()),
+							Timestamp: presentTime,
+						},
+					},
+				})
 			}
-			timeSeries = append(timeSeries, &prompb.TimeSeries{Labels: labels, Samples: samples})
 		}
-
 	}
 
 	request := prompb.WriteRequest{Timeseries: timeSeries}
