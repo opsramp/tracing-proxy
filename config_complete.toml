@@ -99,6 +99,10 @@ PeerBufferSize = 10000
 # Not eligible for live reload
 AddHostMetadataToTrace = false
 
+# Metrics are sent to OpsRamp (The collection happens based on configuration specifie
+# in OpsRampMetrics and only works when the Metrics is set to "prometheus")
+SendMetricsToOpsRamp = false
+
 ############################
 ## Implementation Choices ##
 ############################
@@ -119,16 +123,6 @@ Collector = "InMemCollector"
 # "logrus" and "honeycomb". The logrus option will write logs to STDOUT and the
 # honeycomb option will send them to a Honeycomb dataset.
 Logger = "logrus"
-
-# Metrics describes which service to use for Refinery metrics. Valid options are
-# "prometheus" and "honeycomb". The prometheus option starts a listener that
-# will reply to a request for /metrics. The honeycomb option will send summary
-# metrics to a Honeycomb dataset.
-Metrics = "prometheus"
-
-# Metrics are sent to OpsRamp (The collection happens based on configuration specifie
-# in OpsRampMetrics and only works when the Metrics is set to "prometheus")
-SendMetricsToOpsRamp = false
 
 #########################
 ## Peer Management     ##
@@ -264,37 +258,6 @@ LoggerSamplerEnabled = true
 # LoggerSamplerThroughput is the per key per second throughput for the log message dynamic sampler.
 # Not eligible for live reload.
 LoggerSamplerThroughput = 10
-
-#######################
-## Honeycomb Metrics ##
-#######################
-
-# HoneycombMetrics is a section of the config only used if you are using the
-# HoneycombMetrics to send all metrics to a Honeycomb Dataset. If you are using a
-# different metrics service (eg prometheus or metricsd) you can leave all this
-# commented out.
-
-[HoneycombMetrics]
-
-# MetricsHoneycombAPI is the URL for the upstream Honeycomb API.
-# Eligible for live reload.
-MetricsHoneycombAPI = "https://api.honeycomb.io"
-
-# MetricsAPIKey is the API key to use to send log events to the Honeycomb logging
-# dataset. This is separate from the APIKeys used to authenticate regular
-# traffic.
-# Eligible for live reload.
-MetricsAPIKey = "abcd1234"
-
-# MetricsDataset is the name of the dataset to which to send Refinery metrics
-# Eligible for live reload.
-MetricsDataset = "Refinery Metrics"
-
-# MetricsReportingInterval is the frequency (in seconds) to send metric events
-# to Honeycomb. Between 1 and 60 is recommended.
-# Not eligible for live reload.
-MetricsReportingInterval = 3
-
 
 #####################@##
 ## Prometheus Metrics ##

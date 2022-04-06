@@ -95,7 +95,7 @@ func main() {
 	// get desired implementation for each dependency to inject
 	lgr := logger.GetLoggerImplementation(c)
 	collector := collect.GetCollectorImplementation(c)
-	metricsConfig := metrics.GetMetricsImplementation(c, "")
+	metricsConfig := metrics.GetMetricsImplementation("")
 	shrdr := sharder.GetSharderImplementation(c)
 	samplerFactory := &sample.SamplerFactory{}
 
@@ -128,8 +128,8 @@ func main() {
 		TLSHandshakeTimeout: 1200 * time.Millisecond,
 	}
 
-	upstreamMetricsConfig := metrics.GetMetricsImplementation(c, "libtrace_upstream")
-	peerMetricsConfig := metrics.GetMetricsImplementation(c, "libtrace_peer")
+	upstreamMetricsConfig := metrics.GetMetricsImplementation("libtrace_upstream")
+	peerMetricsConfig := metrics.GetMetricsImplementation("libtrace_peer")
 
 	userAgentAddition := "tracing-proxy/" + version
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
