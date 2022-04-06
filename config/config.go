@@ -98,13 +98,6 @@ type Config interface {
 	// GetSamplerConfigForDataset returns the sampler type to use for the given dataset
 	GetSamplerConfigForDataset(string) (interface{}, error)
 
-	// GetMetricsType returns the type of metrics to use. Valid types are in the
-	// metrics package
-	GetMetricsType() (string, error)
-
-	// GetHoneycombMetricsConfig returns the config specific to HoneycombMetrics
-	GetHoneycombMetricsConfig() (HoneycombMetricsConfig, error)
-
 	// GetPrometheusMetricsConfig returns the config specific to PrometheusMetrics
 	GetPrometheusMetricsConfig() (PrometheusMetricsConfig, error)
 

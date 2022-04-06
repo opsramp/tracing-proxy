@@ -1,11 +1,7 @@
 package metrics
 
 import (
-	"fmt"
 	"github.com/jirs5/tracing-proxy/types"
-	"os"
-
-	"github.com/jirs5/tracing-proxy/config"
 )
 
 type Metrics interface {
@@ -21,23 +17,8 @@ type Metrics interface {
 	IncrementWithLabels(name string, labels map[string]string)
 }
 
-func GetMetricsImplementation(c config.Config, prefix string) Metrics {
-	var metricsr Metrics
-	metricsType, err := c.GetMetricsType()
-	if err != nil {
-		fmt.Printf("unable to get metrics type from config: %v\n", err)
-		os.Exit(1)
-	}
-	switch metricsType {
-	case "honeycomb":
-		metricsr = &HoneycombMetrics{prefix: prefix}
-	case "prometheus":
-		metricsr = &PromMetrics{prefix: prefix}
-	default:
-		fmt.Printf("unknown metrics type %s. Exiting.\n", metricsType)
-		os.Exit(1)
-	}
-	return metricsr
+func GetMetricsImplementation(prefix string) Metrics {
+	return &OpsRampMetrics{prefix: prefix}
 }
 
 func ConvertNumeric(val interface{}) float64 {
@@ -69,13 +50,6 @@ func ConvertNumeric(val interface{}) float64 {
 	default:
 		return 0
 	}
-}
-
-func PrefixMetricName(prefix string, name string) string {
-	if prefix != "" {
-		return fmt.Sprintf(`%s_%s`, prefix, name)
-	}
-	return name
 }
 
 func ExtractLabelsFromSpan(span *types.Span, labelToKeyMap map[string]string) map[string]string {

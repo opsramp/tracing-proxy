@@ -35,7 +35,6 @@ type configContents struct {
 	LoggingLevel              string        `validate:"required"`
 	Collector                 string        `validate:"required,oneof= InMemCollector"`
 	Sampler                   string        `validate:"required,oneof= DeterministicSampler DynamicSampler EMADynamicSampler RulesBasedSampler TotalThroughputSampler"`
-	Metrics                   string        `validate:"required,oneof= prometheus honeycomb"`
 	SendDelay                 time.Duration `validate:"required"`
 	TraceTimeout              time.Duration `validate:"required"`
 	MaxBatchSize              uint          `validate:"required"`
@@ -87,13 +86,6 @@ type OpsRampMetricsConfig struct {
 	OpsRampMetricsList              []string
 }
 
-type HoneycombMetricsConfig struct {
-	MetricsHoneycombAPI      string `validate:"required,url"`
-	MetricsAPIKey            string `validate:"required"`
-	MetricsDataset           string `validate:"required"`
-	MetricsReportingInterval int64  `validate:"required"`
-}
-
 type PeerManagementConfig struct {
 	Type                    string   `validate:"required,oneof= file redis"`
 	Peers                   []string `validate:"dive,url"`
@@ -127,7 +119,6 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("Logger", "logrus")
 	c.SetDefault("LoggingLevel", "debug")
 	c.SetDefault("Collector", "InMemCollector")
-	c.SetDefault("Metrics", "honeycomb")
 	c.SetDefault("SendDelay", 2*time.Second)
 	c.SetDefault("TraceTimeout", 60*time.Second)
 	c.SetDefault("MaxBatchSize", 500)
@@ -262,21 +253,9 @@ func (f *fileConfig) validateConditionalConfigs() error {
 	}
 
 	// validate metrics config
-	metricsType, err := f.GetMetricsType()
+	_, err = f.GetPrometheusMetricsConfig()
 	if err != nil {
 		return err
-	}
-	if metricsType == "honeycomb" {
-		_, err = f.GetHoneycombMetricsConfig()
-		if err != nil {
-			return err
-		}
-	}
-	if metricsType == "prometheus" {
-		_, err = f.GetPrometheusMetricsConfig()
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -594,37 +573,6 @@ func (f *fileConfig) GetInMemCollectorCacheCapacity() (InMemoryCollectorCacheCap
 		return *capacity, nil
 	}
 	return *capacity, errors.New("No config found for inMemCollector")
-}
-
-func (f *fileConfig) GetMetricsType() (string, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
-	return f.conf.Metrics, nil
-}
-
-func (f *fileConfig) GetHoneycombMetricsConfig() (HoneycombMetricsConfig, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
-	hmConfig := &HoneycombMetricsConfig{}
-	if sub := f.config.Sub("HoneycombMetrics"); sub != nil {
-		err := sub.UnmarshalExact(hmConfig)
-		if err != nil {
-			return *hmConfig, err
-		}
-
-		hmConfig.MetricsAPIKey = f.config.GetString("HoneycombMetrics.MetricsAPIKey")
-
-		v := validator.New()
-		err = v.Struct(hmConfig)
-		if err != nil {
-			return *hmConfig, err
-		}
-
-		return *hmConfig, nil
-	}
-	return *hmConfig, errors.New("No config found for HoneycombMetrics")
 }
 
 func (f *fileConfig) GetPrometheusMetricsConfig() (PrometheusMetricsConfig, error) {
