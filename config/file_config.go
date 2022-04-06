@@ -84,6 +84,7 @@ type OpsRampMetricsConfig struct {
 	ProxyPort                       int64
 	ProxyUserName                   string
 	ProxyPassword                   string
+	OpsRampMetricsList              []string
 }
 
 type HoneycombMetricsConfig struct {

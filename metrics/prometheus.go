@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +40,7 @@ type PromMetrics struct {
 	apiKey      string
 	apiSecret   string
 	retryCount  int64
+	re          *regexp.Regexp
 
 	prefix string
 }
@@ -234,19 +236,6 @@ func (p *PromMetrics) IncrementWithLabels(name string, labels map[string]string)
 	}
 }
 
-type OpsRampMetrics struct {
-	Client      http.Client
-	oAuthToken  *OpsRampAuthTokenResponse
-	apiEndpoint string
-	tenantID    string
-	apiKey      string
-	apiSecret   string
-	retryCount  int64
-
-	Logger logger.Logger `inject:""`
-	lock   sync.RWMutex
-}
-
 type OpsRampAuthTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
@@ -261,6 +250,16 @@ func (p *PromMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMetric
 	p.apiSecret = metricsConfig.OpsRampMetricsAPISecret
 	p.tenantID = metricsConfig.OpsRampTenantID
 	p.retryCount = metricsConfig.OpsRampMetricsRetryCount
+
+	// Creating Regex for list of metrics
+	regexString := ".*" // default value is to take everything
+	if len(metricsConfig.OpsRampMetricsList) >= 1 {
+		regexString = metricsConfig.OpsRampMetricsList[0]
+		for index := 0; index < len(metricsConfig.OpsRampMetricsList); index++ {
+			regexString = fmt.Sprintf("%s|%s", regexString, metricsConfig.OpsRampMetricsList[index])
+		}
+	}
+	p.re = regexp.MustCompile(regexString)
 
 	proxyUrl := ""
 	if metricsConfig.ProxyServer != "" && metricsConfig.ProxyProtocol != "" {
@@ -300,6 +299,9 @@ func (p *PromMetrics) PushMetricsToOpsRamp() (int, error) {
 
 	for _, metricFamily := range metricFamilySlice {
 
+		if !p.re.MatchString(metricFamily.GetName()) {
+			continue
+		}
 		for _, metric := range metricFamily.GetMetric() {
 			labels := []*prompb.Label{}
 			for _, label := range metric.GetLabel() {
