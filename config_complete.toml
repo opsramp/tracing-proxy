@@ -40,10 +40,10 @@ CompressPeerCommunication = true
 # list, all API keys are accepted.
 # Eligible for live reload.
 APIKeys = [
-	# "replace-me",
-	# "more-optional-keys",
-	"*",                   # wildcard accept all keys
-	]
+    # "replace-me",
+    # "more-optional-keys",
+    "*", # wildcard accept all keys
+]
 
 # HoneycombAPI is the URL for the upstream Honeycomb API.
 # Eligible for live reload.
@@ -142,12 +142,12 @@ Type = "file"
 # hostname (or ip address) and port. All servers in the cluster should be in
 # this list, including this host.
 Peers = [
-	 "http://127.0.0.1:8083",
-	# "http://127.0.0.1:8083",
-	# "http://10.1.2.3.4:8080",
-	# "http://refinery-1231:8080",
-	# "http://peer-3.fqdn" // assumes port 80
- ]
+    "http://127.0.0.1:8083",
+    # "http://127.0.0.1:8083",
+    # "http://10.1.2.3.4:8080",
+    # "http://refinery-1231:8080",
+    # "http://peer-3.fqdn" // assumes port 80
+]
 
 # [PeerManagement]
 # Type = "redis"
@@ -356,3 +356,9 @@ ProxyUserName = ""
 # ProxyPassword takes the proxy password
 # Not Eligible for live reload.
 ProxyPassword = ""
+
+# OpsRampMetricsList is a list of regular expressions which match the metric
+# names. Keep the list as small as possible since too many regular expressions can lead to bad performance.
+# Internally all the regex in the list are concatinated using '|' to make the computation little faster.
+# Not Eligible for live reload
+OpsRampMetricsList = [".*"]
