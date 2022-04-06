@@ -25,7 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type PromMetrics struct {
+type OpsRampMetrics struct {
 	Config config.Config `inject:""`
 	Logger logger.Logger `inject:""`
 	// metrics keeps a record of all the registered metrics so we can increment
@@ -45,9 +45,9 @@ type PromMetrics struct {
 	prefix string
 }
 
-func (p *PromMetrics) Start() error {
-	p.Logger.Debug().Logf("Starting PromMetrics")
-	defer func() { p.Logger.Debug().Logf("Finished starting PromMetrics") }()
+func (p *OpsRampMetrics) Start() error {
+	p.Logger.Debug().Logf("Starting OpsRampMetrics")
+	defer func() { p.Logger.Debug().Logf("Finished starting OpsRampMetrics") }()
 
 	if p.prefix == "" && p.Config.GetSendMetricsToOpsRamp() {
 		metricsConfig, err := p.Config.GetOpsRampMetricsConfig()
@@ -92,7 +92,7 @@ func (p *PromMetrics) Start() error {
 
 // Register takes a name and a metric type. The type should be one of "counter",
 // "gauge", or "histogram"
-func (p *PromMetrics) Register(name string, metricType string) {
+func (p *OpsRampMetrics) Register(name string, metricType string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -132,7 +132,7 @@ func (p *PromMetrics) Register(name string, metricType string) {
 
 // RegisterWithDescriptionLabels takes a name, a metric type, description, labels. The type should be one of "counter",
 // "gauge", or "histogram"
-func (p *PromMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
+func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -173,7 +173,7 @@ func (p *PromMetrics) RegisterWithDescriptionLabels(name string, metricType stri
 	p.metrics[name] = newmet
 }
 
-func (p *PromMetrics) Increment(name string) {
+func (p *OpsRampMetrics) Increment(name string) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -183,7 +183,7 @@ func (p *PromMetrics) Increment(name string) {
 		}
 	}
 }
-func (p *PromMetrics) Count(name string, n interface{}) {
+func (p *OpsRampMetrics) Count(name string, n interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -193,7 +193,7 @@ func (p *PromMetrics) Count(name string, n interface{}) {
 		}
 	}
 }
-func (p *PromMetrics) Gauge(name string, val interface{}) {
+func (p *OpsRampMetrics) Gauge(name string, val interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -203,7 +203,7 @@ func (p *PromMetrics) Gauge(name string, val interface{}) {
 		}
 	}
 }
-func (p *PromMetrics) Histogram(name string, obs interface{}) {
+func (p *OpsRampMetrics) Histogram(name string, obs interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -214,7 +214,7 @@ func (p *PromMetrics) Histogram(name string, obs interface{}) {
 	}
 }
 
-func (p *PromMetrics) GaugeWithLabels(name string, labels map[string]string, value float64) {
+func (p *OpsRampMetrics) GaugeWithLabels(name string, labels map[string]string, value float64) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -225,7 +225,7 @@ func (p *PromMetrics) GaugeWithLabels(name string, labels map[string]string, val
 	}
 }
 
-func (p *PromMetrics) IncrementWithLabels(name string, labels map[string]string) {
+func (p *OpsRampMetrics) IncrementWithLabels(name string, labels map[string]string) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -243,7 +243,7 @@ type OpsRampAuthTokenResponse struct {
 	Scope       string `json:"scope"`
 }
 
-func (p *PromMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMetricsConfig) {
+func (p *OpsRampMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMetricsConfig) {
 
 	p.apiEndpoint = metricsConfig.OpsRampMetricsAPI
 	p.apiKey = metricsConfig.OpsRampMetricsAPIKey
@@ -287,7 +287,7 @@ func (p *PromMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMetric
 	}
 }
 
-func (p *PromMetrics) PushMetricsToOpsRamp() (int, error) {
+func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 	metricFamilySlice, err := prometheus.DefaultGatherer.Gather()
 	if err != nil {
 		return -1, err
@@ -480,7 +480,7 @@ func (p *PromMetrics) PushMetricsToOpsRamp() (int, error) {
 	return resp.StatusCode, nil
 }
 
-func (p *PromMetrics) RenewOpsRampOAuthToken() error {
+func (p *OpsRampMetrics) RenewOpsRampOAuthToken() error {
 
 	p.oAuthToken = new(OpsRampAuthTokenResponse)
 
@@ -515,7 +515,7 @@ func (p *PromMetrics) RenewOpsRampOAuthToken() error {
 	return nil
 }
 
-func (p *PromMetrics) SendWithRetry(request *http.Request) (*http.Response, error) {
+func (p *OpsRampMetrics) SendWithRetry(request *http.Request) (*http.Response, error) {
 
 	response, err := p.Client.Do(request)
 	if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {

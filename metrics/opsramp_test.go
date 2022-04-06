@@ -13,7 +13,7 @@ import (
 )
 
 func TestMultipleRegistrations(t *testing.T) {
-	p := &PromMetrics{
+	p := &OpsRampMetrics{
 		Logger: &logger.MockLogger{},
 		Config: &config.MockConfig{},
 	}
@@ -28,7 +28,7 @@ func TestMultipleRegistrations(t *testing.T) {
 }
 
 func TestRaciness(t *testing.T) {
-	p := &PromMetrics{
+	p := &OpsRampMetrics{
 		Logger: &logger.MockLogger{},
 		Config: &config.MockConfig{},
 	}
