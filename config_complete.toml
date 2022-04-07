@@ -119,11 +119,6 @@ SendMetricsToOpsRamp = false
 # implementations of the Collector interface.
 Collector = "InMemCollector"
 
-# Logger describes which logger to use for Refinery logs. Valid options are
-# "logrus" and "honeycomb". The logrus option will write logs to STDOUT and the
-# honeycomb option will send them to a Honeycomb dataset.
-Logger = "logrus"
-
 #########################
 ## Peer Management     ##
 #########################
@@ -224,72 +219,59 @@ MaxAlloc = 0
 # commented out.
 [LogrusLogger]
 
-# logrus logger currently has no options!
+# LogFormatter specifies the log format. Accepted values are one of ["logfmt", "json"]
+LogFormatter = "logfmt"
 
-######################
-## Honeycomb Logger ##
-######################
+# LogOutput specifies where the logs are supposed to be written. Accpets one of ["stdout", "stderr", "file"]
+LogOutput = "file"
 
-# HoneycombLogger is a section of the config only used if you are using the
-# HoneycombLogger to send all logs to a Honeycomb Dataset. If you are using a
-# different logger (eg file-based logger) you can leave all this commented out.
+## LogrusLogger.File - specifies configs for logs when LogOutput is set to "file"
+[LogrusLogger.File]
 
-[HoneycombLogger]
+# FileName specifies the location where the logs are supposed be stored
+FileName = "/var/log/opsramp/tracing-proxy.log"
 
-# LoggerHoneycombAPI is the URL for the upstream Honeycomb API.
-# Eligible for live reload.
-LoggerHoneycombAPI = "https://api.honeycomb.io"
+# MaxSize is the maximum size in megabytes of the log file before it gets rotated.
+MaxSize = 1
 
-# LoggerAPIKey is the API key to use to send log events to the Honeycomb logging
-# dataset. This is separate from the APIKeys used to authenticate regular
-# traffic.
-# Eligible for live reload.
-LoggerAPIKey = "abcd1234"
+# MaxBackups is the maximum number of old log files to retain.
+MaxBackups = 3
 
-# LoggerDataset is the name of the dataset to which to send Refinery logs
-# Eligible for live reload.
-LoggerDataset = "Refinery Logs"
+# Compress determines if the rotated log files should be compressed
+# using gzip.
+Compress = true
 
-# LoggerSamplerEnabled enables a PerKeyThroughput dynamic sampler for log messages.
-# This will sample log messages based on [log level:message] key on a per second throughput basis.
-# Not eligible for live reload.
-LoggerSamplerEnabled = true
-
-# LoggerSamplerThroughput is the per key per second throughput for the log message dynamic sampler.
-# Not eligible for live reload.
-LoggerSamplerThroughput = 10
 
 #####################@##
 ## Prometheus Metrics ##
 #####################@##
 
-[PrometheusMetrics]
+[OpsRampMetrics]
 # MetricsListenAddr determines the interface and port on which Prometheus will
 # listen for requests for /metrics. Must be different from the main Refinery
 # listener.
 # Not eligible for live reload.
 MetricsListenAddr = "localhost:2112"
 
-[OpsRampMetrics]
 # OpsRampMetricsAPI is the URL for the upstream OpsRamp API.
 # Not Eligible for live reload.
-OpsRampMetricsAPI = ""
+OpsRampMetricsAPI = "https://placeholder.api.com/"
 
 # OpsRampTenantID is the Client or Tenant ID where the metrics are supposed to be pushed.
 # Not Eligible for live reload.
-OpsRampTenantID = ""
+OpsRampTenantID = "placeholder_tenantID"
 
 # OpsRampMetricsAPIKey is the API key to use to send metrics to the OpsRamp.
 # This is separate from the APIKeys used to authenticate regular
 # traffic.
 # Not Eligible for live reload.
-OpsRampMetricsAPIKey = ""
+OpsRampMetricsAPIKey = "placeholder_key"
 
 # OpsRampMetricsAPISecret is the API Secret to use to send metrics to the OpsRamp.
 # This is separate from the APISecret used to authenticate regular
 # traffic.
 # Not Eligible for live reload.
-OpsRampMetricsAPISecret = ""
+OpsRampMetricsAPISecret = "placeholder_secret"
 
 # OpsRampMetricsReportingInterval is frequency specified in seconds at which
 # the metrics are collected and sent to OpsRamp

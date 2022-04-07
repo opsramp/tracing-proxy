@@ -14,8 +14,6 @@ import (
 	libtrace "github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/libhoney-go/transmission"
 	flag "github.com/jessevdk/go-flags"
-	"github.com/sirupsen/logrus"
-
 	"github.com/jirs5/tracing-proxy/app"
 	"github.com/jirs5/tracing-proxy/collect"
 	"github.com/jirs5/tracing-proxy/config"
@@ -93,7 +91,7 @@ func main() {
 	}
 
 	// get desired implementation for each dependency to inject
-	lgr := logger.GetLoggerImplementation(c)
+	lgr := logger.GetLoggerImplementation()
 	collector := collect.GetCollectorImplementation(c)
 	metricsConfig := metrics.GetMetricsImplementation("")
 	shrdr := sharder.GetSharderImplementation(c)
@@ -105,6 +103,7 @@ func main() {
 		fmt.Printf("unable to get logging level from config: %v\n", err)
 		os.Exit(1)
 	}
+	logrusLogger := lgr.Init()
 	if err := lgr.SetLevel(logLevel); err != nil {
 		fmt.Printf("unable to set logging level: %v\n", err)
 		os.Exit(1)
@@ -206,15 +205,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// the logger provided to startstop must be valid before any service is
-	// started, meaning it can't rely on injected configs. make a custom logger
-	// just for this step
-	ststLogger := logrus.New()
-	level, _ := logrus.ParseLevel(logLevel)
-	ststLogger.SetLevel(level)
-
-	defer startstop.Stop(g.Objects(), ststLogger)
-	if err := startstop.Start(g.Objects(), ststLogger); err != nil {
+	defer startstop.Stop(g.Objects(), logrusLogger)
+	if err := startstop.Start(g.Objects(), logrusLogger); err != nil {
 		fmt.Printf("failed to start injected dependencies. error: %+v\n", err)
 		os.Exit(1)
 	}
