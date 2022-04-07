@@ -44,30 +44,33 @@ func (l *LogrusLogger) Start() error {
 		})
 	}
 
-	l.logger.SetFormatter(&logrus.TextFormatter{
-		DisableColors:          true,
-		ForceQuote:             true,
-		FullTimestamp:          true,
-		DisableLevelTruncation: true,
-		QuoteEmptyFields:       true,
-		FieldMap: logrus.FieldMap{
-			logrus.FieldKeyFile:  "file",
-			logrus.FieldKeyTime:  "timestamp",
-			logrus.FieldKeyLevel: "level",
-			logrus.FieldKeyMsg:   "message",
-			logrus.FieldKeyFunc:  "caller",
-		},
-	})
-
-	//l.logger.SetFormatter(&logrus.JSONFormatter{
-	//	FieldMap: logrus.FieldMap{
-	//		logrus.FieldKeyFile:  "file",
-	//		logrus.FieldKeyTime:  "timestamp",
-	//		logrus.FieldKeyLevel: "level",
-	//		logrus.FieldKeyMsg:   "message",
-	//		logrus.FieldKeyFunc:  "caller",
-	//	},
-	//})
+	switch logrusConfig.LogFormatter {
+	case "logfmt":
+		l.logger.SetFormatter(&logrus.TextFormatter{
+			DisableColors:          true,
+			ForceQuote:             true,
+			FullTimestamp:          true,
+			DisableLevelTruncation: true,
+			QuoteEmptyFields:       true,
+			FieldMap: logrus.FieldMap{
+				logrus.FieldKeyFile:  "file",
+				logrus.FieldKeyTime:  "timestamp",
+				logrus.FieldKeyLevel: "level",
+				logrus.FieldKeyMsg:   "message",
+				logrus.FieldKeyFunc:  "caller",
+			},
+		})
+	case "json":
+		l.logger.SetFormatter(&logrus.JSONFormatter{
+			FieldMap: logrus.FieldMap{
+				logrus.FieldKeyFile:  "file",
+				logrus.FieldKeyTime:  "timestamp",
+				logrus.FieldKeyLevel: "level",
+				logrus.FieldKeyMsg:   "message",
+				logrus.FieldKeyFunc:  "caller",
+			},
+		})
+	}
 	return nil
 }
 
