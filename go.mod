@@ -39,6 +39,7 @@ require (
 	google.golang.org/grpc v1.44.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )
 
 //replace github.com/honeycombio/libhoney-go v1.15.8 => github.com/jirs5/libtrace-go v0.0.0-20220209113356-39ae92fc19f4

@@ -31,7 +31,6 @@ type configContents struct {
 	GRPCListenAddr            string
 	APIKeys                   []string      `validate:"required"`
 	HoneycombAPI              string        `validate:"required,url"`
-	Logger                    string        `validate:"required,oneof= logrus honeycomb"`
 	LoggingLevel              string        `validate:"required"`
 	Collector                 string        `validate:"required,oneof= InMemCollector"`
 	Sampler                   string        `validate:"required,oneof= DeterministicSampler DynamicSampler EMADynamicSampler RulesBasedSampler TotalThroughputSampler"`
@@ -56,22 +55,19 @@ type InMemoryCollectorCacheCapacity struct {
 	MaxAlloc      uint64
 }
 
-type HoneycombLevel int
-
-type HoneycombLoggerConfig struct {
-	LoggerHoneycombAPI      string `validate:"required,url"`
-	LoggerAPIKey            string `validate:"required"`
-	LoggerDataset           string `validate:"required"`
-	LoggerSamplerEnabled    bool
-	LoggerSamplerThroughput int
-	Level                   HoneycombLevel
-}
-
-type PrometheusMetricsConfig struct {
-	MetricsListenAddr string `validate:"required"`
+type LogrusLoggerConfig struct {
+	LogFormatter string `validate:"required",toml:"LogFormatter"`
+	LogOutput    string `validate:"required,oneof= stdout stderr file",toml:"LogOutput"`
+	File         struct {
+		FileName   string `toml:"FileName"`
+		MaxSize    int    `toml:"MaxSize"`
+		MaxBackups int    `toml:"MaxBackups"`
+		Compress   bool   `toml:"Compress"`
+	} `toml:"File"`
 }
 
 type OpsRampMetricsConfig struct {
+	MetricsListenAddr               string `validate:"required"`
 	OpsRampMetricsAPI               string `validate:"required,url"`
 	OpsRampTenantID                 string `validate:"required"`
 	OpsRampMetricsAPIKey            string `validate:"required"`
@@ -104,8 +100,6 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 
 	c.BindEnv("PeerManagement.RedisHost", "tracing-proxy_REDIS_HOST")
 	c.BindEnv("PeerManagement.RedisPassword", "tracing-proxy_REDIS_PASSWORD")
-	c.BindEnv("HoneycombLogger.LoggerAPIKey", "tracing-proxy_HONEYCOMB_API_KEY")
-	c.BindEnv("HoneycombMetrics.MetricsAPIKey", "tracing-proxy_HONEYCOMB_API_KEY")
 	c.SetDefault("ListenAddr", "0.0.0.0:8080")
 	c.SetDefault("PeerListenAddr", "0.0.0.0:8081")
 	c.SetDefault("CompressPeerCommunication", true)
@@ -116,7 +110,6 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("PeerManagement.UseTLSInsecure", false)
 	c.SetDefault("PeerManagement.UseIPV6Identifier", false)
 	c.SetDefault("HoneycombAPI", "https://api.jirs5")
-	c.SetDefault("Logger", "logrus")
 	c.SetDefault("LoggingLevel", "debug")
 	c.SetDefault("Collector", "InMemCollector")
 	c.SetDefault("SendDelay", 2*time.Second)
@@ -126,8 +119,6 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("UpstreamBufferSize", libtrace.DefaultPendingWorkCapacity)
 	c.SetDefault("PeerBufferSize", libtrace.DefaultPendingWorkCapacity)
 	c.SetDefault("MaxAlloc", uint64(0))
-	c.SetDefault("HoneycombLogger.LoggerSamplerEnabled", false)
-	c.SetDefault("HoneycombLogger.LoggerSamplerThroughput", 5)
 	c.SetDefault("AddHostMetadataToTrace", false)
 	c.SetDefault("SendMetricsToOpsRamp", false)
 
@@ -240,20 +231,8 @@ func (f *fileConfig) unmarshal() error {
 }
 
 func (f *fileConfig) validateConditionalConfigs() error {
-	// validate logger config
-	loggerType, err := f.GetLoggerType()
-	if err != nil {
-		return err
-	}
-	if loggerType == "honeycomb" {
-		_, err = f.GetHoneycombLoggerConfig()
-		if err != nil {
-			return err
-		}
-	}
-
 	// validate metrics config
-	_, err = f.GetPrometheusMetricsConfig()
+	_, err := f.GetOpsRampMetricsConfig()
 	if err != nil {
 		return err
 	}
@@ -465,41 +444,6 @@ func (f *fileConfig) GetLoggingLevel() (string, error) {
 	return f.conf.LoggingLevel, nil
 }
 
-func (f *fileConfig) GetLoggerType() (string, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
-	return f.conf.Logger, nil
-}
-
-func (f *fileConfig) GetHoneycombLoggerConfig() (HoneycombLoggerConfig, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
-	hlConfig := &HoneycombLoggerConfig{}
-	if sub := f.config.Sub("HoneycombLogger"); sub != nil {
-		err := sub.UnmarshalExact(hlConfig)
-		if err != nil {
-			return *hlConfig, err
-		}
-
-		hlConfig.LoggerAPIKey = f.config.GetString("HoneycombLogger.LoggerAPIKey")
-
-		// https://github.com/spf13/viper/issues/747
-		hlConfig.LoggerSamplerEnabled = f.config.GetBool("HoneycombLogger.LoggerSamplerEnabled")
-		hlConfig.LoggerSamplerThroughput = f.config.GetInt("HoneycombLogger.LoggerSamplerThroughput")
-
-		v := validator.New()
-		err = v.Struct(hlConfig)
-		if err != nil {
-			return *hlConfig, err
-		}
-
-		return *hlConfig, nil
-	}
-	return *hlConfig, errors.New("No config found for HoneycombLogger")
-}
-
 func (f *fileConfig) GetCollectorType() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
@@ -575,40 +519,34 @@ func (f *fileConfig) GetInMemCollectorCacheCapacity() (InMemoryCollectorCacheCap
 	return *capacity, errors.New("No config found for inMemCollector")
 }
 
-func (f *fileConfig) GetPrometheusMetricsConfig() (PrometheusMetricsConfig, error) {
+func (f *fileConfig) GetLogrusConfig() (*LogrusLoggerConfig, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	pcConfig := &PrometheusMetricsConfig{}
-	if sub := f.config.Sub("PrometheusMetrics"); sub != nil {
-		err := sub.UnmarshalExact(pcConfig)
+	logrusConfig := &LogrusLoggerConfig{}
+
+	if sub := f.config.Sub("LogrusLogger"); sub != nil {
+		err := sub.UnmarshalExact(logrusConfig)
 		if err != nil {
-			return *pcConfig, err
+			return logrusConfig, err
 		}
 
 		v := validator.New()
-		err = v.Struct(pcConfig)
+		err = v.Struct(logrusConfig)
 		if err != nil {
-			return *pcConfig, err
+			return logrusConfig, err
 		}
 
-		return *pcConfig, nil
+		return logrusConfig, nil
 	}
-	return *pcConfig, errors.New("No config found for PrometheusMetrics")
+	return nil, errors.New("No config found for LogrusConfig")
 }
 
 func (f *fileConfig) GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	opsRampMetricsConfig := &OpsRampMetricsConfig{
-		OpsRampMetricsAPI:               "https://placeholder.api.com/",
-		OpsRampTenantID:                 "placeholder_tenantID",
-		OpsRampMetricsAPIKey:            "placeholder_key",
-		OpsRampMetricsAPISecret:         "placeholder_secret",
-		OpsRampMetricsReportingInterval: 60,
-		OpsRampMetricsRetryCount:        2,
-	}
+	opsRampMetricsConfig := &OpsRampMetricsConfig{}
 
 	if sub := f.config.Sub("OpsRampMetrics"); sub != nil {
 		err := sub.UnmarshalExact(opsRampMetricsConfig)
@@ -622,6 +560,10 @@ func (f *fileConfig) GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error) {
 
 		if opsRampMetricsConfig.OpsRampMetricsReportingInterval < 10 {
 			opsRampMetricsConfig.OpsRampMetricsReportingInterval = 10
+		}
+
+		if len(opsRampMetricsConfig.OpsRampMetricsList) < 1 {
+			opsRampMetricsConfig.OpsRampMetricsList = []string{".*"}
 		}
 
 		v := validator.New()
