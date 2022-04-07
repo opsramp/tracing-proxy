@@ -49,12 +49,12 @@ func (p *OpsRampMetrics) Start() error {
 	p.Logger.Debug().Logf("Starting OpsRampMetrics")
 	defer func() { p.Logger.Debug().Logf("Finished starting OpsRampMetrics") }()
 
-	if p.prefix == "" && p.Config.GetSendMetricsToOpsRamp() {
-		metricsConfig, err := p.Config.GetOpsRampMetricsConfig()
-		if err != nil {
-			p.Logger.Error().Logf("Failed to Load OpsRampMetrics Config:", err)
-		}
+	metricsConfig, err := p.Config.GetOpsRampMetricsConfig()
+	if err != nil {
+		return err
+	}
 
+	if p.prefix == "" && p.Config.GetSendMetricsToOpsRamp() {
 		go func() {
 			metricsTicker := time.NewTicker(time.Duration(metricsConfig.OpsRampMetricsReportingInterval) * time.Second)
 			defer metricsTicker.Stop()
@@ -76,17 +76,12 @@ func (p *OpsRampMetrics) Start() error {
 
 	}
 
-	pc, err := p.Config.GetPrometheusMetricsConfig()
-	if err != nil {
-		return err
-	}
-
 	p.metrics = make(map[string]interface{})
 
 	muxxer := mux.NewRouter()
 
 	muxxer.Handle("/metrics", promhttp.Handler())
-	go http.ListenAndServe(pc.MetricsListenAddr, muxxer)
+	go http.ListenAndServe(metricsConfig.MetricsListenAddr, muxxer)
 	return nil
 }
 
