@@ -27,45 +27,43 @@ type MockConfig struct {
 	GetGRPCListenAddrVal                 string
 	GetLoggerTypeErr                     error
 	GetLoggerTypeVal                     string
-	GetHoneycombLoggerConfigErr          error
-	GetHoneycombLoggerConfigVal          HoneycombLoggerConfig
 	GetLoggingLevelErr                   error
 	GetLoggingLevelVal                   string
 	GetOtherConfigErr                    error
 	// GetOtherConfigVal must be a JSON representation of the config struct to be populated.
-	GetOtherConfigVal             string
-	GetPeersErr                   error
-	GetPeersVal                   []string
-	GetRedisHostErr               error
-	GetRedisHostVal               string
-	GetRedisPasswordErr           error
-	GetRedisPasswordVal           string
-	GetUseTLSErr                  error
-	GetUseTLSVal                  bool
-	GetUseTLSInsecureErr          error
-	GetUseTLSInsecureVal          bool
-	GetSamplerTypeErr             error
-	GetSamplerTypeVal             interface{}
-	GetMetricsTypeErr             error
-	GetMetricsTypeVal             string
-	GetPrometheusMetricsConfigErr error
-	GetPrometheusMetricsConfigVal PrometheusMetricsConfig
-	GetSendDelayErr               error
-	GetSendDelayVal               time.Duration
-	GetTraceTimeoutErr            error
-	GetTraceTimeoutVal            time.Duration
-	GetMaxBatchSizeVal            uint
-	GetUpstreamBufferSizeVal      int
-	GetPeerBufferSizeVal          int
-	SendTickerVal                 time.Duration
-	IdentifierInterfaceName       string
-	UseIPV6Identifier             bool
-	RedisIdentifier               string
-	PeerManagementType            string
-	DebugServiceAddr              string
-	DryRun                        bool
-	DryRunFieldName               string
-	AddHostMetadataToTrace        bool
+	GetOtherConfigVal          string
+	GetPeersErr                error
+	GetPeersVal                []string
+	GetRedisHostErr            error
+	GetRedisHostVal            string
+	GetRedisPasswordErr        error
+	GetRedisPasswordVal        string
+	GetUseTLSErr               error
+	GetUseTLSVal               bool
+	GetUseTLSInsecureErr       error
+	GetUseTLSInsecureVal       bool
+	GetSamplerTypeErr          error
+	GetSamplerTypeVal          interface{}
+	GetMetricsTypeErr          error
+	GetMetricsTypeVal          string
+	GetOpsRampMetricsConfigErr error
+	GetOpsRampMetricsConfigVal OpsRampMetricsConfig
+	GetSendDelayErr            error
+	GetSendDelayVal            time.Duration
+	GetTraceTimeoutErr         error
+	GetTraceTimeoutVal         time.Duration
+	GetMaxBatchSizeVal         uint
+	GetUpstreamBufferSizeVal   int
+	GetPeerBufferSizeVal       int
+	SendTickerVal              time.Duration
+	IdentifierInterfaceName    string
+	UseIPV6Identifier          bool
+	RedisIdentifier            string
+	PeerManagementType         string
+	DebugServiceAddr           string
+	DryRun                     bool
+	DryRunFieldName            string
+	AddHostMetadataToTrace     bool
 
 	Mux sync.RWMutex
 }
@@ -137,12 +135,6 @@ func (m *MockConfig) GetLoggerType() (string, error) {
 
 	return m.GetLoggerTypeVal, m.GetLoggerTypeErr
 }
-func (m *MockConfig) GetHoneycombLoggerConfig() (HoneycombLoggerConfig, error) {
-	m.Mux.RLock()
-	defer m.Mux.RUnlock()
-
-	return m.GetHoneycombLoggerConfigVal, m.GetHoneycombLoggerConfigErr
-}
 func (m *MockConfig) GetLoggingLevel() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
@@ -195,11 +187,11 @@ func (m *MockConfig) GetMetricsType() (string, error) {
 
 	return m.GetMetricsTypeVal, m.GetMetricsTypeErr
 }
-func (m *MockConfig) GetPrometheusMetricsConfig() (PrometheusMetricsConfig, error) {
+func (m *MockConfig) GetPrometheusMetricsConfig() (OpsRampMetricsConfig, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
-	return m.GetPrometheusMetricsConfigVal, m.GetPrometheusMetricsConfigErr
+	return m.GetOpsRampMetricsConfigVal, m.GetOpsRampMetricsConfigErr
 }
 func (m *MockConfig) GetSendDelay() (time.Duration, error) {
 	m.Mux.RLock()
