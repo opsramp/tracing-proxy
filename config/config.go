@@ -81,13 +81,6 @@ type Config interface {
 	// themselves
 	GetOtherConfig(name string, configStruct interface{}) error
 
-	// GetLoggerType returns the type of the logger to use. Valid types are in
-	// the logger package
-	GetLoggerType() (string, error)
-
-	// GetHoneycombLoggerConfig returns the config specific to the HoneycombLogger
-	GetHoneycombLoggerConfig() (HoneycombLoggerConfig, error)
-
 	// GetCollectorType returns the type of the collector to use. Valid types
 	// are in the collect package
 	GetCollectorType() (string, error)
@@ -98,8 +91,8 @@ type Config interface {
 	// GetSamplerConfigForDataset returns the sampler type to use for the given dataset
 	GetSamplerConfigForDataset(string) (interface{}, error)
 
-	// GetPrometheusMetricsConfig returns the config specific to PrometheusMetrics
-	GetPrometheusMetricsConfig() (PrometheusMetricsConfig, error)
+	// GetLogrusConfig returns the config specific to Logrus
+	GetLogrusConfig() (*LogrusLoggerConfig, error)
 
 	// GetOpsRampMetricsConfig returns the config specific to PrometheusMetrics
 	GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error)
