@@ -274,8 +274,8 @@ github.com/jessevdk/go-flags v1.5.0 h1:1jKYvbxEjfUl0fmqTCOfonvskHHXMjBySTLW4y9LF
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/jirs5/husky v0.9.1-0.20220406121028-046683d10802 h1:EOjRO/vmYd/KOqKNE9hURrNISv+4tspT+HawDAqgNqA=
 github.com/jirs5/husky v0.9.1-0.20220406121028-046683d10802/go.mod h1:2+Jrt6E/YFttamS1088JtvK9XalZJ8KcaAwaogPEouY=
-github.com/jirs5/libtrace-go v0.0.0-20220411084221-92bd94607988 h1:xD3eYBWEyzW9RFDTOie2b184aiCFzBqHLwpP4ihV/7g=
-github.com/jirs5/libtrace-go v0.0.0-20220411084221-92bd94607988/go.mod h1:7Z9QPLljLv8SW0BTttRBgHE969vQfy2bDAh0cnDXjBI=
+github.com/jirs5/libtrace-go v0.0.0-20220411092904-37782dea6332 h1:Jr3X5SPdxSAu5ChJ9HmK4dRRpdeWmpyebI0dKzaF9tQ=
+github.com/jirs5/libtrace-go v0.0.0-20220411092904-37782dea6332/go.mod h1:7Z9QPLljLv8SW0BTttRBgHE969vQfy2bDAh0cnDXjBI=
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
 github.com/json-iterator/go v1.1.9/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=
