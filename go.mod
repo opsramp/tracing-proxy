@@ -39,12 +39,12 @@ require (
 	google.golang.org/grpc v1.44.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
 //replace github.com/honeycombio/libhoney-go v1.15.8 => github.com/jirs5/libtrace-go v0.0.0-20220209113356-39ae92fc19f4
 //replace github.com/honeycombio/libhoney-go v1.15.8 => github.com/jirs5/libtrace-go v0.0.0-20220302232703-acf6fcd2a9de
-replace github.com/honeycombio/libhoney-go v1.15.8 => github.com/jirs5/libtrace-go v0.0.0-20220323133508-a1eeabcc5f98
+replace github.com/honeycombio/libhoney-go v1.15.8 => github.com/jirs5/libtrace-go v0.0.0-20220411084221-92bd94607988
 
 //replace github.com/honeycombio/husky v0.9.0 => github.com/jirs5/husky v0.9.1-0.20220302161820-fe16f58d3996
 replace github.com/honeycombio/husky v0.9.0 => github.com/jirs5/husky v0.9.1-0.20220406121028-046683d10802

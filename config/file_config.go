@@ -47,6 +47,8 @@ type configContents struct {
 	InMemCollector            InMemoryCollectorCacheCapacity `validate:"required"`
 	AddHostMetadataToTrace    bool
 	SendMetricsToOpsRamp      bool
+	UseTls                    bool
+	UseTlsInSecure            bool
 }
 
 type InMemoryCollectorCacheCapacity struct {
@@ -671,4 +673,18 @@ func (f *fileConfig) GetSendMetricsToOpsRamp() bool {
 	defer f.mux.RUnlock()
 
 	return f.conf.SendMetricsToOpsRamp
+}
+
+func (f *fileConfig) GetGlobalUseTLS() bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.UseTls
+}
+
+func (f *fileConfig) GetGlobalUseTLSInsecureSkip() bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return !f.conf.UseTlsInSecure
 }
