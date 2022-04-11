@@ -124,4 +124,10 @@ type Config interface {
 	GetAddHostMetadataToTrace() bool
 
 	GetSendMetricsToOpsRamp() bool
+
+	// GetUseTLS returns true when TLS must be enabled to dial
+	GetGlobalUseTLS() bool
+
+	// GetUseTLSInsecureSkip returns false when certificate checks are disabled
+	GetGlobalUseTLSInsecureSkip() bool
 }

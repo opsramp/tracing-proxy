@@ -50,6 +50,12 @@ APIKeys = [
 #HoneycombAPI = "localhost:50052"
 HoneycombAPI = "https://asura.opsramp.net"
 
+
+#Tls Options
+UseTls = true
+UseTlsInsecure = false
+
+
 # SendDelay is a short timer that will be triggered when a trace is complete.
 # Refinery will wait this duration before actually sending the trace.  The
 # reason for this short delay is to allow for small network delays or clock
