@@ -142,6 +142,8 @@ func main() {
 			BlockOnSend:           true,
 			EnableMsgpackEncoding: false,
 			Metrics:               upstreamMetricsConfig,
+			UseTls:                c.GetGlobalUseTLS(),
+			UseTlsInsecure:        c.GetGlobalUseTLSInsecureSkip(),
 		},
 	})
 	if err != nil {
@@ -160,7 +162,7 @@ func main() {
 			UserAgentAddition:     userAgentAddition,
 			Transport:             peerTransport,
 			DisableCompression:    !c.GetCompressPeerCommunication(),
-			EnableMsgpackEncoding: true,
+			EnableMsgpackEncoding: false,
 			Metrics:               peerMetricsConfig,
 		},
 	})
