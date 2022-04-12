@@ -25,6 +25,10 @@ type Config interface {
 	// peer traffic
 	GetPeerListenAddr() (string, error)
 
+	// GetPeerListenAddr returns the address and port on which to listen for
+	// GRPC peer traffic
+	GetGRPCPeerListenAddr() (string, error)
+
 	// GetCompressPeerCommunication will be true if tracing-proxy should compress
 	// data before forwarding it to a peer.
 	GetCompressPeerCommunication() bool

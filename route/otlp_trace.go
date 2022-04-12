@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"fmt"
+	proxypb "github.com/honeycombio/libhoney-go/proto/proxypb"
 	"net/http"
 
 	huskyotlp "github.com/honeycombio/husky/otlp"
@@ -94,4 +95,10 @@ func processTraceRequest(
 	}
 
 	return nil
+}
+
+func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTraceProxyServiceRequest) (*proxypb.ExportTraceProxyServiceResponse, error) {
+
+	fmt.Println("Received Trace from peer: %v \n", in.Items)
+	return &proxypb.ExportTraceProxyServiceResponse{Message: "Received Successfully by peer", Status: "Success"}, nil
 }
