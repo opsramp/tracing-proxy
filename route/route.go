@@ -248,7 +248,7 @@ func (r *Router) LnS(incomingOrPeer string) {
 			}),
 		}
 		r.grpcServer = grpc.NewServer(serverOpts...)
-		proxypb.RegisterTraceProxyServiceServer(r.grpcServer, &server{})
+		proxypb.RegisterTraceProxyServiceServer(r.grpcServer, r)
 		go r.grpcServer.Serve(l)
 	}
 
