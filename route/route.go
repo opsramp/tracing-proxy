@@ -84,10 +84,6 @@ type Router struct {
 	proxypb.UnimplementedTraceProxyServiceServer
 }
 
-func (r *Router) mustEmbedUnimplementedTraceProxyServiceServer() {
-	panic("implement me")
-}
-
 type BatchResponse struct {
 	Status int    `json:"status"`
 	Error  string `json:"error,omitempty"`
@@ -115,7 +111,7 @@ func (r *Router) SetVersion(ver string) {
 }
 
 type server struct {
-	proxypb.UnimplementedTraceProxyServiceServer
+	proxypb.TraceProxyServiceServer
 }
 
 // LnS spins up the Listen and Serve portion of the router. A router is
