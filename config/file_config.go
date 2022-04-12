@@ -29,6 +29,7 @@ type configContents struct {
 	PeerListenAddr            string `validate:"required"`
 	CompressPeerCommunication bool
 	GRPCListenAddr            string
+	GRPCPeerListenAddr        string
 	APIKeys                   []string      `validate:"required"`
 	HoneycombAPI              string        `validate:"required,url"`
 	LoggingLevel              string        `validate:"required"`
@@ -360,6 +361,20 @@ func (f *fileConfig) GetGRPCListenAddr() (string, error) {
 		}
 	}
 	return f.conf.GRPCListenAddr, nil
+}
+
+func (f *fileConfig) GetGRPCPeerListenAddr() (string, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	// GRPC listen addr is optional, only check value is valid if not empty
+	if f.conf.GRPCPeerListenAddr != "" {
+		_, _, err := net.SplitHostPort(f.conf.GRPCPeerListenAddr)
+		if err != nil {
+			return "", err
+		}
+	}
+	return f.conf.GRPCPeerListenAddr, nil
 }
 
 func (f *fileConfig) GetAPIKeys() ([]string, error) {

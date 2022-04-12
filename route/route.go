@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	proxypb "github.com/honeycombio/libhoney-go/proto/proxypb"
 	"io"
 	"io/ioutil"
 	"math"
@@ -80,6 +81,11 @@ type Router struct {
 
 	// used to identify Router as a OTLP TraceServer
 	collectortrace.UnimplementedTraceServiceServer
+	proxypb.UnimplementedTraceProxyServiceServer
+}
+
+func (r *Router) mustEmbedUnimplementedTraceProxyServiceServer() {
+	panic("implement me")
 }
 
 type BatchResponse struct {
@@ -106,6 +112,10 @@ func (i *iopLogger) Error() logger.Entry {
 
 func (r *Router) SetVersion(ver string) {
 	r.versionStr = ver
+}
+
+type server struct {
+	proxypb.UnimplementedTraceProxyServiceServer
 }
 
 // LnS spins up the Listen and Serve portion of the router. A router is
@@ -169,7 +179,7 @@ func (r *Router) LnS(incomingOrPeer string) {
 	// pass everything else through unmolested
 	muxxer.PathPrefix("/").HandlerFunc(r.proxy).Name("proxy")
 
-	var listenAddr, grpcAddr string
+	var listenAddr, grpcAddr, grpcPeerAddr string
 	if r.incomingOrPeer == "incoming" {
 		listenAddr, err = r.Config.GetListenAddr()
 		if err != nil {
@@ -188,6 +198,14 @@ func (r *Router) LnS(incomingOrPeer string) {
 			r.iopLogger.Error().Logf("failed to get peer listen addr config: %s", err)
 			return
 		}
+
+		// GRPC listen addr is optional, err means addr was not empty and invalid
+		grpcPeerAddr, err = r.Config.GetGRPCPeerListenAddr()
+		if err != nil {
+			r.iopLogger.Error().Logf("failed to get grpc listen addr config: %s", err)
+			return
+		}
+
 	}
 
 	r.iopLogger.Info().Logf("Listening on %s", listenAddr)
@@ -214,6 +232,27 @@ func (r *Router) LnS(incomingOrPeer string) {
 		}
 		r.grpcServer = grpc.NewServer(serverOpts...)
 		collectortrace.RegisterTraceServiceServer(r.grpcServer, r)
+		go r.grpcServer.Serve(l)
+	}
+
+	if len(grpcPeerAddr) > 0 {
+		l, err := net.Listen("tcp", grpcPeerAddr)
+		if err != nil {
+			r.iopLogger.Error().Logf("failed to listen to grpc peer addr: " + grpcPeerAddr)
+		}
+
+		r.iopLogger.Info().Logf("gRPC Peer listening on %s", grpcPeerAddr)
+		serverOpts := []grpc.ServerOption{
+			grpc.MaxSendMsgSize(GRPCMessageSizeMax), // default is math.MaxInt32
+			grpc.MaxRecvMsgSize(GRPCMessageSizeMax), // default is 4MB
+			grpc.KeepaliveParams(keepalive.ServerParameters{
+				Time:              10 * time.Second,
+				Timeout:           2 * time.Second,
+				MaxConnectionIdle: time.Minute,
+			}),
+		}
+		r.grpcServer = grpc.NewServer(serverOpts...)
+		proxypb.RegisterTraceProxyServiceServer(r.grpcServer, &server{})
 		go r.grpcServer.Serve(l)
 	}
 
