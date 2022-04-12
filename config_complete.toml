@@ -23,6 +23,7 @@ GRPCListenAddr = "0.0.0.0:9090"
 # Should be of the form 0.0.0.0:8081
 # Not eligible for live reload.
 PeerListenAddr = "0.0.0.0:8083"
+GRPCPeerListenAddr = "0.0.0.0:8084"
 
 # CompressPeerCommunication determines whether refinery will compress span data
 # it forwards to peers. If it costs money to transmit data between refinery
@@ -50,11 +51,9 @@ APIKeys = [
 #HoneycombAPI = "localhost:50052"
 HoneycombAPI = "https://asura.opsramp.net"
 
-
 #Tls Options
 UseTls = true
 UseTlsInsecure = false
-
 
 # SendDelay is a short timer that will be triggered when a trace is complete.
 # Refinery will wait this duration before actually sending the trace.  The
