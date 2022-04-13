@@ -2,9 +2,13 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	proxypb "github.com/honeycombio/libhoney-go/proto/proxypb"
+	"google.golang.org/grpc/metadata"
+	"log"
 	"net/http"
+	"time"
 
 	huskyotlp "github.com/honeycombio/husky/otlp"
 	"github.com/jirs5/tracing-proxy/types"
@@ -99,6 +103,58 @@ func processTraceRequest(
 
 func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTraceProxyServiceRequest) (*proxypb.ExportTraceProxyServiceResponse, error) {
 
-	fmt.Println("Received Trace from peer: %v \n", in.Items)
+	fmt.Println("Received Trace data from peer \n")
+
+	var token, tenantId, datasetName string
+	apiHost, err := r.Config.GetHoneycombAPI()
+	if err != nil {
+		r.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
+		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get apihost", Status: "Failed"}, nil
+	}
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		log.Println("Failed to get metadata")
+		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get request metadata", Status: "Failed"}, nil
+	} else {
+		authorization := md.Get("Authorization")
+		if len(authorization) == 0 {
+			return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get Authorization", Status: "Failed"}, nil
+		} else {
+			token = authorization[0]
+			recvdTenantId := md.Get("tenantId")
+			if len(recvdTenantId) == 0 {
+				return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get TenantId", Status: "Failed"}, nil
+			} else {
+				tenantId = recvdTenantId[0]
+				datasetName = md.Get("dataset")[0]
+			}
+		}
+		log.Printf("\nauthorization:%v", token)
+		log.Printf("\nTenantId:%v", tenantId)
+	}
+
+	var requestID types.RequestIDContextKey
+
+	for _, item := range in.Items {
+		layout := "2006-01-02T15:04:05.000Z"
+		timestamp, err := time.Parse(layout, item.Timestamp)
+
+		var data map[string]interface{}
+		inrec, _ := json.Marshal(item.Data)
+		json.Unmarshal(inrec, &data)
+
+		event := &types.Event{
+			Context:     ctx,
+			APIHost:     apiHost,
+			APIToken:    token,
+			APITenantId: tenantId,
+			Dataset:     datasetName,
+			Timestamp:   timestamp,
+			Data:        data,
+		}
+		if err = r.processEvent(event, requestID); err != nil {
+			r.Logger.Error().Logf("Error processing event: " + err.Error())
+		}
+	}
 	return &proxypb.ExportTraceProxyServiceResponse{Message: "Received Successfully by peer", Status: "Success"}, nil
 }
