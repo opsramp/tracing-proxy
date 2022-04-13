@@ -81,7 +81,7 @@ type Router struct {
 
 	// used to identify Router as a OTLP TraceServer
 	collectortrace.UnimplementedTraceServiceServer
-	proxypb.UnimplementedTraceProxyServiceServer
+	proxypb.TraceProxyServiceServer
 }
 
 type BatchResponse struct {
