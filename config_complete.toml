@@ -136,7 +136,7 @@ Type = "file"
 # hostname (or ip address) and port. All servers in the cluster should be in
 # this list, including this host.
 Peers = [
-    "http://127.0.0.1:8083",
+    "http://127.0.0.1:8084", #only grpc peer listener used
     # "http://127.0.0.1:8083",
     # "http://10.1.2.3.4:8080",
     # "http://refinery-1231:8080",

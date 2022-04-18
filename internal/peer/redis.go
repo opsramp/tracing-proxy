@@ -216,7 +216,8 @@ func buildOptions(c config.Config) []redis.DialOption {
 
 func publicAddr(c config.Config) (string, error) {
 	// compute the public version of my peer listen address
-	listenAddr, _ := c.GetPeerListenAddr()
+	//listenAddr, _ := c.GetPeerListenAddr() //Temporarily removed http peer listen addr, only grpc listener
+	listenAddr, _ := c.GetGRPCPeerListenAddr()
 	_, port, err := net.SplitHostPort(listenAddr)
 
 	if err != nil {
