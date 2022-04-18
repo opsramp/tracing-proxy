@@ -106,7 +106,9 @@ func (d *DeterministicSharder) Start() error {
 		}
 
 		// get my listen address for peer traffic for the Port number
-		listenAddr, err := d.Config.GetPeerListenAddr()
+		//listenAddr, err := d.Config.GetPeerListenAddr() //Temporarily removed http peer listen addr, only grpc listener
+		listenAddr, err := d.Config.GetGRPCPeerListenAddr()
+
 		if err != nil {
 			return errors.Wrap(err, "failed to get listen addr config")
 		}
