@@ -143,10 +143,30 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 		inrec, _ := json.Marshal(item.Data)
 		json.Unmarshal(inrec, &data)
 
+		//Translate ResourceAttributes , SpanAttributes, EventAttributes from proto format to interface{}
+		attributes := make(map[string]interface{})
+		for _, kv := range item.Data.ResourceAttributes {
+			attributes[kv.Key] = extractKeyValue(kv.Value)
+		}
+		data["resourceAttributes"] = attributes
+
+		attributes = make(map[string]interface{})
+		for _, kv := range item.Data.SpanAttributes {
+			attributes[kv.Key] = extractKeyValue(kv.Value)
+		}
+		data["spanAttributes"] = attributes
+
+		attributes = make(map[string]interface{})
+		for _, kv := range item.Data.EventAttributes {
+			attributes[kv.Key] = extractKeyValue(kv.Value)
+		}
+		data["eventAttributes"] = attributes
+
 		event := &types.Event{
 			Context:     ctx,
 			APIHost:     apiHost,
 			APIToken:    token,
+			APIKey:      "token", //Hardcoded for time-being. This need to be cleaned
 			APITenantId: tenantId,
 			Dataset:     datasetName,
 			Timestamp:   timestamp,
@@ -157,4 +177,23 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 		}
 	}
 	return &proxypb.ExportTraceProxyServiceResponse{Message: "Received Successfully by peer", Status: "Success"}, nil
+}
+
+func extractKeyValue(v *proxypb.AnyValue) string {
+	if x, ok := v.GetValue().(*proxypb.AnyValue_StringValue); ok {
+		return x.StringValue
+	} else if x, ok := v.GetValue().(*proxypb.AnyValue_IntValue); ok {
+		return fmt.Sprintf("%d", x.IntValue)
+	} else if x, ok := v.GetValue().(*proxypb.AnyValue_BoolValue); ok {
+		return fmt.Sprintf("%v", x.BoolValue)
+	} else if x, ok := v.GetValue().(*proxypb.AnyValue_DoubleValue); ok {
+		return fmt.Sprintf("%f", x.DoubleValue)
+	} else if x, ok := v.GetValue().(*proxypb.AnyValue_BytesValue); ok {
+		return fmt.Sprintf("%v", x.BytesValue)
+	} else if x, ok := v.GetValue().(*proxypb.AnyValue_ArrayValue); ok {
+		return x.ArrayValue.String()
+	} else if x, ok := v.GetValue().(*proxypb.AnyValue_KvlistValue); ok {
+		return x.KvlistValue.String()
+	}
+	return v.String()
 }
