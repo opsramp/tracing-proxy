@@ -136,7 +136,7 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 	var requestID types.RequestIDContextKey
 
 	for _, item := range in.Items {
-		layout := "2006-01-02T15:04:05.000Z"
+		layout := "2006-01-02 15:04:05.000000000 +0000 UTC"
 		timestamp, err := time.Parse(layout, item.Timestamp)
 
 		var data map[string]interface{}
@@ -161,6 +161,10 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 			attributes[kv.Key] = extractKeyValue(kv.Value)
 		}
 		data["eventAttributes"] = attributes
+
+		//Type cast start and end time
+		data["startTime"] = item.Data.StartTime
+		data["endTime"] = item.Data.EndTime
 
 		event := &types.Event{
 			Context:     ctx,
