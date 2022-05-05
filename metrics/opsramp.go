@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -24,6 +25,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+
 
 type OpsRampMetrics struct {
 	Config config.Config `inject:""`
@@ -98,18 +101,27 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 		return
 	}
 
+	hostMap := make(map[string]string)
+
+	if hostname, err := os.Hostname(); err == nil && hostname != "" {
+
+		hostMap["hostname"]=hostname
+	}
+
 	switch metricType {
 	case "counter":
 		newmet = promauto.NewCounter(prometheus.CounterOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
+			ConstLabels: hostMap,
 		})
 	case "gauge":
 		newmet = promauto.NewGauge(prometheus.GaugeOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
+			ConstLabels: hostMap,
 		})
 	case "histogram":
 		newmet = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -119,6 +131,7 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
 			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
+			ConstLabels: hostMap,
 		})
 	}
 
@@ -137,6 +150,12 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	if exists {
 		return
 	}
+	hostMap := make(map[string]string)
+	if hostname, err := os.Hostname(); err == nil && hostname != "" {
+
+		hostMap["hostname"]=hostname
+	}
+
 
 	switch metricType {
 	case "counter":
@@ -144,6 +163,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      desc,
+			ConstLabels: hostMap,
 		}, labels)
 	case "gauge":
 		newmet = promauto.NewGaugeVec(
@@ -151,6 +171,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 				Name:      name,
 				Namespace: p.prefix,
 				Help:      desc,
+				ConstLabels: hostMap,
 			},
 			labels)
 	case "histogram":
@@ -158,6 +179,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      desc,
+			ConstLabels: hostMap,
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
 			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
@@ -434,6 +456,7 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 	request := prompb.WriteRequest{Timeseries: timeSeries}
 
 	out, err := proto.Marshal(&request)
+
 	if err != nil {
 		return -1, err
 	}
