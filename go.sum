@@ -274,8 +274,8 @@ github.com/jessevdk/go-flags v1.5.0 h1:1jKYvbxEjfUl0fmqTCOfonvskHHXMjBySTLW4y9LF
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/jirs5/husky v0.9.1-0.20220412060429-354fd2b490b4 h1:YmBfU5uzwUZdYTvI60Vn+5JNaIaw6611td3Ltu8A0sQ=
 github.com/jirs5/husky v0.9.1-0.20220412060429-354fd2b490b4/go.mod h1:2+Jrt6E/YFttamS1088JtvK9XalZJ8KcaAwaogPEouY=
-github.com/jirs5/libtrace-go v0.0.0-20220413141532-0f5e194e63a4 h1:Y0QqSPkthRPkNaSIG6cRQFNPsilRUS6E2BGn06MaBQY=
-github.com/jirs5/libtrace-go v0.0.0-20220413141532-0f5e194e63a4/go.mod h1:7Z9QPLljLv8SW0BTttRBgHE969vQfy2bDAh0cnDXjBI=
+github.com/jirs5/libtrace-go v1.15.9-0.20220505064121-8635e7c10a91 h1:iJj3Jcbt854dE5EC6iRO78dMLcG/jLiVonhM/tV9zXo=
+github.com/jirs5/libtrace-go v1.15.9-0.20220505064121-8635e7c10a91/go.mod h1:7Z9QPLljLv8SW0BTttRBgHE969vQfy2bDAh0cnDXjBI=
 github.com/jpillora/backoff v1.0.0/go.mod h1:J/6gKK9jxlEcS3zixgDgUAsiuZ7yrSoa/FX5e0EB2j4=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
 github.com/json-iterator/go v1.1.9/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=
@@ -380,6 +380,8 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/sagikazarmark/crypt v0.4.0/go.mod h1:ALv2SRj7GxYV4HO9elxH9nS6M9gW+xDNxqmyJ6RfDFM=
+github.com/saikalyan-bhagavathula/libtrace-go v1.15.9-0.20220425111856-8b2ee16c2883 h1:xMC53EqdEypIeoZJ7tRfLzB9jaSUIQ71RTyadZlsKlM=
+github.com/saikalyan-bhagavathula/libtrace-go v1.15.9-0.20220425111856-8b2ee16c2883/go.mod h1:7Z9QPLljLv8SW0BTttRBgHE969vQfy2bDAh0cnDXjBI=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
