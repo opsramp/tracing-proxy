@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/alexcesaro/statsd.v2"
 
-	"github.com/honeycombio/libhoney-go"
 	"github.com/honeycombio/libhoney-go/transmission"
 	"github.com/jirs5/tracing-proxy/collect"
 	"github.com/jirs5/tracing-proxy/config"
@@ -115,7 +114,7 @@ func newStartedApp(
 		GetListenAddrVal:                     "127.0.0.1:" + strconv.Itoa(basePort),
 		GetPeerListenAddrVal:                 "127.0.0.1:" + strconv.Itoa(basePort+1),
 		GetAPIKeysVal:                        []string{"KEY"},
-		GetHoneycombAPIVal:                   "http://jirs5",
+		GetOpsrampAPIVal:                   "http://jirs5",
 		GetInMemoryCollectorCacheCapacityVal: config.InMemoryCollectorCacheCapacity{CacheCapacity: 10000},
 		AddHostMetadataToTrace:               enableHostMetadata,
 	}
