@@ -29,7 +29,7 @@ func TestErrorReloading(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3

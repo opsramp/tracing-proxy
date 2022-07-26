@@ -63,7 +63,7 @@ func TestReload(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -242,7 +242,7 @@ func TestPeerManagementType(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -276,7 +276,7 @@ func TestAbsentTraceKeyField(t *testing.T) {
 			CacheCapacity=1000
 
 		[HoneycombMetrics]
-			MetricsHoneycombAPI="http://jirs5"
+			MetricsOpsrampAPI="http://jirs5"
 			MetricsAPIKey="1234"
 			MetricsDataset="testDatasetName"
 			MetricsReportingInterval=3
@@ -318,7 +318,7 @@ func TestDebugServiceAddr(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -345,7 +345,7 @@ func TestDryRun(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -383,7 +383,7 @@ func TestMaxAlloc(t *testing.T) {
 		MaxAlloc=17179869184
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -411,7 +411,7 @@ func TestGetSamplerTypes(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -502,7 +502,7 @@ func TestDefaultSampler(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
@@ -539,13 +539,13 @@ func TestHoneycombLoggerConfig(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
 
 	[HoneycombLogger]
-		LoggerHoneycombAPI="http://jirs5"
+		LoggerOpsrampAPI="http://jirs5"
 		LoggerAPIKey="1234"
 		LoggerDataset="loggerDataset"
 		LoggerSamplerEnabled=true
@@ -564,7 +564,7 @@ func TestHoneycombLoggerConfig(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, "http://jirs5", loggerConfig.LoggerHoneycombAPI)
+	assert.Equal(t, "http://jirs5", loggerConfig.LoggerOpsrampAPI)
 	assert.Equal(t, "1234", loggerConfig.LoggerAPIKey)
 	assert.Equal(t, "loggerDataset", loggerConfig.LoggerDataset)
 	assert.Equal(t, true, loggerConfig.LoggerSamplerEnabled)
@@ -587,13 +587,13 @@ func TestHoneycombLoggerConfigDefaults(t *testing.T) {
 		CacheCapacity=1000
 
 	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://jirs5"
+		MetricsOpsrampAPI="http://jirs5"
 		MetricsAPIKey="1234"
 		MetricsDataset="testDatasetName"
 		MetricsReportingInterval=3
 
 	[HoneycombLogger]
-		LoggerHoneycombAPI="http://jirs5"
+		LoggerOpsrampAPI="http://jirs5"
 		LoggerAPIKey="1234"
 		LoggerDataset="loggerDataset"
 	`)
