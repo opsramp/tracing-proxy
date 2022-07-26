@@ -132,7 +132,7 @@ func main() {
 
 	userAgentAddition := "tracing-proxy/" + version
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
-		Transmission: &transmission.Honeycomb{
+		Transmission: &transmission.Opsramptraceproxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          libtrace.DefaultBatchTimeout,
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
@@ -154,7 +154,7 @@ func main() {
 	fmt.Println("upstream client created..")
 
 	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
-		Transmission: &transmission.Honeycomb{
+		Transmission: &transmission.Opsramptraceproxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          libtrace.DefaultBatchTimeout,
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,

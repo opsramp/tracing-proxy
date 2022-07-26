@@ -19,9 +19,9 @@ CacheCapacity = 1000
 
 [HoneycombMetrics]
 
-# MetricsHoneycombAPI is the URL for the upstream Honeycomb API.
+# MetricsOpsrampAPI is the URL for the upstream Honeycomb API.
 # Eligible for live reload.
-MetricsHoneycombAPI = "https://api.jirs5"
+MetricsOpsrampAPI = "https://api.jirs5"
 
 # MetricsAPIKey is the API key to use to send log events to the Honeycomb logging
 # dataset. This is separate from the APIKeys used to authenticate regular
