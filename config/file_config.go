@@ -31,7 +31,7 @@ type configContents struct {
 	GRPCListenAddr            string
 	GRPCPeerListenAddr        string
 	APIKeys                   []string      `validate:"required"`
-	HoneycombAPI              string        `validate:"required,url"`
+	OpsrampAPI                string        `validate:"required,url"`
 	LoggingLevel              string        `validate:"required"`
 	Collector                 string        `validate:"required,oneof= InMemCollector"`
 	Sampler                   string        `validate:"required,oneof= DeterministicSampler DynamicSampler EMADynamicSampler RulesBasedSampler TotalThroughputSampler"`
@@ -112,7 +112,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("PeerManagement.UseTLS", false)
 	c.SetDefault("PeerManagement.UseTLSInsecure", false)
 	c.SetDefault("PeerManagement.UseIPV6Identifier", false)
-	c.SetDefault("HoneycombAPI", "https://api.jirs5")
+	c.SetDefault("OpsrampAPI", "https://api.jirs5")
 	c.SetDefault("LoggingLevel", "debug")
 	c.SetDefault("Collector", "InMemCollector")
 	c.SetDefault("SendDelay", 2*time.Second)
@@ -447,11 +447,11 @@ func (f *fileConfig) GetRedisIdentifier() (string, error) {
 	return f.config.GetString("PeerManagement.RedisIdentifier"), nil
 }
 
-func (f *fileConfig) GetHoneycombAPI() (string, error) {
+func (f *fileConfig) GetOpsrampAPI() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.HoneycombAPI, nil
+	return f.conf.OpsrampAPI, nil
 }
 
 func (f *fileConfig) GetLoggingLevel() (string, error) {

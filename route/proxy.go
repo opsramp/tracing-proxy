@@ -14,7 +14,7 @@ import (
 func (r *Router) proxy(w http.ResponseWriter, req *http.Request) {
 	r.Metrics.Increment(r.incomingOrPeer + "_router_proxied")
 	r.Logger.Debug().Logf("proxying request for %s", req.URL.Path)
-	upstreamTarget, err := r.Config.GetHoneycombAPI()
+	upstreamTarget, err := r.Config.GetOpsrampAPI()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		io.WriteString(w, `{"error":"upstream target unavailable"}`)

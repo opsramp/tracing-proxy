@@ -60,9 +60,9 @@ type Config interface {
 	// UseTLSInsecure returns true when certificate checks are disabled
 	GetUseTLSInsecure() (bool, error)
 
-	// GetHoneycombAPI returns the base URL (protocol, hostname, and port) of
+	// GetOpsrampAPI returns the base URL (protocol, hostname, and port) of
 	// the upstream Honeycomb API server
-	GetHoneycombAPI() (string, error)
+	GetOpsrampAPI() (string, error)
 
 	// GetLoggingLevel returns the verbosity with which we should log
 	GetLoggingLevel() (string, error)

@@ -35,7 +35,7 @@ func (router *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 
 	token := ri.ApiToken
 	tenantId := ri.ApiTenantId
-	if err := processTraceRequest(req.Context(), router, result.Batches, ri.ApiKey, ri.Dataset, token, tenantId); err != nil {
+	if err := processTraceRequest(req.Context(), router, result.Batches, ri.Dataset, token, tenantId); err != nil {
 		router.handlerReturnWithError(w, ErrUpstreamFailed, err)
 	}
 }
@@ -45,8 +45,10 @@ func (router *Router) Export(ctx context.Context, req *collectortrace.ExportTrac
 	/*if err := ri.ValidateHeaders(); err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}*/
+	router.Metrics.Increment(router.incomingOrPeer + "_router_batch")
 	fmt.Println("Translating Trace Req ..")
 	result, err := huskyotlp.TranslateTraceReq(req, ri)
+	//fmt.Println("req",result.Batches[0])
 	if err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
@@ -55,8 +57,9 @@ func (router *Router) Export(ctx context.Context, req *collectortrace.ExportTrac
 
 	fmt.Println("Token:", token)
 	fmt.Println("TenantId:", tenantId)
+	fmt.Println("dataset:", ri.Dataset)
 
-	if err := processTraceRequest(ctx, router, result.Batches, ri.ApiKey, ri.Dataset, token, tenantId); err != nil {
+	if err := processTraceRequest(ctx, router, result.Batches, ri.Dataset, token, tenantId); err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 
@@ -67,24 +70,23 @@ func processTraceRequest(
 	ctx context.Context,
 	router *Router,
 	batches []huskyotlp.Batch,
-	apiKey string,
 	datasetName string,
 	token string,
 	tenantId string) error {
 
 	var requestID types.RequestIDContextKey
-	apiHost, err := router.Config.GetHoneycombAPI()
+	apiHost, err := router.Config.GetOpsrampAPI()
 	if err != nil {
 		router.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
 		return err
 	}
+	//fmt.Println("datasetName",datasetName)
 
 	for _, batch := range batches {
 		for _, ev := range batch.Events {
 			event := &types.Event{
 				Context:     ctx,
 				APIHost:     apiHost,
-				APIKey:      apiKey,
 				APIToken:    token,
 				APITenantId: tenantId,
 				Dataset:     datasetName,
@@ -104,9 +106,10 @@ func processTraceRequest(
 func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTraceProxyServiceRequest) (*proxypb.ExportTraceProxyServiceResponse, error) {
 
 	fmt.Println("Received Trace data from peer \n")
+	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
 	var token, tenantId, datasetName string
-	apiHost, err := r.Config.GetHoneycombAPI()
+	apiHost, err := r.Config.GetOpsrampAPI()
 	if err != nil {
 		r.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
 		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get apihost", Status: "Failed"}, nil
@@ -167,10 +170,10 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 		data["endTime"] = item.Data.EndTime
 
 		event := &types.Event{
-			Context:     ctx,
-			APIHost:     apiHost,
-			APIToken:    token,
-			APIKey:      "token", //Hardcoded for time-being. This need to be cleaned
+			Context:  ctx,
+			APIHost:  apiHost,
+			APIToken: token,
+			//APIKey:      "token", //Hardcoded for time-being. This need to be cleaned
 			APITenantId: tenantId,
 			Dataset:     datasetName,
 			Timestamp:   timestamp,
