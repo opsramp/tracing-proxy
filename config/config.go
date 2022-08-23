@@ -134,4 +134,24 @@ type Config interface {
 
 	// GetUseTLSInsecureSkip returns false when certificate checks are disabled
 	GetGlobalUseTLSInsecureSkip() bool
+
+	// GetProxyProtocol returns protocol on which to listen for
+	// proxy traffic
+	GetProxyProtocol()(string,error )
+
+	// GetProxyServer returns the address on which to listen for
+	// proxy traffic
+	GetProxyServer() (string, error)
+
+	// GetProxyPort returns the port on which to listen for
+	// proxy traffic
+	GetProxyPort() (int64)
+
+	// GetProxyUsername returns the username on which to listen for
+	// proxy traffic
+	GetProxyUsername()(string,error)
+
+	// GetProxyPassword returns the password of proxy user on which to listen for
+	// proxy traffic
+	GetProxyPassword()(string,error)
 }

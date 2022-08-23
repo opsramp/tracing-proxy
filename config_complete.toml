@@ -25,6 +25,26 @@ GRPCListenAddr = "0.0.0.0:9090"
 PeerListenAddr = "0.0.0.0:8083"
 GRPCPeerListenAddr = "0.0.0.0:8084"
 
+# ProxyProtocol accepts http and https
+# Not Eligible for live reload.
+ProxyProtocol = ""
+
+# ProxyServer takes the proxy server address
+# Not Eligible for live reload.
+ProxyServer= ""
+
+# ProxyPort takes the proxy server port
+# Not Eligible for live reload.
+ProxyPort=0
+
+# ProxyUserName takes the proxy username
+# Not Eligible for live reload.
+ProxyUserName = ""
+
+# ProxyPassword takes the proxy password
+# Not Eligible for live reload.
+ProxyPassword = ""
+
 # CompressPeerCommunication determines whether refinery will compress span data
 # it forwards to peers. If it costs money to transmit data between refinery
 # instances (e.g. they're spread across AWS availability zones), then you
