@@ -50,6 +50,11 @@ type configContents struct {
 	SendMetricsToOpsRamp      bool
 	UseTls                    bool
 	UseTlsInSecure            bool
+	ProxyProtocol             string
+	ProxyServer               string
+	ProxyPort                 int64
+	ProxyUsername             string
+	ProxyPassword             string
 }
 
 type InMemoryCollectorCacheCapacity struct {
@@ -124,6 +129,12 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("MaxAlloc", uint64(0))
 	c.SetDefault("AddHostMetadataToTrace", false)
 	c.SetDefault("SendMetricsToOpsRamp", false)
+
+	c.SetDefault("ProxyProtocol","")
+	c.SetDefault("ProxyServer","" )
+	c.SetDefault("ProxyPort",int64(0))
+	c.SetDefault("ProxyUsername","")
+	c.SetDefault("ProxyPassword","")
 
 	c.SetConfigFile(config)
 	err := c.ReadInConfig()
@@ -410,6 +421,32 @@ func (f *fileConfig) GetRedisPassword() (string, error) {
 	defer f.mux.RUnlock()
 
 	return f.config.GetString("PeerManagement.RedisPassword"), nil
+}
+
+func (f *fileConfig)GetProxyProtocol()(string,error){
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+	return f.conf.ProxyProtocol,nil
+}
+func (f *fileConfig)GetProxyServer()(string,error){
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+	return f.conf.ProxyServer,nil
+}
+func (f *fileConfig)GetProxyPort()(int64){
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+	return f.conf.ProxyPort
+}
+func (f *fileConfig)GetProxyUsername()(string,error){
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+	return f.conf.ProxyUsername,nil
+}
+func (f *fileConfig)GetProxyPassword()(string,error){
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+	return f.conf.ProxyPassword,nil
 }
 
 func (f *fileConfig) GetUseTLS() (bool, error) {
