@@ -7,14 +7,14 @@
 # front to do the decryption.
 # Should be of the form 0.0.0.0:8080
 # Not eligible for live reload.
-ListenAddr = "0.0.0.0:8082"
+ListenAddr = "0.0.0.0:8080"
 
 # GRPCListenAddr is the IP and port on which to listen for incoming events over
 # gRPC. Incoming traffic is expected to be unencrypted, so if using SSL put
 # something like nginx in front to do the decryption.
 # Should be of the form 0.0.0.0:9090
 # Not eligible for live reload.
-GRPCListenAddr = "0.0.0.0:9090"
+GRPCListenAddr = "0.0.0.0:4317"
 
 # PeerListenAddr is the IP and port on which to listen for traffic being
 # rerouted from a peer. Peer traffic is expected to be HTTP, so if using SSL
@@ -70,6 +70,9 @@ APIKeys = [
 # Eligible for live reload.
 #OpsrampAPI = "localhost:50052"
 OpsrampAPI = "https://asura.opsramp.net"
+OpsrampKey = "dbfTvr4YAzE6MFVp657JEP25CEfQ4KmQ"
+OpsrampSecret = "z5SCHw4e4ZFQDvSFXYd6aydYn4dMzDMhy52J2W9eujCYzg6XuYyJTtPnAKp6JBYW"
+TenantId = "788714cd-a17a-4d7e-9bac-c35131f4bcc2"
 
 #Tls Options
 UseTls = true
@@ -248,7 +251,7 @@ MaxAlloc = 0
 LogFormatter = "logfmt"
 
 # LogOutput specifies where the logs are supposed to be written. Accpets one of ["stdout", "stderr", "file"]
-LogOutput = "file"
+LogOutput = "stdout"
 
 ## LogrusLogger.File - specifies configs for logs when LogOutput is set to "file"
 [LogrusLogger.File]
