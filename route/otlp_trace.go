@@ -16,6 +16,10 @@ import (
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 )
 
+
+
+
+
 func (router *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	ri := huskyotlp.GetRequestInfoFromHttpHeaders(req.Header)
 	/*if err := ri.ValidateHeaders(); err != nil {
@@ -54,7 +58,45 @@ func (router *Router) Export(ctx context.Context, req *collectortrace.ExportTrac
 	}
 	token := ri.ApiToken
 	tenantId := ri.ApiTenantId
+	//OpsrampKey, _ := router.Config.GetOpsrampKey()
+	//OpsrampSecret, _ := router.Config.GetOpsrampSecret()
+	//ApiEndPoint, _ := router.Config.GetOpsrampAPI()
+	//if len(token) == 0 && len(OpsrampKey) != 0 && len(OpsrampSecret) != 0 {
+	//	fmt.Println("OpsrampKey:", OpsrampKey)
+	//	fmt.Println("OpsrampKey:", OpsrampSecret)
+	//	url := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(ApiEndPoint, "/"))
+	//	fmt.Println(url)
+	//	requestBody := strings.NewReader("client_id=" + OpsrampKey + "&client_secret=" + OpsrampSecret + "&grant_type=client_credentials")
+	//	req, err := http.NewRequest(http.MethodPost, url, requestBody)
+	//	fmt.Println("request error is: ", err)
+	//	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	//	req.Header.Add("Accept", "application/json")
+	//	req.Header.Set("Connection", "close")
+	//
+	//	resp, err := router.Client.Do(req)
+	//	defer resp.Body.Close()
+	//	fmt.Println("Response error is: ", err)
+	//
+	//	respBody, err := ioutil.ReadAll(resp.Body)
+	//	fmt.Println("resp.Body is ", string(respBody))
+	//	var tokenResponse OpsRampAuthTokenResponse
+	//	err = json.Unmarshal(respBody, &tokenResponse)
+	//	//fmt.Println("tokenResponse", tokenResponse)
+	//	fmt.Println("tokenResponse.AccessToken: ", tokenResponse.AccessToken)
+	//	token = tokenResponse.AccessToken
+	//}
 
+	//if len(token) == 0 {
+	//	token = app.OpsrampToken
+	//}
+	if len(tenantId) == 0 {
+		OpsrampTenantId, _ := router.Config.GetTenantId()
+		tenantId = OpsrampTenantId
+	}
+
+	if len(ri.Dataset) == 0 {
+		ri.Dataset = "ds"
+	}
 	fmt.Println("Token:", token)
 	fmt.Println("TenantId:", tenantId)
 	fmt.Println("dataset:", ri.Dataset)
@@ -120,6 +162,7 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get request metadata", Status: "Failed"}, nil
 	} else {
 		authorization := md.Get("Authorization")
+		fmt.Println("authorization is ", authorization)
 		if len(authorization) == 0 {
 			return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get Authorization", Status: "Failed"}, nil
 		} else {
