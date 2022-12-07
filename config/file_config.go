@@ -32,6 +32,9 @@ type configContents struct {
 	GRPCPeerListenAddr        string
 	APIKeys                   []string      `validate:"required"`
 	OpsrampAPI                string        `validate:"required,url"`
+	OpsrampKey				  string
+	OpsrampSecret			  string
+	TenantId				  string
 	LoggingLevel              string        `validate:"required"`
 	Collector                 string        `validate:"required,oneof= InMemCollector"`
 	Sampler                   string        `validate:"required,oneof= DeterministicSampler DynamicSampler EMADynamicSampler RulesBasedSampler TotalThroughputSampler"`
@@ -118,6 +121,9 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("PeerManagement.UseTLSInsecure", false)
 	c.SetDefault("PeerManagement.UseIPV6Identifier", false)
 	c.SetDefault("OpsrampAPI", "https://api.jirs5")
+	c.SetDefault("OpsrampKey", "")
+	c.SetDefault("OpsrampSecret", "")
+	c.SetDefault("TenantId", "")
 	c.SetDefault("LoggingLevel", "debug")
 	c.SetDefault("Collector", "InMemCollector")
 	c.SetDefault("SendDelay", 2*time.Second)
@@ -489,6 +495,27 @@ func (f *fileConfig) GetOpsrampAPI() (string, error) {
 	defer f.mux.RUnlock()
 
 	return f.conf.OpsrampAPI, nil
+}
+
+func (f *fileConfig) GetOpsrampKey() (string, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.OpsrampKey , nil
+}
+
+func (f *fileConfig) GetOpsrampSecret() (string, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.OpsrampSecret , nil
+}
+
+func (f *fileConfig) GetTenantId() (string, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.TenantId , nil
 }
 
 func (f *fileConfig) GetLoggingLevel() (string, error) {

@@ -154,4 +154,10 @@ type Config interface {
 	// GetProxyPassword returns the password of proxy user on which to listen for
 	// proxy traffic
 	GetProxyPassword()(string,error)
+
+	GetOpsrampKey()(string, error)
+
+	GetOpsrampSecret()(string, error)
+
+	GetTenantId()(string, error)
 }
