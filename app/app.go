@@ -1,16 +1,12 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/jirs5/tracing-proxy/collect"
 	"github.com/jirs5/tracing-proxy/config"
 	"github.com/jirs5/tracing-proxy/logger"
 	"github.com/jirs5/tracing-proxy/metrics"
 	"github.com/jirs5/tracing-proxy/route"
-	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 
@@ -42,7 +38,6 @@ type OpsRampAuthTokenResponse struct {
 // program will exit.
 func (a *App) Start() error {
 	a.Logger.Debug().Logf("Starting up App...")
-	OpsrampToken = a.opsrampOauthToken()
 	a.IncomingRouter.SetVersion(a.Version)
 	a.PeerRouter.SetVersion(a.Version)
 
@@ -57,34 +52,5 @@ func (a *App) Start() error {
 func (a *App) Stop() error {
 	a.Logger.Debug().Logf("Shutting down App...")
 	return nil
-}
-
-func (a *App) opsrampOauthToken() string  {
-	OpsrampKey, _ := a.Config.GetOpsrampKey()
-	OpsrampSecret, _ := a.Config.GetOpsrampSecret()
-	ApiEndPoint, _ := a.Config.GetOpsrampAPI()
-
-	fmt.Println("OpsrampKey:", OpsrampKey)
-	fmt.Println("OpsrampSecret:", OpsrampSecret)
-	url := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(ApiEndPoint, "/"))
-	fmt.Println(url)
-	requestBody := strings.NewReader("client_id=" + OpsrampKey + "&client_secret=" + OpsrampSecret + "&grant_type=client_credentials")
-	req, err := http.NewRequest(http.MethodPost, url, requestBody)
-	fmt.Println("request error is: ", err)
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Set("Connection", "close")
-
-	resp, err := a.Client.Do(req)
-	defer resp.Body.Close()
-	fmt.Println("Response error is: ", err)
-
-	respBody, err := ioutil.ReadAll(resp.Body)
-	fmt.Println("resp.Body is ", string(respBody))
-	var tokenResponse OpsRampAuthTokenResponse
-	err = json.Unmarshal(respBody, &tokenResponse)
-	//fmt.Println("tokenResponse", tokenResponse)
-	fmt.Println("tokenResponse.AccessToken: ", tokenResponse.AccessToken)
-	return tokenResponse.AccessToken
 }
 

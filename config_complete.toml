@@ -69,10 +69,19 @@ APIKeys = [
 # OpsrampAPI is the URL for the upstream Opsramp API.
 # Eligible for live reload.
 #OpsrampAPI = "localhost:50052"
-OpsrampAPI = "https://asura.opsramp.net"
+OpsrampAPI = "***REMOVED***"
+
+# OpsrampKey is used to get the OauthToken
 OpsrampKey = "***REMOVED***"
+
+# OpsrampSecret is used to get the OauthToken
 OpsrampSecret = "***REMOVED***"
-TenantId = "788714cd-a17a-4d7e-9bac-c35131f4bcc2"
+
+# Traces are send to the client with given tenantid
+TenantId = "3748c67e-bec1-4cad-bd8b-8f2f8ea840f3"
+
+# Dataset you want to use for sampling
+Dataset = "ds"
 
 #Tls Options
 UseTls = true
@@ -203,7 +212,7 @@ Peers = [
 # UseIPV6Identifier = false
 
 # RedisIdentifier is optional. By default, when using RedisHost, Refinery will use
-# the local hostname to identify itself to other peers in Redis. If your environment
+# the local hostname to id788714cd-a17a-4d7e-9bac-c35131f4bcc2entify itself to other peers in Redis. If your environment
 # requires that you use IPs as identifiers (for example, if peers can't resolve eachother
 # by name), you can specify the exact identifier (IP address, etc) to use here.
 # Not eligible for live reload. Overrides IdentifierInterfaceName, if both are set.
