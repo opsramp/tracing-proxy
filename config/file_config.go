@@ -35,6 +35,7 @@ type configContents struct {
 	OpsrampKey				  string
 	OpsrampSecret			  string
 	TenantId				  string
+	Dataset					  string
 	LoggingLevel              string        `validate:"required"`
 	Collector                 string        `validate:"required,oneof= InMemCollector"`
 	Sampler                   string        `validate:"required,oneof= DeterministicSampler DynamicSampler EMADynamicSampler RulesBasedSampler TotalThroughputSampler"`
@@ -124,6 +125,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("OpsrampKey", "")
 	c.SetDefault("OpsrampSecret", "")
 	c.SetDefault("TenantId", "")
+	c.SetDefault("Dataset", "ds")
 	c.SetDefault("LoggingLevel", "debug")
 	c.SetDefault("Collector", "InMemCollector")
 	c.SetDefault("SendDelay", 2*time.Second)
@@ -509,6 +511,13 @@ func (f *fileConfig) GetOpsrampSecret() (string, error) {
 	defer f.mux.RUnlock()
 
 	return f.conf.OpsrampSecret , nil
+}
+
+func (f *fileConfig) GetDataset() (string, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.Dataset , nil
 }
 
 func (f *fileConfig) GetTenantId() (string, error) {

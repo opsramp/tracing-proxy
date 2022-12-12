@@ -160,4 +160,6 @@ type Config interface {
 	GetOpsrampSecret()(string, error)
 
 	GetTenantId()(string, error)
+
+	GetDataset()(string, error)
 }
