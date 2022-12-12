@@ -50,6 +50,9 @@ const (
 	defaultSampleRate      = 1
 )
 
+
+
+
 type Router struct {
 	Config               config.Config         `inject:""`
 	Logger               logger.Logger         `inject:""`
@@ -59,7 +62,6 @@ type Router struct {
 	Sharder              sharder.Sharder       `inject:""`
 	Collector            collect.Collector     `inject:""`
 	Metrics              metrics.Metrics       `inject:"metrics"`
-
 	// version is set on startup so that the router may answer HTTP requests for
 	// the version
 	versionStr string
