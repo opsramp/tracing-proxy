@@ -138,7 +138,7 @@ AddHostMetadataToTrace = false
 
 # Metrics are sent to OpsRamp (The collection happens based on configuration specifie
 # in OpsRampMetrics and only works when the Metrics is set to "prometheus")
-SendMetricsToOpsRamp = false
+SendMetricsToOpsRamp = true
 
 ############################
 ## Implementation Choices ##
@@ -292,23 +292,23 @@ MetricsListenAddr = "localhost:2112"
 
 # OpsRampMetricsAPI is the URL for the upstream OpsRamp API.
 # Not Eligible for live reload.
-OpsRampMetricsAPI = "https://placeholder.api.com/"
+OpsRampMetricsAPI = "***REMOVED***"
 
 # OpsRampTenantID is the Client or Tenant ID where the metrics are supposed to be pushed.
 # Not Eligible for live reload.
-OpsRampTenantID = "placeholder_tenantID"
+OpsRampTenantID = "3748c67e-bec1-4cad-bd8b-8f2f8ea840f3"
 
 # OpsRampMetricsAPIKey is the API key to use to send metrics to the OpsRamp.
 # This is separate from the APIKeys used to authenticate regular
 # traffic.
 # Not Eligible for live reload.
-OpsRampMetricsAPIKey = "placeholder_key"
+OpsRampMetricsAPIKey = "***REMOVED***"
 
 # OpsRampMetricsAPISecret is the API Secret to use to send metrics to the OpsRamp.
 # This is separate from the APISecret used to authenticate regular
 # traffic.
 # Not Eligible for live reload.
-OpsRampMetricsAPISecret = "placeholder_secret"
+OpsRampMetricsAPISecret = "***REMOVED***"
 
 # OpsRampMetricsReportingInterval is frequency specified in seconds at which
 # the metrics are collected and sent to OpsRamp
