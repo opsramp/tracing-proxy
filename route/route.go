@@ -7,7 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	proxypb "github.com/honeycombio/libhoney-go/proto/proxypb"
+	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
+	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"io/ioutil"
 	"math"
@@ -20,7 +21,6 @@ import (
 	"github.com/gorilla/mux"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/klauspost/compress/zstd"
-	"github.com/vmihailenco/msgpack/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
@@ -28,13 +28,13 @@ import (
 	// grpc/gzip compressor, auto registers on import
 	_ "google.golang.org/grpc/encoding/gzip"
 
-	"github.com/jirs5/tracing-proxy/collect"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/sharder"
-	"github.com/jirs5/tracing-proxy/transmit"
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/collect"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/sharder"
+	"github.com/opsramp/tracing-proxy/transmit"
+	"github.com/opsramp/tracing-proxy/types"
 
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 )
@@ -49,9 +49,6 @@ const (
 	GRPCMessageSizeMax int = 5000000 // 5MB
 	defaultSampleRate      = 1
 )
-
-
-
 
 type Router struct {
 	Config               config.Config         `inject:""`
@@ -637,9 +634,10 @@ func makeDecoders(num int) (chan *zstd.Decoder, error) {
 func unmarshal(r *http.Request, data io.Reader, v interface{}) error {
 	switch r.Header.Get("Content-Type") {
 	case "application/x-msgpack", "application/msgpack":
-		return msgpack.NewDecoder(data).
-			UseDecodeInterfaceLoose(true).
-			Decode(v)
+		dec := msgpack.NewDecoder(data)
+		dec.UseLooseInterfaceDecoding(true)
+
+		return dec.Decode(v)
 	default:
 		return jsoniter.NewDecoder(data).Decode(v)
 	}

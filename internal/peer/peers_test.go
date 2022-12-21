@@ -6,7 +6,7 @@ package peer
 import (
 	"testing"
 
-	"github.com/jirs5/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/config"
 	"github.com/stretchr/testify/assert"
 )
 

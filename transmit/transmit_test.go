@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/facebookgo/inject"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
 
-	libtrace "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/opsramp/libtrace-go"
 	"github.com/stretchr/testify/assert"
 )
 

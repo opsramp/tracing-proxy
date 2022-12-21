@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/internal/redimem"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/internal/redimem"
 	"github.com/sirupsen/logrus"
 )
 

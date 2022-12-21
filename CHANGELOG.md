@@ -44,7 +44,7 @@
 
 - bump libtrace-go to v1.15.6
 - empower apply-labels action to apply labels (#344)
-- Bump github.com/honeycombio/libhoney-go from 1.15.4 to 1.15.5 (#327)
+- Bump github.com/opsramp/libtrace-go from 1.15.4 to 1.15.5 (#327)
 - Re-add missing docker login when publishing (#338)
 
 ## 1.5.2 2021-10-13
@@ -97,7 +97,7 @@
 
 - Bump google.golang.org/grpc from 1.39.0 to 1.39.1 (#300)
 - Bump github.com/klauspost/compress from 1.13.2 to 1.13.3 (#301)
-- Bump github.com/honeycombio/libhoney-go from 1.12.4 to 1.15.4 (#295)
+- Bump github.com/opsramp/libtrace-go from 1.12.4 to 1.15.4 (#295)
 - Bump github.com/klauspost/compress from 1.10.3 to 1.13.2 (#297)
 
 ## 1.4.0

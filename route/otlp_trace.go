@@ -4,21 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	proxypb "github.com/honeycombio/libhoney-go/proto/proxypb"
+	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
 	"google.golang.org/grpc/metadata"
 	"log"
 	"net/http"
 	"time"
 
-	huskyotlp "github.com/honeycombio/husky/otlp"
-	"github.com/jirs5/tracing-proxy/types"
+	huskyotlp "github.com/opsramp/husky/otlp"
+	"github.com/opsramp/tracing-proxy/types"
 
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 )
-
-
-
-
 
 func (router *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	ri := huskyotlp.GetRequestInfoFromHttpHeaders(req.Header)
@@ -64,7 +60,7 @@ func (router *Router) Export(ctx context.Context, req *collectortrace.ExportTrac
 	}
 
 	if len(ri.Dataset) == 0 {
-		dataset, _ :=  router.Config.GetDataset()
+		dataset, _ := router.Config.GetDataset()
 		ri.Dataset = dataset
 	}
 

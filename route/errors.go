@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	husky "github.com/honeycombio/husky/otlp"
+	husky "github.com/opsramp/husky/otlp"
 )
 
 type handlerError struct {

@@ -1,16 +1,16 @@
 package app
 
 import (
-	"github.com/jirs5/tracing-proxy/collect"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/route"
+	"github.com/opsramp/tracing-proxy/collect"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/route"
 	"net/http"
 )
 
-
 var OpsrampToken string
+
 type App struct {
 	Config         config.Config     `inject:""`
 	Logger         logger.Logger     `inject:""`
@@ -27,11 +27,9 @@ type App struct {
 type OpsRampAuthTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
-	ExpiresIn   int64    `json:"expires_in"`
+	ExpiresIn   int64  `json:"expires_in"`
 	Scope       string `json:"scope"`
 }
-
-
 
 // Start on the App obect should block until the proxy is shutting down. After
 // Start exits, Stop will be called on all dependencies then on App then the
@@ -53,4 +51,3 @@ func (a *App) Stop() error {
 	a.Logger.Debug().Logf("Shutting down App...")
 	return nil
 }
-

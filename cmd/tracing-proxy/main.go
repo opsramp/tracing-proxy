@@ -11,19 +11,19 @@ import (
 
 	"github.com/facebookgo/inject"
 	"github.com/facebookgo/startstop"
-	libtrace "github.com/honeycombio/libhoney-go"
-	"github.com/honeycombio/libhoney-go/transmission"
+	libtrace "github.com/opsramp/libtrace-go"
+	"github.com/opsramp/libtrace-go/transmission"
 	flag "github.com/jessevdk/go-flags"
-	"github.com/jirs5/tracing-proxy/app"
-	"github.com/jirs5/tracing-proxy/collect"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/internal/peer"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/sample"
-	"github.com/jirs5/tracing-proxy/service/debug"
-	"github.com/jirs5/tracing-proxy/sharder"
-	"github.com/jirs5/tracing-proxy/transmit"
+	"github.com/opsramp/tracing-proxy/app"
+	"github.com/opsramp/tracing-proxy/collect"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/internal/peer"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/sample"
+	"github.com/opsramp/tracing-proxy/service/debug"
+	"github.com/opsramp/tracing-proxy/sharder"
+	"github.com/opsramp/tracing-proxy/transmit"
 )
 
 // set by travis.
@@ -148,9 +148,9 @@ func main() {
 			Metrics:               upstreamMetricsConfig,
 			UseTls:                c.GetGlobalUseTLS(),
 			UseTlsInsecure:        c.GetGlobalUseTLSInsecureSkip(),
-			OpsrampKey: 		   opsrampkey,
-			OpsrampSecret:		   opsrampsecret,
-			ApiHost: 			   opsrampapi,
+			OpsrampKey:            opsrampkey,
+			OpsrampSecret:         opsrampsecret,
+			ApiHost:               opsrampapi,
 		},
 	})
 	if err != nil {
@@ -171,9 +171,9 @@ func main() {
 			DisableCompression:    !c.GetCompressPeerCommunication(),
 			EnableMsgpackEncoding: false,
 			Metrics:               peerMetricsConfig,
-			OpsrampKey: 		   opsrampkey,
-			OpsrampSecret:		   opsrampsecret,
-			ApiHost: 			   opsrampapi,
+			OpsrampKey:            opsrampkey,
+			OpsrampSecret:         opsrampsecret,
+			ApiHost:               opsrampapi,
 		},
 	})
 	if err != nil {

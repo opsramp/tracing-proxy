@@ -3,7 +3,7 @@ package peer
 import (
 	"errors"
 
-	"github.com/jirs5/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/config"
 )
 
 // Peers holds the collection of peers for the cluster

@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/types"
 )
 
 type Metrics interface {

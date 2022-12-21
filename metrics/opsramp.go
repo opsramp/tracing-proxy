@@ -19,14 +19,12 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/mux"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
-
-
 
 type OpsRampMetrics struct {
 	Config config.Config `inject:""`
@@ -105,22 +103,22 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 
 	if hostname, err := os.Hostname(); err == nil && hostname != "" {
 
-		hostMap["hostname"]=hostname
+		hostMap["hostname"] = hostname
 	}
 
 	switch metricType {
 	case "counter":
 		newmet = promauto.NewCounter(prometheus.CounterOpts{
-			Name:      name,
-			Namespace: p.prefix,
-			Help:      name,
+			Name:        name,
+			Namespace:   p.prefix,
+			Help:        name,
 			ConstLabels: hostMap,
 		})
 	case "gauge":
 		newmet = promauto.NewGauge(prometheus.GaugeOpts{
-			Name:      name,
-			Namespace: p.prefix,
-			Help:      name,
+			Name:        name,
+			Namespace:   p.prefix,
+			Help:        name,
 			ConstLabels: hostMap,
 		})
 	case "histogram":
@@ -130,7 +128,7 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 			Help:      name,
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
-			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
+			Buckets:     prometheus.ExponentialBuckets(1, 4, 16),
 			ConstLabels: hostMap,
 		})
 	}
@@ -153,32 +151,31 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	hostMap := make(map[string]string)
 	if hostname, err := os.Hostname(); err == nil && hostname != "" {
 
-		hostMap["hostname"]=hostname
+		hostMap["hostname"] = hostname
 	}
-
 
 	switch metricType {
 	case "counter":
 		newmet = promauto.NewCounterVec(prometheus.CounterOpts{
-			Name:      name,
-			Namespace: p.prefix,
-			Help:      desc,
+			Name:        name,
+			Namespace:   p.prefix,
+			Help:        desc,
 			ConstLabels: hostMap,
 		}, labels)
 	case "gauge":
 		newmet = promauto.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name:      name,
-				Namespace: p.prefix,
-				Help:      desc,
+				Name:        name,
+				Namespace:   p.prefix,
+				Help:        desc,
 				ConstLabels: hostMap,
 			},
 			labels)
 	case "histogram":
 		newmet = promauto.NewHistogramVec(prometheus.HistogramOpts{
-			Name:      name,
-			Namespace: p.prefix,
-			Help:      desc,
+			Name:        name,
+			Namespace:   p.prefix,
+			Help:        desc,
 			ConstLabels: hostMap,
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
