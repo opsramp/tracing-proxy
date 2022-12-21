@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/logger"
 )
 
 func TestHandlerReturnWithError(t *testing.T) {

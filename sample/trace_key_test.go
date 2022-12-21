@@ -6,7 +6,7 @@ package sample
 import (
 	"testing"
 
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/types"
 	"github.com/stretchr/testify/assert"
 )
 

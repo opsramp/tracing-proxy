@@ -5,10 +5,10 @@ import (
 
 	dynsampler "github.com/honeycombio/dynsampler-go"
 
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/types"
 )
 
 type DynamicSampler struct {

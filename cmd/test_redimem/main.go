@@ -13,7 +13,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/sirupsen/logrus"
 
-	"github.com/jirs5/tracing-proxy/internal/redimem"
+	"github.com/opsramp/tracing-proxy/internal/redimem"
 )
 
 func main() {

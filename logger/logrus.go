@@ -1,9 +1,9 @@
 package logger
 
 import (
-	"github.com/jirs5/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/config"
 	"github.com/sirupsen/logrus"
-	lumberjack "gopkg.in/natefinch/lumberjack.v2"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
 )
 

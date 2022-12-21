@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/facebookgo/inject"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
 )
 
 func TestDependencyInjection(t *testing.T) {

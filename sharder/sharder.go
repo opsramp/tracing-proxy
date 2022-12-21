@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jirs5/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/config"
 )
 
 // Shard repreesents a single instance of tracing-proxy.

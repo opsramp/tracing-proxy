@@ -4,10 +4,10 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/types"
 )
 
 type RulesBasedSampler struct {
@@ -73,7 +73,7 @@ func (s *RulesBasedSampler) GetSampleRate(trace *types.Trace) (rate uint, keep b
 				var exists bool
 
 				attributeMapKeys := []string{"spanAttributes", "resourceAttributes", "eventAttributes"}
-				
+
 				for _, attributeKey := range attributeMapKeys {
 					if attribute, ok := span.Data[attributeKey]; ok && attribute != nil {
 						value, exists = attribute.(map[string]interface{})[condition.Field]

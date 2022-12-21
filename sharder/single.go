@@ -1,7 +1,7 @@
 package sharder
 
 import (
-	"github.com/jirs5/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/logger"
 )
 
 // SingleShard implements the Shard interface

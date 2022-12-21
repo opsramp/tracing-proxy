@@ -4,9 +4,9 @@ import (
 	"crypto/sha1"
 	"math"
 
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/types"
 )
 
 // shardingSalt is a random bit to make sure we don't shard the same as any
