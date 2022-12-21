@@ -1,7 +1,7 @@
 package peer
 
 import (
-	"github.com/jirs5/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/config"
 	"net"
 	"sort"
 	"strings"
@@ -10,18 +10,20 @@ import (
 )
 
 type filePeers struct {
-	c config.Config
-	peers      []string
-	callbacks  []func()
-	peerLock   sync.Mutex
+	c         config.Config
+	peers     []string
+	callbacks []func()
+	peerLock  sync.Mutex
 }
+
 var firstOccurancesOfGetPeers bool = false
+
 // NewFilePeers returns a peers collection backed by the config file
 func newFilePeers(c config.Config) Peers {
 	p := &filePeers{
-		c: c,
-		peers:      make([]string, 1),
-		callbacks:  make([]func(), 0),
+		c:         c,
+		peers:     make([]string, 1),
+		callbacks: make([]func(), 0),
 	}
 
 	go p.watchFilePeers()
@@ -42,9 +44,9 @@ func (p *filePeers) GetPeers() ([]string, error) {
 	return retList, nil
 }
 
-func (p *filePeers) watchFilePeers()  {
+func (p *filePeers) watchFilePeers() {
 	tk := time.NewTicker(20 * time.Second)
-	originalPeerList, _:= p.c.GetPeers()
+	originalPeerList, _ := p.c.GetPeers()
 	sort.Strings(originalPeerList)
 	oldPeerList := originalPeerList
 	for range tk.C {
@@ -67,7 +69,7 @@ func (p *filePeers) RegisterUpdatedPeersCallback(callback func()) {
 	p.callbacks = append(p.callbacks, callback)
 }
 
-func getPeerMembers(originalPeerlist []string) []string  {
+func getPeerMembers(originalPeerlist []string) []string {
 	var workingPeers []string
 	wg := sync.WaitGroup{}
 	for _, peer := range originalPeerlist {

@@ -26,15 +26,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/alexcesaro/statsd.v2"
 
-	"github.com/honeycombio/libhoney-go/transmission"
-	"github.com/jirs5/tracing-proxy/collect"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/internal/peer"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/sample"
-	"github.com/jirs5/tracing-proxy/sharder"
-	"github.com/jirs5/tracing-proxy/transmit"
+	"github.com/opsramp/libtrace-go/transmission"
+	"github.com/opsramp/tracing-proxy/collect"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/internal/peer"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/sample"
+	"github.com/opsramp/tracing-proxy/sharder"
+	"github.com/opsramp/tracing-proxy/transmit"
 )
 
 type countingWriterSender struct {
@@ -114,7 +114,7 @@ func newStartedApp(
 		GetListenAddrVal:                     "127.0.0.1:" + strconv.Itoa(basePort),
 		GetPeerListenAddrVal:                 "127.0.0.1:" + strconv.Itoa(basePort+1),
 		GetAPIKeysVal:                        []string{"KEY"},
-		GetOpsrampAPIVal:                   "http://jirs5",
+		GetOpsrampAPIVal:                     "http://jirs5",
 		GetInMemoryCollectorCacheCapacityVal: config.InMemoryCollectorCacheCapacity{CacheCapacity: 10000},
 		AddHostMetadataToTrace:               enableHostMetadata,
 	}

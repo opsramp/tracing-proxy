@@ -6,13 +6,13 @@ import (
 	"os"
 	"sync"
 
-	libtrace "github.com/honeycombio/libhoney-go"
-	"github.com/honeycombio/libhoney-go/transmission"
+	libtrace "github.com/opsramp/libtrace-go"
+	"github.com/opsramp/libtrace-go/transmission"
 
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/types"
 )
 
 type Transmission interface {
@@ -79,11 +79,11 @@ func (d *DefaultTransmission) Start() error {
 	go d.processResponses(processCtx, d.LibhClient.TxResponses())
 
 	//proxy support for traces
-	proto,_:= d.Config.GetProxyProtocol()
-	server,_ := d.Config.GetProxyServer()
-	port:= d.Config.GetProxyPort()
-	username,_ := d.Config.GetProxyUsername()
-	password,_ := d.Config.GetProxyPassword()
+	proto, _ := d.Config.GetProxyProtocol()
+	server, _ := d.Config.GetProxyServer()
+	port := d.Config.GetProxyPort()
+	username, _ := d.Config.GetProxyUsername()
+	password, _ := d.Config.GetProxyPassword()
 
 	proxyUrl := ""
 	if server != "" && proto != "" {
@@ -95,7 +95,6 @@ func (d *DefaultTransmission) Start() error {
 		os.Setenv("HTTPS_PROXY", proxyUrl)
 		os.Setenv("HTTP_PROXY", proxyUrl)
 	}
-
 
 	// listen for config reloads
 	d.Config.RegisterReloadCallback(d.reloadTransmissionBuilder)

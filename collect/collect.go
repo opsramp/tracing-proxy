@@ -10,13 +10,13 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/jirs5/tracing-proxy/collect/cache"
-	"github.com/jirs5/tracing-proxy/config"
-	"github.com/jirs5/tracing-proxy/logger"
-	"github.com/jirs5/tracing-proxy/metrics"
-	"github.com/jirs5/tracing-proxy/sample"
-	"github.com/jirs5/tracing-proxy/transmit"
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/collect/cache"
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/sample"
+	"github.com/opsramp/tracing-proxy/transmit"
+	"github.com/opsramp/tracing-proxy/types"
 )
 
 var ErrWouldBlock = errors.New("not adding span, channel buffer is full")

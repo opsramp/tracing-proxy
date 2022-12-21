@@ -10,7 +10,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
-	libtrace "github.com/honeycombio/libhoney-go"
+	libtrace "github.com/opsramp/libtrace-go"
 	"github.com/sirupsen/logrus"
 	viper "github.com/spf13/viper"
 )

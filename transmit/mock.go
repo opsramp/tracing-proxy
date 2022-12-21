@@ -3,7 +3,7 @@ package transmit
 import (
 	"sync"
 
-	"github.com/jirs5/tracing-proxy/types"
+	"github.com/opsramp/tracing-proxy/types"
 )
 
 type MockTransmission struct {
