@@ -1,0 +1,55 @@
+replicaCount: 1
+podAnnotations: {}
+imagePullSecrets: []
+
+image:
+  repository: lokeshopsramp/tracing-proxy
+  pullPolicy: Always # use "IfNotPresent" to avoid pulling the image every time
+  tag: "latest" # if empty then defaults to the chart appVersion.
+
+service:
+  type: ClusterIP
+  port: 9090
+
+# resources:
+#   limits:
+#     cpu: "4"
+#     memory: "8096Mi"
+#   requests:
+#     cpu: "2"
+#     memory: "2048Mi"
+
+nodeSelector: {}
+
+# Trace Proxy config file values
+config:
+  api: "https://int.opsramp.net/"
+  key: ""
+  secret: ""
+  tenantId: ""
+  dataset: "ds"
+  useTls: "true"
+  UseTlsInsecure: "false"
+  proxy:
+    protocol: ""
+    server: ""
+    port: ""
+    username: ""
+    password: ""
+
+logging:
+  log_format: "json" # Accepted values are one of ["logfmt", "json"]
+  log_output: "stdout" # Accepted values are one of["stdout", "stderr"]
+
+metrics:
+  api: "https://int.opsramp.net/"
+  key: ""
+  secret: ""
+  tenantId: ""
+  list: ['".*"'] # escape the " with ' while specifying values
+  proxy:
+    protocol: ""
+    server: ""
+    port: ""
+    username: ""
+    password: ""
