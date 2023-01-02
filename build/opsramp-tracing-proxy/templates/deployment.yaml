@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opsramp-tracing-proxy.fullname" . }}
+  labels:
+    {{- include "opsramp-tracing-proxy.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "opsramp-tracing-proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "opsramp-tracing-proxy.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}    
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: opsramp-tracing-rules
+              mountPath: /etc/tracing-proxy/rules.toml
+              subPath: rules.toml
+              readOnly: true
+            - name: opsramp-tracing-config
+              mountPath: /etc/tracing-proxy/config.toml
+              subPath: config.toml
+              readOnly: true
+      volumes:
+        - configMap:
+            name: opsramp-tracing-proxy-rules
+          name: opsramp-tracing-rules
+        - configMap:
+            name: opsramp-tracing-proxy-config
+          name: opsramp-tracing-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
