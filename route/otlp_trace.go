@@ -13,21 +13,22 @@ import (
 	huskyotlp "github.com/opsramp/husky/otlp"
 	"github.com/opsramp/tracing-proxy/types"
 
-	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	collectortrace "github.com/opsramp/husky/proto/otlp/collector/trace/v1"
 )
 
 func (router *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	ri := huskyotlp.GetRequestInfoFromHttpHeaders(req.Header)
-	/*if err := ri.ValidateHeaders(); err != nil {
-		if errors.Is(err, huskyotlp.ErrInvalidContentType) {
-			router.handlerReturnWithError(w, ErrInvalidContentType, err)
-		} else {
-			router.handlerReturnWithError(w, ErrAuthNeeded, err)
-		}
-		return
-	}*/
 
-	result, err := huskyotlp.TranslateTraceReqFromReader(req.Body, ri)
+	//if err := ri.ValidateTracesHeaders(); err != nil {
+	//	if errors.Is(err, huskyotlp.ErrInvalidContentType) {
+	//		router.handlerReturnWithError(w, ErrInvalidContentType, err)
+	//	} else {
+	//		router.handlerReturnWithError(w, ErrAuthNeeded, err)
+	//	}
+	//	return
+	//}
+
+	result, err := huskyotlp.TranslateTraceRequestFromReader(req.Body, ri)
 	if err != nil {
 		router.handlerReturnWithError(w, ErrUpstreamFailed, err)
 		return
@@ -42,13 +43,10 @@ func (router *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 
 func (router *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServiceRequest) (*collectortrace.ExportTraceServiceResponse, error) {
 	ri := huskyotlp.GetRequestInfoFromGrpcMetadata(ctx)
-	/*if err := ri.ValidateHeaders(); err != nil {
-		return nil, huskyotlp.AsGRPCError(err)
-	}*/
+
 	router.Metrics.Increment(router.incomingOrPeer + "_router_batch")
 	fmt.Println("Translating Trace Req ..")
-	result, err := huskyotlp.TranslateTraceReq(req, ri)
-	//fmt.Println("req",result.Batches[0])
+	result, err := huskyotlp.TranslateTraceRequest(req, ri)
 	if err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
@@ -88,7 +86,6 @@ func processTraceRequest(
 		router.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
 		return err
 	}
-	//fmt.Println("datasetName",datasetName)
 
 	for _, batch := range batches {
 		for _, ev := range batch.Events {
@@ -98,6 +95,7 @@ func processTraceRequest(
 				APIToken:    token,
 				APITenantId: tenantId,
 				Dataset:     datasetName,
+				Environment: "",
 				SampleRate:  uint(ev.SampleRate),
 				Timestamp:   ev.Timestamp,
 				Data:        ev.Attributes,

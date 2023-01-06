@@ -1,6 +1,3 @@
-//go:build all || race
-// +build all race
-
 package transmit
 
 import (
@@ -11,7 +8,7 @@ import (
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/metrics"
 
-	libtrace "github.com/opsramp/libtrace-go"
+	"github.com/opsramp/libtrace-go"
 	"github.com/stretchr/testify/assert"
 )
 
