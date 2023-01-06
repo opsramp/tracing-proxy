@@ -1,18 +1,22 @@
 package config
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
-	libtrace "github.com/opsramp/libtrace-go"
+	"github.com/opsramp/libtrace-go"
 	"github.com/sirupsen/logrus"
-	viper "github.com/spf13/viper"
+	"github.com/spf13/viper"
 )
 
 type fileConfig struct {
@@ -22,6 +26,7 @@ type fileConfig struct {
 	callbacks     []func()
 	errorCallback func(error)
 	mux           sync.RWMutex
+	lastLoadTime  time.Time
 }
 
 type configContents struct {
@@ -30,16 +35,17 @@ type configContents struct {
 	CompressPeerCommunication bool
 	GRPCListenAddr            string
 	GRPCPeerListenAddr        string
-	APIKeys                   []string      `validate:"required"`
-	OpsrampAPI                string        `validate:"required,url"`
-	OpsrampKey				  string
-	OpsrampSecret			  string
-	TenantId				  string
-	Dataset					  string
+	APIKeys                   []string `validate:"required"`
+	OpsrampAPI                string   `validate:"required,url"`
+	OpsrampKey                string
+	OpsrampSecret             string
+	TenantId                  string
+	Dataset                   string
 	LoggingLevel              string        `validate:"required"`
 	Collector                 string        `validate:"required,oneof= InMemCollector"`
 	Sampler                   string        `validate:"required,oneof= DeterministicSampler DynamicSampler EMADynamicSampler RulesBasedSampler TotalThroughputSampler"`
 	SendDelay                 time.Duration `validate:"required"`
+	BatchTimeout              time.Duration
 	TraceTimeout              time.Duration `validate:"required"`
 	MaxBatchSize              uint          `validate:"required"`
 	SendTicker                time.Duration `validate:"required"`
@@ -51,14 +57,24 @@ type configContents struct {
 	PeerManagement            PeerManagementConfig           `validate:"required"`
 	InMemCollector            InMemoryCollectorCacheCapacity `validate:"required"`
 	AddHostMetadataToTrace    bool
-	SendMetricsToOpsRamp      bool
-	UseTls                    bool
-	UseTlsInSecure            bool
-	ProxyProtocol             string
-	ProxyServer               string
-	ProxyPort                 int64
-	ProxyUsername             string
-	ProxyPassword             string
+	AddRuleReasonToTrace      bool
+	EnvironmentCacheTTL       time.Duration
+	DatasetPrefix             string
+	QueryAuthToken            string
+	GRPCServerParameters      GRPCServerParameters
+	AdditionalErrorFields     []string
+	AddSpanCountToRoot        bool
+	CacheOverrunStrategy      string
+	SampleCache               SampleCacheConfig `validate:"required"`
+
+	SendMetricsToOpsRamp bool
+	UseTls               bool
+	UseTlsInSecure       bool
+	ProxyProtocol        string
+	ProxyServer          string
+	ProxyPort            int64
+	ProxyUsername        string
+	ProxyPassword        string
 }
 
 type InMemoryCollectorCacheCapacity struct {
@@ -98,20 +114,45 @@ type PeerManagementConfig struct {
 	Type                    string   `validate:"required,oneof= file redis"`
 	Peers                   []string `validate:"dive,url"`
 	RedisHost               string
+	RedisUsername           string
 	RedisPassword           string
 	UseTLS                  bool
 	UseTLSInsecure          bool
 	IdentifierInterfaceName string
 	UseIPV6Identifier       bool
 	RedisIdentifier         string
+	Timeout                 time.Duration
+	Strategy                string `validate:"required,oneof= legacy hash"`
+}
+
+type SampleCacheConfig struct {
+	Type              string        `validate:"required,oneof= legacy cuckoo"`
+	KeptSize          uint          `validate:"gte=500"`
+	DroppedSize       uint          `validate:"gte=100_000"`
+	SizeCheckInterval time.Duration `validate:"gte=1_000_000_000"` // 1 second minimum
+}
+
+// GRPCServerParameters allow you to configure the GRPC ServerParameters used
+// by refinery's own GRPC server:
+// https://pkg.go.dev/google.golang.org/grpc/keepalive#ServerParameters
+type GRPCServerParameters struct {
+	MaxConnectionIdle     time.Duration
+	MaxConnectionAge      time.Duration
+	MaxConnectionAgeGrace time.Duration
+	Time                  time.Duration
+	Timeout               time.Duration
 }
 
 // NewConfig creates a new config struct
 func NewConfig(config, rules string, errorCallback func(error)) (Config, error) {
 	c := viper.New()
 
-	c.BindEnv("PeerManagement.RedisHost", "tracing-proxy_REDIS_HOST")
-	c.BindEnv("PeerManagement.RedisPassword", "tracing-proxy_REDIS_PASSWORD")
+	c.BindEnv("GRPCListenAddr", "TRACE_PROXY_GRPC_LISTEN_ADDRESS")
+	c.BindEnv("PeerManagement.RedisHost", "TRACE_PROXY_REDIS_HOST")
+	c.BindEnv("PeerManagement.RedisUsername", "TRACE_PROXY_REDIS_USERNAME")
+	c.BindEnv("PeerManagement.RedisPassword", "TRACE_PROXY_REDIS_PASSWORD")
+	c.BindEnv("QueryAuthToken", "TRACE_PROXY_QUERY_AUTH_TOKEN")
+
 	c.SetDefault("ListenAddr", "0.0.0.0:8080")
 	c.SetDefault("PeerListenAddr", "0.0.0.0:8081")
 	c.SetDefault("CompressPeerCommunication", true)
@@ -121,14 +162,17 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("PeerManagement.UseTLS", false)
 	c.SetDefault("PeerManagement.UseTLSInsecure", false)
 	c.SetDefault("PeerManagement.UseIPV6Identifier", false)
-	c.SetDefault("OpsrampAPI", "https://api.jirs5")
+	c.SetDefault("OpsrampAPI", "")
 	c.SetDefault("OpsrampKey", "")
 	c.SetDefault("OpsrampSecret", "")
 	c.SetDefault("TenantId", "")
 	c.SetDefault("Dataset", "ds")
+	c.SetDefault("PeerManagement.Timeout", 5*time.Second)
+	c.SetDefault("PeerManagement.Strategy", "legacy")
 	c.SetDefault("LoggingLevel", "debug")
 	c.SetDefault("Collector", "InMemCollector")
 	c.SetDefault("SendDelay", 2*time.Second)
+	c.SetDefault("BatchTimeout", libtrace.DefaultBatchTimeout)
 	c.SetDefault("TraceTimeout", 60*time.Second)
 	c.SetDefault("MaxBatchSize", 500)
 	c.SetDefault("SendTicker", 100*time.Millisecond)
@@ -136,13 +180,26 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("PeerBufferSize", libtrace.DefaultPendingWorkCapacity)
 	c.SetDefault("MaxAlloc", uint64(0))
 	c.SetDefault("AddHostMetadataToTrace", false)
+	c.SetDefault("AddRuleReasonToTrace", false)
+	c.SetDefault("EnvironmentCacheTTL", time.Hour)
+	c.SetDefault("GRPCServerParameters.MaxConnectionIdle", 1*time.Minute)
+	c.SetDefault("GRPCServerParameters.MaxConnectionAge", time.Duration(0))
+	c.SetDefault("GRPCServerParameters.MaxConnectionAgeGrace", time.Duration(0))
+	c.SetDefault("GRPCServerParameters.Time", 10*time.Second)
+	c.SetDefault("GRPCServerParameters.Timeout", 2*time.Second)
+	c.SetDefault("AdditionalErrorFields", []string{"trace.span_id"})
+	c.SetDefault("AddSpanCountToRoot", false)
+	c.SetDefault("CacheOverrunStrategy", "resize")
+	c.SetDefault("SampleCache.Type", "legacy")
+	c.SetDefault("SampleCache.KeptSize", 10_000)
+	c.SetDefault("SampleCache.DroppedSize", 1_000_000)
+	c.SetDefault("SampleCache.SizeCheckInterval", 10*time.Second)
 	c.SetDefault("SendMetricsToOpsRamp", false)
-
-	c.SetDefault("ProxyProtocol","")
-	c.SetDefault("ProxyServer","" )
-	c.SetDefault("ProxyPort",int64(0))
-	c.SetDefault("ProxyUsername","")
-	c.SetDefault("ProxyPassword","")
+	c.SetDefault("ProxyProtocol", "")
+	c.SetDefault("ProxyServer", "")
+	c.SetDefault("ProxyPort", int64(0))
+	c.SetDefault("ProxyUsername", "")
+	c.SetDefault("ProxyPassword", "")
 
 	c.SetConfigFile(config)
 	err := c.ReadInConfig()
@@ -185,7 +242,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 		return nil, err
 	}
 
-	err = fc.validateConditionalConfigs()
+	err = fc.validateGeneralConfigs()
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +269,7 @@ func (f *fileConfig) onChange(in fsnotify.Event) {
 		return
 	}
 
-	err = f.validateConditionalConfigs()
+	err = f.validateGeneralConfigs()
 	if err != nil {
 		f.errorCallback(err)
 		return
@@ -225,9 +282,6 @@ func (f *fileConfig) onChange(in fsnotify.Event) {
 	}
 
 	f.unmarshal()
-
-	f.mux.RLock()
-	defer f.mux.RUnlock()
 
 	for _, c := range f.callbacks {
 		c()
@@ -252,7 +306,9 @@ func (f *fileConfig) unmarshal() error {
 	return nil
 }
 
-func (f *fileConfig) validateConditionalConfigs() error {
+func (f *fileConfig) validateGeneralConfigs() error {
+	f.lastLoadTime = time.Now()
+
 	// validate metrics config
 	_, err := f.GetOpsRampMetricsConfig()
 	if err != nil {
@@ -410,6 +466,13 @@ func (f *fileConfig) GetPeerManagementType() (string, error) {
 	return f.conf.PeerManagement.Type, nil
 }
 
+func (f *fileConfig) GetPeerManagementStrategy() (string, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.PeerManagement.Strategy, nil
+}
+
 func (f *fileConfig) GetPeers() ([]string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
@@ -424,6 +487,13 @@ func (f *fileConfig) GetRedisHost() (string, error) {
 	return f.config.GetString("PeerManagement.RedisHost"), nil
 }
 
+func (f *fileConfig) GetRedisUsername() (string, error) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.config.GetString("PeerManagement.RedisUsername"), nil
+}
+
 func (f *fileConfig) GetRedisPassword() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
@@ -431,30 +501,30 @@ func (f *fileConfig) GetRedisPassword() (string, error) {
 	return f.config.GetString("PeerManagement.RedisPassword"), nil
 }
 
-func (f *fileConfig)GetProxyProtocol()(string,error){
+func (f *fileConfig) GetProxyProtocol() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
-	return f.conf.ProxyProtocol,nil
+	return f.conf.ProxyProtocol, nil
 }
-func (f *fileConfig)GetProxyServer()(string,error){
+func (f *fileConfig) GetProxyServer() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
-	return f.conf.ProxyServer,nil
+	return f.conf.ProxyServer, nil
 }
-func (f *fileConfig)GetProxyPort()(int64){
+func (f *fileConfig) GetProxyPort() int64 {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 	return f.conf.ProxyPort
 }
-func (f *fileConfig)GetProxyUsername()(string,error){
+func (f *fileConfig) GetProxyUsername() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
-	return f.conf.ProxyUsername,nil
+	return f.conf.ProxyUsername, nil
 }
-func (f *fileConfig)GetProxyPassword()(string,error){
+func (f *fileConfig) GetProxyPassword() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
-	return f.conf.ProxyPassword,nil
+	return f.conf.ProxyPassword, nil
 }
 
 func (f *fileConfig) GetUseTLS() (bool, error) {
@@ -503,28 +573,28 @@ func (f *fileConfig) GetOpsrampKey() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.OpsrampKey , nil
+	return f.conf.OpsrampKey, nil
 }
 
 func (f *fileConfig) GetOpsrampSecret() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.OpsrampSecret , nil
+	return f.conf.OpsrampSecret, nil
 }
 
 func (f *fileConfig) GetDataset() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.Dataset , nil
+	return f.conf.Dataset, nil
 }
 
 func (f *fileConfig) GetTenantId() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.TenantId , nil
+	return f.conf.TenantId, nil
 }
 
 func (f *fileConfig) GetLoggingLevel() (string, error) {
@@ -541,9 +611,47 @@ func (f *fileConfig) GetCollectorType() (string, error) {
 	return f.conf.Collector, nil
 }
 
-func (f *fileConfig) GetSamplerConfigForDataset(dataset string) (interface{}, error) {
+func (f *fileConfig) GetAllSamplerRules() (map[string]interface{}, error) {
+	samplers := make(map[string]interface{})
+
+	keys := f.rules.AllKeys()
+	for _, key := range keys {
+		parts := strings.Split(key, ".")
+
+		// extract default sampler rules
+		if parts[0] == "sampler" {
+			err := f.rules.Unmarshal(&samplers)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal sampler rule: %w", err)
+			}
+			t := f.rules.GetString(key)
+			samplers["sampler"] = t
+			continue
+		}
+
+		// extract all dataset sampler rules
+		if len(parts) > 1 && parts[1] == "sampler" {
+			t := f.rules.GetString(key)
+			m := make(map[string]interface{})
+			datasetName := parts[0]
+			if sub := f.rules.Sub(datasetName); sub != nil {
+				err := sub.Unmarshal(&m)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal sampler rule for dataset %s: %w", datasetName, err)
+				}
+			}
+			m["sampler"] = t
+			samplers[datasetName] = m
+		}
+	}
+	return samplers, nil
+}
+
+func (f *fileConfig) GetSamplerConfigForDataset(dataset string) (interface{}, string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
+
+	const notfound = "not found"
 
 	key := fmt.Sprintf("%s.Sampler", dataset)
 	if ok := f.rules.IsSet(key); ok {
@@ -562,11 +670,11 @@ func (f *fileConfig) GetSamplerConfigForDataset(dataset string) (interface{}, er
 		case "TotalThroughputSampler":
 			i = &TotalThroughputSamplerConfig{}
 		default:
-			return nil, errors.New("No Sampler found")
+			return nil, notfound, errors.New("No Sampler found")
 		}
 
 		if sub := f.rules.Sub(dataset); sub != nil {
-			return i, sub.Unmarshal(i)
+			return i, t, sub.Unmarshal(i)
 		}
 
 	} else if ok := f.rules.IsSet("Sampler"); ok {
@@ -585,13 +693,13 @@ func (f *fileConfig) GetSamplerConfigForDataset(dataset string) (interface{}, er
 		case "TotalThroughputSampler":
 			i = &TotalThroughputSamplerConfig{}
 		default:
-			return nil, errors.New("No Sampler found")
+			return nil, notfound, errors.New("No Sampler found")
 		}
 
-		return i, f.rules.Unmarshal(i)
+		return i, t, f.rules.Unmarshal(i)
 	}
 
-	return nil, errors.New("No Sampler found")
+	return nil, notfound, errors.New("No Sampler found")
 }
 
 func (f *fileConfig) GetInMemCollectorCacheCapacity() (InMemoryCollectorCacheCapacity, error) {
@@ -672,6 +780,13 @@ func (f *fileConfig) GetSendDelay() (time.Duration, error) {
 	defer f.mux.RUnlock()
 
 	return f.conf.SendDelay, nil
+}
+
+func (f *fileConfig) GetBatchTimeout() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.BatchTimeout
 }
 
 func (f *fileConfig) GetTraceTimeout() (time.Duration, error) {
@@ -775,4 +890,137 @@ func (f *fileConfig) GetGlobalUseTLSInsecureSkip() bool {
 	defer f.mux.RUnlock()
 
 	return !f.conf.UseTlsInSecure
+}
+
+func (f *fileConfig) GetAddRuleReasonToTrace() bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.AddRuleReasonToTrace
+}
+
+func (f *fileConfig) GetEnvironmentCacheTTL() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.EnvironmentCacheTTL
+}
+
+func (f *fileConfig) GetDatasetPrefix() string {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.DatasetPrefix
+}
+
+func (f *fileConfig) GetQueryAuthToken() string {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.QueryAuthToken
+}
+
+func (f *fileConfig) GetGRPCMaxConnectionIdle() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.GRPCServerParameters.MaxConnectionIdle
+}
+
+func (f *fileConfig) GetGRPCMaxConnectionAge() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.GRPCServerParameters.MaxConnectionAge
+}
+
+func (f *fileConfig) GetGRPCMaxConnectionAgeGrace() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.GRPCServerParameters.MaxConnectionAgeGrace
+}
+
+func (f *fileConfig) GetGRPCTime() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.GRPCServerParameters.Time
+}
+
+func (f *fileConfig) GetGRPCTimeout() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.GRPCServerParameters.Timeout
+}
+
+func (f *fileConfig) GetPeerTimeout() time.Duration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.PeerManagement.Timeout
+}
+
+func (f *fileConfig) GetAdditionalErrorFields() []string {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.AdditionalErrorFields
+}
+
+func (f *fileConfig) GetAddSpanCountToRoot() bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.AddSpanCountToRoot
+}
+
+func (f *fileConfig) GetCacheOverrunStrategy() string {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.CacheOverrunStrategy
+}
+
+func (f *fileConfig) GetSampleCacheConfig() SampleCacheConfig {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.SampleCache
+}
+
+// calculates an MD5 sum for a file that returns the same result as the md5sum command
+func calcMD5For(filename string) string {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err.Error()
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return err.Error()
+	}
+	h := md5.New()
+	if _, err := h.Write(data); err != nil {
+		return err.Error()
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (f *fileConfig) GetConfigMetadata() []ConfigMetadata {
+	ret := make([]ConfigMetadata, 2)
+	ret[0] = ConfigMetadata{
+		Type:     "config",
+		ID:       f.config.ConfigFileUsed(),
+		Hash:     calcMD5For(f.config.ConfigFileUsed()),
+		LoadedAt: f.lastLoadTime.Format(time.RFC3339),
+	}
+	ret[1] = ConfigMetadata{
+		Type:     "rules",
+		ID:       f.rules.ConfigFileUsed(),
+		Hash:     calcMD5For(f.rules.ConfigFileUsed()),
+		LoadedAt: f.lastLoadTime.Format(time.RFC3339),
+	}
+	return ret
 }

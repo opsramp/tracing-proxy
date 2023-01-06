@@ -1,6 +1,3 @@
-//go:build all || race
-// +build all race
-
 package cache
 
 import (
@@ -36,9 +33,9 @@ func TestBufferOverrun(t *testing.T) {
 	c := NewInMemCache(2, s, &logger.NullLogger{})
 
 	traces := []*types.Trace{
-		&types.Trace{TraceID: "abc123"},
-		&types.Trace{TraceID: "def456"},
-		&types.Trace{TraceID: "ghi789"},
+		{TraceID: "abc123"},
+		{TraceID: "def456"},
+		{TraceID: "ghi789"},
 	}
 
 	c.Set(traces[0])
@@ -51,14 +48,14 @@ func TestBufferOverrun(t *testing.T) {
 func TestTakeExpiredTraces(t *testing.T) {
 	s := &metrics.MockMetrics{}
 	s.Start()
-	c := NewInMemCache(10, s, &logger.NullLogger{})
+	c := NewInMemCache(10, s, logger.GetLoggerImplementation())
 
 	now := time.Now()
 	traces := []*types.Trace{
-		&types.Trace{TraceID: "1", SendBy: now.Add(-time.Minute), Sent: true},
-		&types.Trace{TraceID: "2", SendBy: now.Add(-time.Minute)},
-		&types.Trace{TraceID: "3", SendBy: now.Add(time.Minute)},
-		&types.Trace{TraceID: "4"},
+		{TraceID: "1", SendBy: now.Add(-time.Minute), Sent: true},
+		{TraceID: "2", SendBy: now.Add(-time.Minute)},
+		{TraceID: "3", SendBy: now.Add(time.Minute)},
+		{TraceID: "4"},
 	}
 	for _, t := range traces {
 		c.Set(t)
@@ -77,4 +74,34 @@ func TestTakeExpiredTraces(t *testing.T) {
 	for i := range all {
 		assert.Equal(t, traces[2], all[i])
 	}
+}
+
+func TestRemoveSentTraces(t *testing.T) {
+	s := &metrics.MockMetrics{}
+	s.Start()
+	c := NewInMemCache(10, s, logger.GetLoggerImplementation())
+
+	now := time.Now()
+	traces := []*types.Trace{
+		{TraceID: "1", SendBy: now.Add(-time.Minute), Sent: true},
+		{TraceID: "2", SendBy: now.Add(-time.Minute)},
+		{TraceID: "3", SendBy: now.Add(time.Minute)},
+		{TraceID: "4"},
+	}
+	for _, t := range traces {
+		c.Set(t)
+	}
+
+	deletes := map[string]struct{}{
+		"1": {},
+		"3": {},
+		"4": {},
+		"5": {}, // not present
+	}
+
+	c.RemoveTraces(deletes)
+
+	all := c.GetAll()
+	assert.Equal(t, 1, len(all))
+	assert.Equal(t, traces[1], all[0])
 }
