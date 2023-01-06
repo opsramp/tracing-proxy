@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	libtrace "github.com/opsramp/libtrace-go"
+	"github.com/opsramp/libtrace-go"
 	"github.com/opsramp/libtrace-go/transmission"
 
 	"github.com/opsramp/tracing-proxy/config"
@@ -126,6 +126,19 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 	libhEv.Timestamp = ev.Timestamp
 	libhEv.APIToken = ev.APIToken
 	libhEv.APITenantId = ev.APITenantId
+	// metadata is used to make error logs more helpful when processing libhoney responses
+	metadata := map[string]any{
+		"api_host":    ev.APIHost,
+		"dataset":     ev.Dataset,
+		"environment": ev.Environment,
+	}
+
+	for _, k := range d.Config.GetAdditionalErrorFields() {
+		if v, ok := ev.Data[k]; ok {
+			metadata[k] = v
+		}
+	}
+	libhEv.Metadata = metadata
 
 	for k, v := range ev.Data {
 		libhEv.AddField(k, v)
@@ -139,6 +152,7 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 			WithField("request_id", ev.Context.Value(types.RequestIDContextKey{})).
 			WithString("dataset", ev.Dataset).
 			WithString("api_host", ev.APIHost).
+			WithString("environment", ev.Environment).
 			Logf("failed to enqueue event")
 	}
 }
@@ -170,20 +184,23 @@ func (d *DefaultTransmission) processResponses(
 		select {
 		case r := <-responses:
 			if r.Err != nil || r.StatusCode > 202 {
-				var apiHost, dataset, evType, target string
-				if metadata, ok := r.Metadata.(map[string]string); ok {
-					apiHost = metadata["api_host"]
-					dataset = metadata["dataset"]
-					evType = metadata["type"]
-					target = metadata["target"]
+				var apiHost, dataset, environment string
+				if metadata, ok := r.Metadata.(map[string]any); ok {
+					apiHost = metadata["api_host"].(string)
+					dataset = metadata["dataset"].(string)
+					environment = metadata["environment"].(string)
 				}
 				log := d.Logger.Error().WithFields(map[string]interface{}{
 					"status_code": r.StatusCode,
 					"api_host":    apiHost,
 					"dataset":     dataset,
-					"event_type":  evType,
-					"target":      target,
+					"environment": environment,
 				})
+				for _, k := range d.Config.GetAdditionalErrorFields() {
+					if v, ok := r.Metadata.(map[string]any)[k]; ok {
+						log = log.WithField(k, v)
+					}
+				}
 				if r.Err != nil {
 					log = log.WithField("error", r.Err.Error())
 				}

@@ -206,9 +206,11 @@ SampleRate = 1
 [dataset4]
 
 	Sampler = "RulesBasedSampler"
+	# Optional, if set to true then the rules will also check nested json fields, in the format of parent.child
+	CheckNestedFields = false
 
 	[[dataset4.rule]]
-		name = "drop healtchecks"
+		name = "drop healthchecks"
 		drop = true
 		[[dataset4.rule.condition]]
 			field = "http.route"
@@ -239,6 +241,43 @@ SampleRate = 1
 			FieldList = ["request.method", "request.route"]
 			AddSampleRateKeyToTrace = true
 			AddSampleRateKeyToTraceField = "meta.refinery.dynsampler_key"
+
+	# Note that Refinery comparisons are type-dependent. If you are operating in an environment where different
+	# telemetry may send the same field with different types (for example, some systems send status codes as "200"
+	# instead of 200), you may need to create additional rules to cover these cases.
+	[[dataset4.rule]]
+		name = "dynamically sample 200 string responses"
+		[[dataset4.rule.condition]]
+			field = "status_code"
+			operator = "="
+			value = "200"
+		[dataset4.rule.sampler.EMADynamicSampler]
+			Sampler = "EMADynamicSampler"
+			GoalSampleRate = 15
+			FieldList = ["request.method", "request.route"]
+			AddSampleRateKeyToTrace = true
+			AddSampleRateKeyToTraceField = "meta.refinery.dynsampler_key"
+
+	[[dataset4.rule]]
+		name = "sample traces originating from a service"
+		# if scope is set to "span", a single span in the trace must match
+		# *all* of the conditions associated with this rule for the rule to
+		# apply to the trace.
+		#
+		# this is especially helpful when sampling a dataset written to
+		# by multiple services that call one another in normal operation –
+		# you can set Scope to 'span' to attribute traces to an origin
+		# service in a way that would be difficult without it.
+		Scope = "span"
+		SampleRate = 5
+		[[dataset4.rule.condition]]
+			field = "service name"
+			operator = "="
+			value = "users"
+		[[dataset4.rule.condition]]
+			field = "meta.span_type"
+			operator = "="
+			value = "root"
 
 	[[dataset4.rule]]
 		SampleRate = 10 # default when no rules match, if missing defaults to 10

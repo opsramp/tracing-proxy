@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,9 +12,9 @@ import (
 
 	"github.com/facebookgo/inject"
 	"github.com/facebookgo/startstop"
-	libtrace "github.com/opsramp/libtrace-go"
-	"github.com/opsramp/libtrace-go/transmission"
 	flag "github.com/jessevdk/go-flags"
+	"github.com/opsramp/libtrace-go"
+	"github.com/opsramp/libtrace-go/transmission"
 	"github.com/opsramp/tracing-proxy/app"
 	"github.com/opsramp/tracing-proxy/collect"
 	"github.com/opsramp/tracing-proxy/config"
@@ -83,13 +84,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	peers, err := peer.NewPeers(c)
-
-	if err != nil {
-		fmt.Printf("unable to load peers: %+v\n", err)
-		os.Exit(1)
-	}
-
 	// get desired implementation for each dependency to inject
 	lgr := logger.GetLoggerImplementation()
 	collector := collect.GetCollectorImplementation(c)
@@ -106,6 +100,16 @@ func main() {
 	logrusLogger := lgr.Init()
 	if err := lgr.SetLevel(logLevel); err != nil {
 		fmt.Printf("unable to set logging level: %v\n", err)
+		os.Exit(1)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.GetPeerTimeout())
+	defer cancel()
+	done := make(chan struct{})
+	peers, err := peer.NewPeers(ctx, c, done)
+
+	if err != nil {
+		fmt.Printf("unable to load peers: %+v\n", err)
 		os.Exit(1)
 	}
 
@@ -138,7 +142,7 @@ func main() {
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Opsramptraceproxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
-			BatchTimeout:          libtrace.DefaultBatchTimeout,
+			BatchTimeout:          c.GetBatchTimeout(),
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetUpstreamBufferSize()),
 			UserAgentAddition:     userAgentAddition,
@@ -163,7 +167,7 @@ func main() {
 	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Opsramptraceproxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
-			BatchTimeout:          libtrace.DefaultBatchTimeout,
+			BatchTimeout:          c.GetBatchTimeout(),
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetPeerBufferSize()),
 			UserAgentAddition:     userAgentAddition,
@@ -229,5 +233,8 @@ func main() {
 
 	// block on our signal handler to exit
 	sig := <-sigsToExit
+	// unregister ourselves before we go
+	close(done)
+	time.Sleep(100 * time.Millisecond)
 	a.Logger.Error().Logf("Caught signal \"%s\"", sig)
 }

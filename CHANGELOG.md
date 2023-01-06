@@ -1,5 +1,243 @@
 # tracing-proxy Changelog
 
+## 1.19.0 2022-11-09
+
+Adds new query command to retrieve configuration metadata, and also allows for a new (optional) cache management strategy that should be more effective at preventing OOM crashes in situations where memory is under pressure.
+
+### Enhancements
+
+- Add command to query config metadata (#556) | [@kentquirk](https://github.com/kentquirk)
+- New cache management strategy (#547) | [@kentquirk](https://github.com/kentquirk)
+
+### Fixes
+
+- Set content-type on marshalToFormat (#548) | [@kentquirk](https://github.com/kentquirk)
+
+### Maintenance
+
+- Bump google.golang.org/grpc from 1.50.0 to 1.50.1 (#553)
+- Bump github.com/fsnotify/fsnotify from 1.5.4 to 1.6.0 (#552)
+- Bump github.com/stretchr/testify from 1.8.0 to 1.8.1 (#551)
+- Bump github.com/honeycombio/libhoney-go from 1.16.0 to 1.18.0 (#550)
+- Bump github.com/klauspost/compress from 1.15.11 to 1.15.12 (#549)
+
+## 1.18.0 2022-10-12
+
+### Enhancements
+
+- Track span count and optionally add it to root (#532) | [@kentquirk](https://github.com/kentquirk)
+- Add support for metrics api key env var (#535) | [@TylerHelmuth](https://github.com/TylerHelmuth)
+
+### Fixes
+
+- RedisIdentifier now operates properly in more circumstances (#521) | [@Baliedge](https://github.com/Baliedge)
+- Properly set metadata to values that will work. (#523) | [@kentquirk](https://github.com/kentquirk)
+
+### Maintenance
+
+- maint: add new project workflow (#537) | [@vreynolds](https://github.com/vreynolds)
+- Bump go version to 1.19 (#534) | [@TylerHelmuth](https://github.com/TylerHelmuth)
+- Bump github.com/klauspost/compress from 1.15.9 to 1.15.11 (#531)
+- Bump github.com/honeycombio/husky from 0.15.0 to 0.16.1 (#529)
+- Bump github.com/prometheus/client_golang from 1.12.2 to 1.13.0 (#528)
+- Bump github.com/spf13/viper from 1.12.0 to 1.13.0 (#527)
+- Bump Husky to v0.17.0 (#538) | [@kentquirk](https://github.com/kentquirk)
+
+### New Contributors
+
+- @Baliedge made their first contribution in https://github.com/honeycombio/refinery/pull/521
+- @TylerHelmuth made their first contribution in https://github.com/honeycombio/refinery/pull/534
+
+**Full Changelog**: https://github.com/honeycombio/refinery/compare/v1.17.0...v1.18.0
+
+## 1.17.0 2022-09-16
+
+### Enhancements
+
+- Allow adding extra fields to error logs (#514) | [@kentquirk](https://github.com/kentquirk)
+- Allow BatchTimeout to be overriden on the libhoney Transmission (#509) | [@leviwilson](https://github.com/leviwilson)
+
+### Fixes
+
+- Consolidate honeycomb metrics to use single lock & fix concurrent read/write (#511)| [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Fix variable shadowing bug (#519)| [@kentquirk](https://github.com/kentquirk)
+
+## 1.16.0 2022-09-09
+
+This release contains a number of small new features to assist in running refinery more effectively:
+
+- Adds new endpoints to help in debugging refinery rules (see README.md)
+- Fixes issues with SampleRate
+- Adds some new configuration parameters (see the *_complete.toml files for more)
+- Conforms to the GRPC standard for health probes
+- Accepts OTLP/JSON traces and conforms to the most recent OTLP trace specification
+
+### Enhancements
+
+- Add /query endpoints to help debug refinery rules (#500, #502) | [kentquirk](https://github.com/kentquirk)
+- Implement grpc-health-probe (#498) | [abatilo](https://github.com/abatilo)
+- Make gRPC ServerParameters configurable (#499) | [abatilo](https://github.com/abatilo)
+- Fix sample rate for late spans (#504) | [kentquirk](https://github.com/kentquirk)
+- Optionally record why a sample decision was made (#503) | [kentquirk](https://github.com/kentquirk)
+- Added PeerManagement.Timeout config option (#491) | [thrawn01](https://github.com/thrawn01)
+- Add 'meta.refinery.original_sample_rate' (#508) | [epvanhouten](https://github.com/epvanhouten)
+
+### Maintenance
+
+- maint: improvements to GitHub operation (#474, #477, #478) | [JamieDanielson](https://github.com/JamieDanielson), [vreynolds](https://github.com/vreynolds)
+
+### Dependencies
+
+- Bump github.com/stretchr/testify from 1.7.2 to 1.8.0 (#472) | [dependabot](https://github.com/dependabot)
+- Bump github.com/sirupsen/logrus from 1.8.1 to 1.9.0 (#484) | [dependabot](https://github.com/dependabot)
+- Bump google.golang.org/grpc from 1.46.2 to 1.49.0 (#485, 494) | [dependabot](https://github.com/dependabot)
+- Bump github.com/honeycombio/libhoney-go from 1.15.8 to 1.16.0 (#487) | [dependabot](https://github.com/dependabot)
+- Bump github.com/gomodule/redigo from 1.8.8 to 1.8.9 (#488) | [dependabot](https://github.com/dependabot)
+- Bump github.com/klauspost/compress from 1.15.7 to 1.15.9 (#495) | [dependabot](https://github.com/dependabot)
+- Bump github.com/tidwall/gjson from 1.14.1 to 1.14.3 (#497) | [dependabot](https://github.com/dependabot)
+- Update github.com/honeycombio/husky to latest and fix breaking changes (#505) | [kentquirk](https://github.com/kentquirk)
+- Go mod tidy (#507) | [kentquirk](https://github.com/kentquirk)
+
+## New Contributors
+
+- @abatilo made their first contribution in https://github.com/honeycombio/refinery/pull/498
+- @thrawn01 made their first contribution in https://github.com/honeycombio/refinery/pull/491
+- @epvanhouten made their first contribution in https://github.com/honeycombio/refinery/pull/508
+
+**Full Changelog**: https://github.com/honeycombio/refinery/compare/v1.15.0...v1.16.0
+
+## 1.15.0 2022-07-01
+
+### Enhancements
+
+- Add rule Scope configuration option to rules-based sampler (#440) | [isnotajoke](https://github.com/isnotajoke)
+- Replace hand-rolled binary.BigEndian.Uint32 with the real deal (#459) | [toshok](https://github.com/toshok)
+- Validate successful span scoped rules test (#465) | [MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Create helm-chart issue on release (#458) | [MikeGoldsmith](https://github.com/MikeGoldsmith)
+- github_token needs underscore not hyphen (#464) | [@JamieDanielson](https://github.com/JamieDanielson)
+
+### Maintenance
+
+- Replace legacy with classic in readme (#457) | [MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+### Dependencies
+
+- Bump github.com/spf13/viper from 1.10.1 to 1.12.0 (#461)
+- Bump github.com/stretchr/testify from 1.7.1 to 1.7.2 (#467)
+- Bump github.com/honeycombio/husky from 0.10.5 to 0.10.6 (#460)
+- Bump github.com/klauspost/compress from 1.15.4 to 1.15.6 (#466)
+- Bump github.com/prometheus/client_golang from 1.12.1 to 1.12.2 (#463)
+
+## 1.14.1 2022-05-16
+
+### Fixes
+
+- Fix crash bug related to sharding (#455) | [@kentquirk](https://github.com/kentquirk)
+
+### Maintenance
+
+- bump husky to 0.10.5 (#450) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Bump github.com/klauspost/compress from 1.15.2 to 1.15.4 (#451) | dependabot
+- Bump github.com/tidwall/gjson from 1.14.0 to 1.14.1 (#444) | dependabot
+- Bump github.com/fsnotify/fsnotify from 1.5.1 to 1.5.4 (#441) | dependabot
+
+### Documentation
+
+- add a note about reloading the configuration when running within docker (#448) | [@leviwilson](https://github.com/leviwilson)
+- README: remove incorrect mention of sending SIGUSR1 to trigger a configuration reload (#447) | [@jharley](https://github.com/jharley)
+
+## 1.14.0 2022-05-03
+
+### Enhancements
+
+- Add support for environment and dataset rules with same names (#438) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+### Maintenance
+
+- Update otlp to v0.11.0 (#437) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Update go to 1.18 (#430) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+**Note**: The docker image used to create the binaries has been updated to a version that does not suffer a [OpenSSL CVE](https://mta.openssl.org/pipermail/openssl-announce/2022-March/000219.html).
+
+## 1.13.0 2022-04-08
+
+### Enhancements
+
+- Add parsing for nested json fields in the rules sampler (#418) | [@ecobrien29](https://github.com/ecobrien29)
+
+### Maintenance
+
+- Update husky to v0.10.3 (#431) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Bump google.golang.org/grpc from 1.43.0 to 1.45.0 (#428)
+- Bump github.com/klauspost/compress from 1.13.6 to 1.15.1 (#427)
+- Bump github.com/stretchr/testify from 1.7.0 to 1.7.1 (#426)
+- Bump github.com/prometheus/client_golang from 1.11.0 to 1.12.1 (#390)
+
+## 1.12.1 2022-03-28
+
+### Fixes
+
+- fix: error log event metadata (#422) | [@vreynolds](https://github.com/vreynolds)
+
+### Maintenance
+
+- Create checksums when building binaries (#423) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+- Cache google ko deps between workflows (#424) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+## 1.12.0 2022-02-24
+
+### Enhancements
+
+- feat: add support for env name from auth (#410) | [@JamieDanielson](https://github.com/JamieDanielson)
+
+### Maintenance
+
+- update aws-client orb to latest (#409) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+## 1.11.0 2022-02-17
+
+### Enhancements
+
+**Note: Environment & Services Support requires v1.12.0 and higher**
+
+Do **not** use this version with Environment & Services.
+
+- Add Environment & Services support (#403) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+### Maintenance
+
+- docs: add helm charts step to releasing (#400) | [@vreynolds](https://github.com/vreynolds)
+
+## 1.10.0 2022-02-10
+
+### Enhancements
+
+- added username in config for redis auth (#397) | [@ecobrien29](https://github.com/ecobrien29)
+- build: add ARM64 (aarch64) RPM artifact (#395) | [@jharley](https://github.com/jharley)
+
+### Fixes
+
+- fix: deadlock when reloading configs (#398) | [@vreynolds](https://github.com/vreynolds)
+- Fixed "honeeycomb" typo in log output when reloading config (#394) | [@looneym](https://github.com/looneym)
+
+## 1.9.0 2022-02-01
+
+### Enhancements
+
+- Honor env. variable to set gRPC listener address (#386) | [@seh](https://github.com/seh)
+- Add retries when connecting to redis during init (#382) | [@MikeGoldsmith](https://github.com/MikeGoldsmith)
+
+### Fixes
+
+- Properly set meta.refinery.local_hostname field (#387) | [@jharley](https://github.com/jharley)
+
+### Maintenance
+
+- docs: update rules example (#378) | [@vreynolds](https://github.com/vreynolds)
+- Bump github.com/gomodule/redigo from 1.8.5 to 1.8.8 (#374)
+- Bump github.com/spf13/viper from 1.9.0 to 1.10.1 (#375)
+- Bump google.golang.org/grpc from 1.42.0 to 1.43.0 (#372)
+
 ## 1.8.1 2022-01-06
 
 ### Maintenance

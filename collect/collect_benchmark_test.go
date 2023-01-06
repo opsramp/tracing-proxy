@@ -1,6 +1,3 @@
-//go:build all || race
-// +build all race
-
 package collect
 
 import (
@@ -9,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/opsramp/tracing-proxy/collect/cache"
@@ -38,7 +34,7 @@ func BenchmarkCollect(b *testing.B) {
 	metric := &metrics.MockMetrics{}
 	metric.Start()
 
-	stc, err := lru.New(15)
+	stc, err := cache.NewLegacySentCache(15)
 	assert.NoError(b, err, "lru cache should start")
 
 	coll := &InMemCollector{
@@ -50,12 +46,12 @@ func BenchmarkCollect(b *testing.B) {
 			Config: conf,
 			Logger: log,
 		},
-		BlockOnAddSpan:  true,
-		cache:           cache.NewInMemCache(3, metric, log),
-		incoming:        make(chan *types.Span, 500),
-		fromPeer:        make(chan *types.Span, 500),
-		datasetSamplers: make(map[string]sample.Sampler),
-		sentTraceCache:  stc,
+		BlockOnAddSpan:   true,
+		cache:            cache.NewInMemCache(3, metric, log),
+		incoming:         make(chan *types.Span, 500),
+		fromPeer:         make(chan *types.Span, 500),
+		datasetSamplers:  make(map[string]sample.Sampler),
+		sampleTraceCache: stc,
 	}
 	go coll.collect()
 

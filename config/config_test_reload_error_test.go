@@ -1,10 +1,8 @@
 //go:build all || !race
-// +build all !race
 
 package config
 
 import (
-	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -14,14 +12,14 @@ import (
 )
 
 func TestErrorReloading(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "")
+	tmpDir, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	rulesFile, err := ioutil.TempFile(tmpDir, "*.toml")
+	rulesFile, err := os.CreateTemp(tmpDir, "*.toml")
 	assert.NoError(t, err)
 
-	configFile, err := ioutil.TempFile(tmpDir, "*.toml")
+	configFile, err := os.CreateTemp(tmpDir, "*.toml")
 	assert.NoError(t, err)
 
 	dummy := []byte(`
@@ -56,9 +54,12 @@ func TestErrorReloading(t *testing.T) {
 		t.Error(err)
 	}
 
-	d, _ := c.GetSamplerConfigForDataset("dataset5")
+	d, name, _ := c.GetSamplerConfigForDataset("dataset5")
 	if _, ok := d.(DeterministicSamplerConfig); ok {
-		t.Error("received", d, "expected", "DeterministicSampler")
+		t.Error("type received", d, "expected", "DeterministicSampler")
+	}
+	if name != "DeterministicSampler" {
+		t.Error("name received", d, "expected", "DeterministicSampler")
 	}
 
 	wg := &sync.WaitGroup{}
@@ -74,7 +75,7 @@ func TestErrorReloading(t *testing.T) {
 		}
 	}()
 
-	err = ioutil.WriteFile(rulesFile.Name(), []byte(`Sampler="InvalidSampler"`), 0644)
+	err = os.WriteFile(rulesFile.Name(), []byte(`Sampler="InvalidSampler"`), 0644)
 
 	if err != nil {
 		t.Error(err)
@@ -83,7 +84,7 @@ func TestErrorReloading(t *testing.T) {
 	wg.Wait()
 
 	// config should error and not update sampler to invalid type
-	d, _ = c.GetSamplerConfigForDataset("dataset5")
+	d, _, _ = c.GetSamplerConfigForDataset("dataset5")
 	if _, ok := d.(DeterministicSamplerConfig); ok {
 		t.Error("received", d, "expected", "DeterministicSampler")
 	}
