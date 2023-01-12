@@ -116,18 +116,18 @@ func main() {
 	// upstreamTransport is the http transport used to send things on to Honeycomb
 	upstreamTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
+		DialContext: (&net.Dialer{
 			Timeout: 10 * time.Second,
-		}).Dial,
+		}).DialContext,
 		TLSHandshakeTimeout: 15 * time.Second,
 	}
 
 	// peerTransport is the http transport used to send things to a local peer
 	peerTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
+		DialContext: (&net.Dialer{
 			Timeout: 3 * time.Second,
-		}).Dial,
+		}).DialContext,
 		TLSHandshakeTimeout: 1200 * time.Millisecond,
 	}
 
