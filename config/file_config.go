@@ -764,6 +764,32 @@ func (f *fileConfig) GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error) {
 			opsRampMetricsConfig.OpsRampMetricsList = []string{".*"}
 		}
 
+		// setting values from main configurations when OpsRampMetrics is empty
+		if opsRampMetricsConfig.OpsRampMetricsAPIKey == "" {
+			opsRampMetricsConfig.OpsRampMetricsAPIKey = f.conf.OpsrampAPI
+		}
+		if opsRampMetricsConfig.OpsRampMetricsAPISecret == "" {
+			opsRampMetricsConfig.OpsRampMetricsAPISecret = f.conf.OpsrampSecret
+		}
+		if opsRampMetricsConfig.OpsRampTenantID == "" {
+			opsRampMetricsConfig.OpsRampTenantID = f.conf.TenantId
+		}
+		if opsRampMetricsConfig.ProxyServer == "" {
+			opsRampMetricsConfig.ProxyServer = f.conf.ProxyServer
+		}
+		if opsRampMetricsConfig.ProxyPort <= 0 {
+			opsRampMetricsConfig.ProxyPort = f.conf.ProxyPort
+		}
+		if opsRampMetricsConfig.ProxyProtocol != "" {
+			opsRampMetricsConfig.ProxyProtocol = f.conf.ProxyProtocol
+		}
+		if opsRampMetricsConfig.ProxyUserName != "" {
+			opsRampMetricsConfig.ProxyUserName = f.conf.ProxyUsername
+		}
+		if opsRampMetricsConfig.ProxyPassword != "" {
+			opsRampMetricsConfig.ProxyPassword = f.conf.ProxyPassword
+		}
+
 		v := validator.New()
 		err = v.Struct(opsRampMetricsConfig)
 		if err != nil {
