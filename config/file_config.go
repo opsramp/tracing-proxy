@@ -765,8 +765,11 @@ func (f *fileConfig) GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error) {
 		}
 
 		// setting values from main configurations when OpsRampMetrics is empty
+		if opsRampMetricsConfig.OpsRampMetricsAPI == "" {
+			opsRampMetricsConfig.OpsRampMetricsAPI = f.conf.OpsrampAPI
+		}
 		if opsRampMetricsConfig.OpsRampMetricsAPIKey == "" {
-			opsRampMetricsConfig.OpsRampMetricsAPIKey = f.conf.OpsrampAPI
+			opsRampMetricsConfig.OpsRampMetricsAPIKey = f.conf.OpsrampKey
 		}
 		if opsRampMetricsConfig.OpsRampMetricsAPISecret == "" {
 			opsRampMetricsConfig.OpsRampMetricsAPISecret = f.conf.OpsrampSecret
