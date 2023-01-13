@@ -96,12 +96,12 @@ type LogrusLoggerConfig struct {
 
 type OpsRampMetricsConfig struct {
 	MetricsListenAddr               string `validate:"required"`
-	OpsRampMetricsAPI               string `validate:"required,url"`
-	OpsRampTenantID                 string `validate:"required"`
-	OpsRampMetricsAPIKey            string `validate:"required"`
-	OpsRampMetricsAPISecret         string `validate:"required"`
-	OpsRampMetricsReportingInterval int64  `validate:"required"`
-	OpsRampMetricsRetryCount        int64  `validate:"required"`
+	OpsRampMetricsAPI               string
+	OpsRampTenantID                 string
+	OpsRampMetricsAPIKey            string
+	OpsRampMetricsAPISecret         string
+	OpsRampMetricsReportingInterval int64
+	OpsRampMetricsRetryCount        int64
 	ProxyProtocol                   string
 	ProxyServer                     string
 	ProxyPort                       int64

@@ -5,7 +5,7 @@ imagePullSecrets: []
 image:
   repository: us-docker.pkg.dev/opsramp-registry/agent-images/trace-proxy
   pullPolicy: Always # use "IfNotPresent" to avoid pulling the image every time
-  tag: "latest" # if empty then defaults to the chart appVersion.
+  tag: "latest" # if empty, then defaults to the chart appVersion.
 
 service:
   type: ClusterIP
@@ -42,17 +42,7 @@ logging:
   log_output: "stdout" # Accepted values are one of["stdout", "stderr"]
 
 metrics:
-  api: "https://int.opsramp.net/"
-  key: ""
-  secret: ""
-  tenantId: ""
   list: ['".*"'] # escape the " with ' while specifying values
-  proxy:
-    protocol: ""
-    server: ""
-    port: ""
-    username: ""
-    password: ""
 
 rules: |-
   ############################
