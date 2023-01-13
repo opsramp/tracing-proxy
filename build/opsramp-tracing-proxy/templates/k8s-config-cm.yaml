@@ -328,23 +328,24 @@ data:
 
     # ProxyProtocol accepts http and https
     # Not Eligible for live reload.
-    ProxyProtocol = {{ .Values.metrics.proxy.protocol | default "" | quote }}
+    {{- $proxy := .Values.metrics.proxy | default dict }}
+    ProxyProtocol = {{ $proxy.protocol | default "" | quote }}
 
     # ProxyServer takes the proxy server address
     # Not Eligible for live reload.
-    ProxyServer = {{ .Values.metrics.proxy.server | default "" | quote }}
+    ProxyServer = {{ $proxy.server | default "" | quote }}
 
     # ProxyPort takes the proxy server port
     # Not Eligible for live reload.
-    ProxyPort = {{ .Values.metrics.proxy.port | default 3128 }}
+    ProxyPort = {{ $proxy.port | default 3128 }}
 
     # ProxyUserName takes the proxy username
     # Not Eligible for live reload.
-    ProxyUserName = {{ .Values.metrics.proxy.username | default "" | quote }}
+    ProxyUserName = {{ $proxy.username | default "" | quote }}
 
     # ProxyPassword takes the proxy password
     # Not Eligible for live reload.
-    ProxyPassword = {{ .Values.metrics.proxy.password | default "" | quote }}
+    ProxyPassword = {{ $proxy.password | default "" | quote }}
 
     # OpsRampMetricsList is a list of regular expressions which match the metric
     # names. Keep the list as small as possible since too many regular expressions can lead to bad performance.
