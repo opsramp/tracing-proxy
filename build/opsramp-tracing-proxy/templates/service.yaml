@@ -5,11 +5,11 @@ metadata:
   labels:
     {{- include "opsramp-tracing-proxy.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{- include "serviceType" . }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.port }}
+    - port: {{- include "servicePort" . }}
+      targetPort: {{- include "servicePort" . }}
       protocol: TCP
-      name: http-tp
+      name: tp-http
   selector:
     {{- include "opsramp-tracing-proxy.selectorLabels" . | nindent 4 }}
