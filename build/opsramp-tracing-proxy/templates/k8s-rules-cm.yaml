@@ -1,10 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: opsramp-tracing-proxy-rules
+  name: {{ include "opsramp-tracing-proxy.fullname" . }}-rules
   labels:
-    name: opsramp-tracing-proxy-rules
+    {{- include "opsramp-tracing-proxy.labels" . | nindent 4 }}
 data:
   rules.toml: |-
-    {{ .Values.rules | nindent 4 }}
-
+    {{- with .Values.rules }}
+    {{ . | nindent 4 }}
+    {{ else }}
+    {{- include "rulesTOML" | nindent 4}}
+    {{- end }}

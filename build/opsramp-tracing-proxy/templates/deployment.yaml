@@ -24,29 +24,31 @@ spec:
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{- include "imagePullPolicy" . }}
           ports:
-            - containerPort: {{ .Values.service.port }}
-              name: http-tp
+            - containerPort: {{- include "servicePort" . }}
+              name: tp-http
+          {{- with .Values.resources }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
           volumeMounts:
-            - name: opsramp-tracing-rules
+            - name: {{ include "opsramp-tracing-proxy.fullname" . }}-rules
               mountPath: /etc/tracing-proxy/rules.toml
               subPath: rules.toml
               readOnly: true
-            - name: opsramp-tracing-config
+            - name: {{ include "opsramp-tracing-proxy.fullname" . }}-config
               mountPath: /etc/tracing-proxy/config.toml
               subPath: config.toml
               readOnly: true
       volumes:
         - configMap:
-            name: opsramp-tracing-proxy-rules
-          name: opsramp-tracing-rules
+            name: {{ include "opsramp-tracing-proxy.fullname" . }}-rules
+          name: {{ include "opsramp-tracing-proxy.fullname" . }}-rules
         - configMap:
-            name: opsramp-tracing-proxy-config
-          name: opsramp-tracing-config
+            name: {{ include "opsramp-tracing-proxy.fullname" . }}-config
+          name: {{ include "opsramp-tracing-proxy.fullname" . }}-config
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
