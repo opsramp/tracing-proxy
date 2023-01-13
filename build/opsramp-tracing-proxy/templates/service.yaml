@@ -8,8 +8,8 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: http
+      targetPort: http-tp
       protocol: TCP
-      name: http
+      name: http-tp
   selector:
     {{- include "opsramp-tracing-proxy.selectorLabels" . | nindent 4 }}
