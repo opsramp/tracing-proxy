@@ -23,7 +23,7 @@ nodeSelector: {}
 
 # Trace Proxy config file values
 config:
-  api: "***REMOVED***/"
+  api: ""
   key: ""
   secret: ""
   tenantId: ""
