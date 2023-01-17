@@ -368,23 +368,23 @@ MetricsListenAddr = "localhost:2112"
 
 # OpsRampMetricsAPI is the URL for the upstream OpsRamp API.
 # Not Eligible for live reload.
-OpsRampMetricsAPI = "https://int.opsramp.net"
+OpsRampMetricsAPI = ""
 
 # OpsRampTenantID is the Client or Tenant ID where the metrics are supposed to be pushed.
 # Not Eligible for live reload.
-OpsRampTenantID = "3748c67e-bec1-4cad-bd8b-8f2f8ea840f3"
+OpsRampTenantID = ""
 
 # OpsRampMetricsAPIKey is the API key to use to send metrics to the OpsRamp.
 # This is separate from the APIKeys used to authenticate regular
 # traffic.
 # Not Eligible for live reload.
-OpsRampMetricsAPIKey = "MasBgUEn3WtapTJmkvbAZ96waRZp37Tx"
+OpsRampMetricsAPIKey = ""
 
 # OpsRampMetricsAPISecret is the API Secret to use to send metrics to the OpsRamp.
 # This is separate from the APISecret used to authenticate regular
 # traffic.
 # Not Eligible for live reload.
-OpsRampMetricsAPISecret = "SmgDHBSHj2cCFER7gk6HQYYDKuCWwybK45upkeCvXMWxV89hACraNpVVu4X9jzYt"
+OpsRampMetricsAPISecret = ""
 
 # OpsRampMetricsReportingInterval is frequency specified in seconds at which
 # the metrics are collected and sent to OpsRamp
