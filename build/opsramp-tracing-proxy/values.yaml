@@ -23,7 +23,7 @@ nodeSelector: {}
 
 # Trace Proxy config file values
 config:
-  api: "https://int.opsramp.net/"
+  api: ""
   key: ""
   secret: ""
   tenantId: ""
