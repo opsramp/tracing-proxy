@@ -162,8 +162,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("upstream client created..")
-
 	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Opsramptraceproxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
