@@ -26,21 +26,33 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{- include "imagePullPolicy" . }}
+          command:
+            - "/usr/bin/tracing-proxy"
+            - "-c"
+            - "/etc/tracing-proxy/config.yaml"
+            - "-r"
+            - "/etc/tracing-proxy/rules.yaml"
           ports:
-            - containerPort: {{- include "servicePort" . }}
-              name: tp-http
+            - name: data
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: peer
+              containerPort: {{ .Values.service.peerPort }}
+              protocol: TCP
+            - containerPort: {{ .Values.service.grpcPort }}
+              name: grpc
           {{- with .Values.resources }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: {{ include "opsramp-tracing-proxy.fullname" . }}-rules
-              mountPath: /etc/tracing-proxy/rules.toml
-              subPath: rules.toml
+              mountPath: /etc/tracing-proxy/rules.yaml
+              subPath: rules.yaml
               readOnly: true
             - name: {{ include "opsramp-tracing-proxy.fullname" . }}-config
-              mountPath: /etc/tracing-proxy/config.toml
-              subPath: config.toml
+              mountPath: /etc/tracing-proxy/config.yaml
+              subPath: config.yaml
               readOnly: true
       volumes:
         - configMap:
