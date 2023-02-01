@@ -5,9 +5,5 @@ metadata:
   labels:
     {{- include "opsramp-tracing-proxy.labels" . | nindent 4 }}
 data:
-  rules.toml: |-
-    {{- with .Values.rules }}
-    {{ . | nindent 4 }}
-    {{ else }}
-    {{- include "rulesTOML" | nindent 4}}
-    {{- end }}
+  rules.yaml: |-
+    {{- toYaml .Values.rules | nindent 4 }}
