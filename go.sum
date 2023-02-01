@@ -587,8 +587,8 @@ github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9G
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/opsramp/husky v0.0.0-20230125043214-9eaefd645d5b h1:UCPQdTGlfqS/Cs4BO7C8lRppKy23Ok8OyQlz5c6Nt+U=
 github.com/opsramp/husky v0.0.0-20230125043214-9eaefd645d5b/go.mod h1:GzTlIB+x7FULGr/mPWJNWMBd+7mrGHzhB9sMdaIyRUw=
-github.com/opsramp/libtrace-go v0.0.0-20230125043249-3c7090a38201 h1:x+lUyWYj+gOmne8XVwZBOS1YRv+2ekezCGwh+XN5WeI=
-github.com/opsramp/libtrace-go v0.0.0-20230125043249-3c7090a38201/go.mod h1:XvyEnnTyL+klFisHWbLeBAihYq7b1QBF90iLCcns0cQ=
+github.com/opsramp/libtrace-go v0.0.0-20230201042643-641737bf3d05 h1:yiAd0O0Mdx4/fQF7hTJ0dMkfCywlLF/ZgJyQn3QbJyI=
+github.com/opsramp/libtrace-go v0.0.0-20230201042643-641737bf3d05/go.mod h1:XvyEnnTyL+klFisHWbLeBAihYq7b1QBF90iLCcns0cQ=
 github.com/panmari/cuckoofilter v1.0.3 h1:MgTxXG2aP0YPWFyY1sKt1caWidUFREk9BaOnakDKZOU=
 github.com/panmari/cuckoofilter v1.0.3/go.mod h1:O7+ZOHxwlADJ1So2/ZsKBExDwILNPZsyt77zN0ZTBLg=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
