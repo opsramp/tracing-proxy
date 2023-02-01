@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -566,7 +567,12 @@ func (f *fileConfig) GetOpsrampAPI() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.OpsrampAPI, nil
+	u, err := url.Parse(f.conf.OpsrampAPI)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s://%s", u.Scheme, u.Hostname()), nil
 }
 
 func (f *fileConfig) GetOpsrampKey() (string, error) {

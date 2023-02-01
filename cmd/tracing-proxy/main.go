@@ -136,7 +136,10 @@ func main() {
 
 	opsrampkey, _ := c.GetOpsrampKey()
 	opsrampsecret, _ := c.GetOpsrampSecret()
-	opsrampapi, _ := c.GetOpsrampAPI()
+	opsrampapi, err := c.GetOpsrampAPI()
+	if err != nil {
+		logrusLogger.Fatal(err)
+	}
 
 	userAgentAddition := "tracing-proxy/" + version
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
