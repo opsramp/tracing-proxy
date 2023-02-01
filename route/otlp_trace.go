@@ -141,8 +141,7 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 	var requestID types.RequestIDContextKey
 
 	for _, item := range in.Items {
-		layout := "2006-01-02 15:04:05.000000000 +0000 UTC"
-		timestamp, err := time.Parse(layout, item.Timestamp)
+		timestamp, err := time.Parse(time.RFC3339Nano, item.Timestamp)
 		if err != nil {
 			r.Logger.Error().Logf("failed to parse timestamp: %v", err)
 			continue
