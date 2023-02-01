@@ -6,8 +6,8 @@ import (
 	"fmt"
 	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
 	"google.golang.org/grpc/metadata"
-	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	huskyotlp "github.com/opsramp/husky/otlp"
@@ -113,7 +113,6 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 	}
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		log.Println("Failed to get metadata")
 		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get request metadata", Status: "Failed"}, nil
 	} else {
 		authorization := md.Get("Authorization")
@@ -123,11 +122,19 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 			token = authorization[0]
 			recvdTenantId := md.Get("tenantId")
 			if len(recvdTenantId) == 0 {
-				return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get TenantId", Status: "Failed"}, nil
+				tenantId = strings.TrimSpace(in.TenantId)
+				if tenantId == "" {
+					return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get TenantId", Status: "Failed"}, nil
+				}
 			} else {
 				tenantId = recvdTenantId[0]
-				datasetName = md.Get("dataset")[0]
 			}
+		}
+
+		if dataSets := md.Get("dataset"); len(dataSets) > 0 {
+			datasetName = dataSets[0]
+		} else {
+			return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get dataset", Status: "Failed"}, nil
 		}
 	}
 
@@ -136,10 +143,22 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 	for _, item := range in.Items {
 		layout := "2006-01-02 15:04:05.000000000 +0000 UTC"
 		timestamp, err := time.Parse(layout, item.Timestamp)
+		if err != nil {
+			r.Logger.Error().Logf("failed to parse timestamp: %v", err)
+			continue
+		}
 
 		var data map[string]interface{}
-		inrec, _ := json.Marshal(item.Data)
-		json.Unmarshal(inrec, &data)
+		inrec, err := json.Marshal(item.Data)
+		if err != nil {
+			r.Logger.Error().Logf("failed to marshal: %v", err)
+			continue
+		}
+		err = json.Unmarshal(inrec, &data)
+		if err != nil {
+			r.Logger.Error().Logf("failed to unmarshal: %v", err)
+			continue
+		}
 
 		//Translate ResourceAttributes , SpanAttributes, EventAttributes from proto format to interface{}
 		attributes := make(map[string]interface{})
