@@ -1,0 +1,2 @@
+mkdir -p /var/log/opsramp
+touch /var/log/opsramp/tracing-proxy.log
