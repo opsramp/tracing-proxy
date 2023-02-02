@@ -1,10 +1,15 @@
 package logger
 
 import (
+	"fmt"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
+	"path"
+	"runtime"
+	"strings"
+	"sync"
 )
 
 // LogrusLogger is a Logger implementation that sends all logs to stdout using
@@ -23,7 +28,8 @@ type LogrusEntry struct {
 
 func (l *LogrusLogger) Start() error {
 	l.logger.SetLevel(l.level)
-	l.logger.SetReportCaller(true)
+	l.logger.SetReportCaller(false) // using a hook to do the same, so avoiding additional processing here
+	l.logger.AddHook(&CallerHook{})
 
 	logrusConfig, err := l.Config.GetLogrusConfig()
 	if err != nil {
@@ -207,4 +213,57 @@ func (l *LogrusEntry) Logf(f string, args ...interface{}) {
 	default:
 		l.entry.Errorf(f, args...)
 	}
+}
+
+var (
+	callerInitOnce     sync.Once
+	presentProjectRoot string
+)
+
+type CallerHook struct {
+}
+
+func (h *CallerHook) Fire(entry *logrus.Entry) error {
+	functionName, fileName := h.caller()
+	if fileName != "" {
+		entry.Data[logrus.FieldKeyFile] = fileName
+	}
+	if functionName != "" {
+		entry.Data[logrus.FieldKeyFunc] = functionName
+	}
+
+	return nil
+}
+
+func (h *CallerHook) Levels() []logrus.Level {
+	return []logrus.Level{
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.WarnLevel,
+		logrus.InfoLevel,
+		logrus.DebugLevel,
+	}
+}
+
+func (h *CallerHook) caller() (function string, file string) {
+	callerInitOnce.Do(func() {
+		presentProjectRoot, _ = os.Getwd()
+		presentProjectRoot = path.Join(presentProjectRoot, "../")
+	})
+
+	pcs := make([]uintptr, 25)
+	_ = runtime.Callers(0, pcs)
+	frames := runtime.CallersFrames(pcs)
+
+	for next, again := frames.Next(); again; next, again = frames.Next() {
+		if !strings.Contains(next.File, "/usr/local/go/") &&
+			!strings.Contains(next.File, "logger") &&
+			!strings.Contains(next.File, "logrus") &&
+			strings.HasPrefix(next.File, presentProjectRoot) {
+			return next.Function, fmt.Sprintf("%s:%d", strings.TrimPrefix(next.File, presentProjectRoot), next.Line)
+		}
+	}
+
+	return
 }

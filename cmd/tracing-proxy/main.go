@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,9 +12,9 @@ import (
 
 	"github.com/facebookgo/inject"
 	"github.com/facebookgo/startstop"
-	libtrace "github.com/opsramp/libtrace-go"
-	"github.com/opsramp/libtrace-go/transmission"
 	flag "github.com/jessevdk/go-flags"
+	"github.com/opsramp/libtrace-go"
+	"github.com/opsramp/libtrace-go/transmission"
 	"github.com/opsramp/tracing-proxy/app"
 	"github.com/opsramp/tracing-proxy/collect"
 	"github.com/opsramp/tracing-proxy/config"
@@ -83,13 +84,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	peers, err := peer.NewPeers(c)
-
-	if err != nil {
-		fmt.Printf("unable to load peers: %+v\n", err)
-		os.Exit(1)
-	}
-
 	// get desired implementation for each dependency to inject
 	lgr := logger.GetLoggerImplementation()
 	collector := collect.GetCollectorImplementation(c)
@@ -109,21 +103,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), c.GetPeerTimeout())
+	defer cancel()
+	done := make(chan struct{})
+	peers, err := peer.NewPeers(ctx, c, done)
+
+	if err != nil {
+		fmt.Printf("unable to load peers: %+v\n", err)
+		os.Exit(1)
+	}
+
 	// upstreamTransport is the http transport used to send things on to Honeycomb
 	upstreamTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
+		DialContext: (&net.Dialer{
 			Timeout: 10 * time.Second,
-		}).Dial,
+		}).DialContext,
 		TLSHandshakeTimeout: 15 * time.Second,
 	}
 
 	// peerTransport is the http transport used to send things to a local peer
 	peerTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
+		DialContext: (&net.Dialer{
 			Timeout: 3 * time.Second,
-		}).Dial,
+		}).DialContext,
 		TLSHandshakeTimeout: 1200 * time.Millisecond,
 	}
 
@@ -132,13 +136,16 @@ func main() {
 
 	opsrampkey, _ := c.GetOpsrampKey()
 	opsrampsecret, _ := c.GetOpsrampSecret()
-	opsrampapi, _ := c.GetOpsrampAPI()
+	opsrampapi, err := c.GetOpsrampAPI()
+	if err != nil {
+		logrusLogger.Fatal(err)
+	}
 
 	userAgentAddition := "tracing-proxy/" + version
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Opsramptraceproxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
-			BatchTimeout:          libtrace.DefaultBatchTimeout,
+			BatchTimeout:          c.GetBatchTimeout(),
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetUpstreamBufferSize()),
 			UserAgentAddition:     userAgentAddition,
@@ -158,12 +165,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("upstream client created..")
-
 	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.Opsramptraceproxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
-			BatchTimeout:          libtrace.DefaultBatchTimeout,
+			BatchTimeout:          c.GetBatchTimeout(),
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetPeerBufferSize()),
 			UserAgentAddition:     userAgentAddition,
@@ -229,5 +234,8 @@ func main() {
 
 	// block on our signal handler to exit
 	sig := <-sigsToExit
+	// unregister ourselves before we go
+	close(done)
+	time.Sleep(100 * time.Millisecond)
 	a.Logger.Error().Logf("Caught signal \"%s\"", sig)
 }

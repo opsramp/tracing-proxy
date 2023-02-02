@@ -48,7 +48,9 @@ There are a few vital configuration options; read through this list and make sur
 
 There are a few components of tracing-proxy with multiple implementations; the config file lets you choose which you'd like. As an example, there are two logging implementations - one that uses `logrus` and sends logs to STDOUT and a `honeycomb` implementation that sends the log messages to a Honeycomb dataset instead. Components with multiple implementations have one top level config item that lets you choose which implementation to use and then a section further down with additional config options for that choice (for example, the Honeycomb logger requires an API key).
 
-When configuration changes, send tracing-proxy a USR1 signal and it will re-read the configuration.
+When configuration changes, tracing-proxy will automatically reload the configuration[^1].
+
+[^1]: When running tracing-proxy within docker, be sure to mount the directory containing configuration & rules files so that [reloading will work](https://github.com/spf13/viper/issues/920) as expected.
 
 ### Redis-based Peer Management
 
@@ -61,14 +63,44 @@ To enable the redis-based config:
 
 When launched in redis-config mode, tracing-proxy needs a redis host to use for managing the list of peers in the tracing-proxy cluster. This hostname and port can be specified in one of two ways:
 
-- set the `tracing-proxy_REDIS_HOST` environment variable (and optionally the `tracing-proxy_REDIS_PASSWORD` environment variable)
-- set the `RedisHost` field in the config file (and optionally the `RedisPassword` field in the config file)
+- set the `REFINERY_REDIS_HOST` environment variable (and optionally the `REFINERY_REDIS_USERNAME` and `REFINERY_REDIS_PASSWORD` environment variables)
+- set the `RedisHost` field in the config file (and optionally the `RedisUsername` and `RedisPassword` fields in the config file)
 
 The Redis host should be a hostname and a port, for example `redis.mydomain.com:6379`. The example config file has `localhost:6379` which obviously will not work with more than one host. When TLS is required to connect to the Redis instance, set the `UseTLS` config to `true`.
 
 By default, a tracing-proxy process will register itself in Redis using its local hostname as its identifier for peer communications.
 In environments where domain name resolution is slow or unreliable, override the reliance on name lookups by specifying the name of the peering network interface with the `IdentifierInterfaceName` configuration option.
 See the [tracing-proxy documentation](https://docs.honeycomb.io/manage-data-volume/tracing-proxy/) for more details on tuning a cluster.
+
+
+### Mixing Classic and Environment & Services Rule Definitions
+
+With the change to support environemt and services in Honeycomb, some users will want to support both sending telemetry to a classic dataset and a new environment called the same thing (eg `production`).
+
+This can be accomplished by leveraging the new `DatasetPrefix` configuration property and then using that prefix in the rules definitions for the classic datasets.
+
+When Refinery receives telemetry using an API key associated to a classic dataset, it will then use the prefix in the form `{prefix}.{dataset}` when trying to resolve the rules definition.
+
+For example
+config.toml
+```toml
+DatasetPrefix = "classic"
+```
+
+rules.toml
+```toml
+# default rules
+Sampler = "DeterministicSampler"
+SampleRate = 1
+
+    [production] # environment called "production"
+    Sampler = "DeterministicSampler"
+    SampleRate = 5
+
+    [classic.production] # dataset called "production"
+    Sampler = "DeterministicSampler"
+    SampleRate = 10
+```
 
 ## How sampling decisions are made
 
@@ -101,7 +133,32 @@ tracing-proxy emits a number of metrics to give some indication about the health
 
 ## Troubleshooting
 
+### Logging
+
 The default logging level of `warn` is almost entirely silent. The `debug` level emits too much data to be used in production, but contains excellent information in a pre-production environment. Setting the logging level to `debug` during initial configuration will help understand what's working and what's not, but when traffic volumes increase it should be set to `warn`.
+
+### Configuration
+
+Because the normal configuration file formats (TOML and YAML) can sometimes be confusing to read and write, it may be valuable to check the loaded configuration by using one of the `/query` endpoints from the command line on a server that can access a refinery host.
+
+The `/query` endpoints are protected and can be enabled by specifying `QueryAuthToken` in the configuration file or specifying `REFINERY_QUERY_AUTH_TOKEN` in the environment. All requests to any `/query` endpoint must include the header `X-Honeycomb-Refinery-Query` set to the value of the specified token.
+
+`curl --include --get $REFINERY_HOST/query/allrules/$FORMAT --header "x-honeycomb-refinery-query: my-local-token"` will retrieve the entire rules configuration.
+
+`curl --include --get $REFINERY_HOST/query/rules/$FORMAT/$DATASET --header "x-honeycomb-refinery-query: my-local-token"` will retrieve the rule set that refinery will use for the specified dataset. It comes back as a map of the sampler type to its rule set.
+
+`curl --include --get $REFINERY_HOST/query/configmetadata --header "x-honeycomb-refinery-query: my-local-token"` will retrieve information about the configurations currently in use, including the timestamp when the configuration was last loaded.
+
+For file-based configurations (the only type currently supported), the `hash` value is identical to the value generated by the `md5sum` command for the given config file.
+
+For all of these commands:
+- `$REFINERY_HOST` should be the url of your refinery.
+- `$FORMAT` can be one of `json`, `yaml`, or `toml`.
+- `$DATASET` is the name of the dataset you want to check.
+
+### Sampling
+
+Refinery can send telemetry that includes information that can help debug the sampling decisions that are made. To enable it, in the config file, set `AddRuleReasonToTrace` to `true`. This will cause traces that are sent to Honeycomb to include a field `meta.refinery.reason`, which will contain text indicating which rule was evaluated that caused the trace to be included.
 
 ## Restarts
 

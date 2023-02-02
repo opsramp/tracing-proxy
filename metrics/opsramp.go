@@ -309,7 +309,7 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 
 	presentTime := time.Now().UnixMilli()
 
-	timeSeries := []*prompb.TimeSeries{}
+	timeSeries := []prompb.TimeSeries{}
 
 	for _, metricFamily := range metricFamilySlice {
 
@@ -317,9 +317,9 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 			continue
 		}
 		for _, metric := range metricFamily.GetMetric() {
-			labels := []*prompb.Label{}
+			labels := []prompb.Label{}
 			for _, label := range metric.GetLabel() {
-				labels = append(labels, &prompb.Label{
+				labels = append(labels, prompb.Label{
 					Name:  label.GetName(),
 					Value: label.GetValue(),
 				})
@@ -327,8 +327,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 
 			switch metricFamily.GetType() {
 			case io_prometheus_client.MetricType_COUNTER:
-				timeSeries = append(timeSeries, &prompb.TimeSeries{
-					Labels: append(labels, &prompb.Label{
+				timeSeries = append(timeSeries, prompb.TimeSeries{
+					Labels: append(labels, prompb.Label{
 						Name:  model.MetricNameLabel,
 						Value: metricFamily.GetName(),
 					}),
@@ -340,8 +340,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 					},
 				})
 			case io_prometheus_client.MetricType_GAUGE:
-				timeSeries = append(timeSeries, &prompb.TimeSeries{
-					Labels: append(labels, &prompb.Label{
+				timeSeries = append(timeSeries, prompb.TimeSeries{
+					Labels: append(labels, prompb.Label{
 						Name:  model.MetricNameLabel,
 						Value: metricFamily.GetName(),
 					}),
@@ -355,8 +355,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 			case io_prometheus_client.MetricType_HISTOGRAM:
 				// samples for all the buckets
 				for _, bucket := range metric.GetHistogram().GetBucket() {
-					timeSeries = append(timeSeries, &prompb.TimeSeries{
-						Labels: append(labels, []*prompb.Label{
+					timeSeries = append(timeSeries, prompb.TimeSeries{
+						Labels: append(labels, []prompb.Label{
 							{
 								Name:  model.MetricNameLabel,
 								Value: metricFamily.GetName(),
@@ -375,8 +375,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 					})
 				}
 				// samples for count and sum
-				timeSeries = append(timeSeries, &prompb.TimeSeries{
-					Labels: append(labels, &prompb.Label{
+				timeSeries = append(timeSeries, prompb.TimeSeries{
+					Labels: append(labels, prompb.Label{
 						Name:  model.MetricNameLabel,
 						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
 					}),
@@ -387,8 +387,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 						},
 					},
 				})
-				timeSeries = append(timeSeries, &prompb.TimeSeries{
-					Labels: append(labels, &prompb.Label{
+				timeSeries = append(timeSeries, prompb.TimeSeries{
+					Labels: append(labels, prompb.Label{
 						Name:  model.MetricNameLabel,
 						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
 					}),
@@ -402,8 +402,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 			case io_prometheus_client.MetricType_SUMMARY:
 				// samples for all the quantiles
 				for _, quantile := range metric.GetSummary().GetQuantile() {
-					timeSeries = append(timeSeries, &prompb.TimeSeries{
-						Labels: append(labels, []*prompb.Label{
+					timeSeries = append(timeSeries, prompb.TimeSeries{
+						Labels: append(labels, []prompb.Label{
 							{
 								Name:  model.MetricNameLabel,
 								Value: metricFamily.GetName(),
@@ -422,8 +422,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 					})
 				}
 				// samples for count and sum
-				timeSeries = append(timeSeries, &prompb.TimeSeries{
-					Labels: append(labels, &prompb.Label{
+				timeSeries = append(timeSeries, prompb.TimeSeries{
+					Labels: append(labels, prompb.Label{
 						Name:  model.MetricNameLabel,
 						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
 					}),
@@ -434,8 +434,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 						},
 					},
 				})
-				timeSeries = append(timeSeries, &prompb.TimeSeries{
-					Labels: append(labels, &prompb.Label{
+				timeSeries = append(timeSeries, prompb.TimeSeries{
+					Labels: append(labels, prompb.Label{
 						Name:  model.MetricNameLabel,
 						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
 					}),

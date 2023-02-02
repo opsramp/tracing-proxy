@@ -6,68 +6,57 @@ import (
 	"fmt"
 	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
 	"google.golang.org/grpc/metadata"
-	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	huskyotlp "github.com/opsramp/husky/otlp"
 	"github.com/opsramp/tracing-proxy/types"
 
-	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	collectortrace "github.com/opsramp/husky/proto/otlp/collector/trace/v1"
 )
 
-func (router *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
+func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	ri := huskyotlp.GetRequestInfoFromHttpHeaders(req.Header)
-	/*if err := ri.ValidateHeaders(); err != nil {
-		if errors.Is(err, huskyotlp.ErrInvalidContentType) {
-			router.handlerReturnWithError(w, ErrInvalidContentType, err)
-		} else {
-			router.handlerReturnWithError(w, ErrAuthNeeded, err)
-		}
-		return
-	}*/
 
-	result, err := huskyotlp.TranslateTraceReqFromReader(req.Body, ri)
+	result, err := huskyotlp.TranslateTraceRequestFromReader(req.Body, ri)
 	if err != nil {
-		router.handlerReturnWithError(w, ErrUpstreamFailed, err)
+		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 		return
 	}
 
 	token := ri.ApiToken
 	tenantId := ri.ApiTenantId
-	if err := processTraceRequest(req.Context(), router, result.Batches, ri.Dataset, token, tenantId); err != nil {
-		router.handlerReturnWithError(w, ErrUpstreamFailed, err)
+	if err := processTraceRequest(req.Context(), r, result.Batches, ri.Dataset, token, tenantId); err != nil {
+		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 	}
 }
 
-func (router *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServiceRequest) (*collectortrace.ExportTraceServiceResponse, error) {
+func (r *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServiceRequest) (*collectortrace.ExportTraceServiceResponse, error) {
 	ri := huskyotlp.GetRequestInfoFromGrpcMetadata(ctx)
-	/*if err := ri.ValidateHeaders(); err != nil {
-		return nil, huskyotlp.AsGRPCError(err)
-	}*/
-	router.Metrics.Increment(router.incomingOrPeer + "_router_batch")
-	fmt.Println("Translating Trace Req ..")
-	result, err := huskyotlp.TranslateTraceReq(req, ri)
-	//fmt.Println("req",result.Batches[0])
+
+	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
+
+	result, err := huskyotlp.TranslateTraceRequest(req, ri)
 	if err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 	token := ri.ApiToken
 	tenantId := ri.ApiTenantId
 	if len(tenantId) == 0 {
-		OpsrampTenantId, _ := router.Config.GetTenantId()
+		OpsrampTenantId, _ := r.Config.GetTenantId()
 		tenantId = OpsrampTenantId
 	}
 
 	if len(ri.Dataset) == 0 {
-		dataset, _ := router.Config.GetDataset()
+		dataset, _ := r.Config.GetDataset()
 		ri.Dataset = dataset
 	}
 
-	fmt.Println("TenantId:", tenantId)
-	fmt.Println("dataset:", ri.Dataset)
+	r.Logger.Debug().Logf("TenantId: %s", tenantId)
+	r.Logger.Debug().Logf("dataset:", ri.Dataset)
 
-	if err := processTraceRequest(ctx, router, result.Batches, ri.Dataset, token, tenantId); err != nil {
+	if err := processTraceRequest(ctx, r, result.Batches, ri.Dataset, token, tenantId); err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 
@@ -88,7 +77,6 @@ func processTraceRequest(
 		router.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
 		return err
 	}
-	//fmt.Println("datasetName",datasetName)
 
 	for _, batch := range batches {
 		for _, ev := range batch.Events {
@@ -98,6 +86,7 @@ func processTraceRequest(
 				APIToken:    token,
 				APITenantId: tenantId,
 				Dataset:     datasetName,
+				Environment: "",
 				SampleRate:  uint(ev.SampleRate),
 				Timestamp:   ev.Timestamp,
 				Data:        ev.Attributes,
@@ -113,7 +102,7 @@ func processTraceRequest(
 
 func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTraceProxyServiceRequest) (*proxypb.ExportTraceProxyServiceResponse, error) {
 
-	fmt.Println("Received Trace data from peer \n")
+	r.Logger.Debug().Logf("Received Trace data from peer")
 	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
 	var token, tenantId, datasetName string
@@ -124,36 +113,51 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 	}
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		log.Println("Failed to get metadata")
 		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get request metadata", Status: "Failed"}, nil
 	} else {
 		authorization := md.Get("Authorization")
-		fmt.Println("authorization is ", authorization)
 		if len(authorization) == 0 {
 			return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get Authorization", Status: "Failed"}, nil
 		} else {
 			token = authorization[0]
 			recvdTenantId := md.Get("tenantId")
 			if len(recvdTenantId) == 0 {
-				return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get TenantId", Status: "Failed"}, nil
+				tenantId = strings.TrimSpace(in.TenantId)
+				if tenantId == "" {
+					return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get TenantId", Status: "Failed"}, nil
+				}
 			} else {
 				tenantId = recvdTenantId[0]
-				datasetName = md.Get("dataset")[0]
 			}
 		}
-		log.Printf("\nauthorization:%v", token)
-		log.Printf("\nTenantId:%v", tenantId)
+
+		if dataSets := md.Get("dataset"); len(dataSets) > 0 {
+			datasetName = dataSets[0]
+		} else {
+			return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get dataset", Status: "Failed"}, nil
+		}
 	}
 
 	var requestID types.RequestIDContextKey
 
 	for _, item := range in.Items {
-		layout := "2006-01-02 15:04:05.000000000 +0000 UTC"
-		timestamp, err := time.Parse(layout, item.Timestamp)
+		timestamp, err := time.Parse(time.RFC3339Nano, item.Timestamp)
+		if err != nil {
+			r.Logger.Error().Logf("failed to parse timestamp: %v", err)
+			continue
+		}
 
 		var data map[string]interface{}
-		inrec, _ := json.Marshal(item.Data)
-		json.Unmarshal(inrec, &data)
+		inrec, err := json.Marshal(item.Data)
+		if err != nil {
+			r.Logger.Error().Logf("failed to marshal: %v", err)
+			continue
+		}
+		err = json.Unmarshal(inrec, &data)
+		if err != nil {
+			r.Logger.Error().Logf("failed to unmarshal: %v", err)
+			continue
+		}
 
 		//Translate ResourceAttributes , SpanAttributes, EventAttributes from proto format to interface{}
 		attributes := make(map[string]interface{})

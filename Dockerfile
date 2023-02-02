@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 \
     -o tracing-proxy \
     ./cmd/tracing-proxy
 
-FROM alpine:latest
+FROM alpine:3.17
 
 RUN apk update && apk add --no-cache bash ca-certificates && update-ca-certificates
 

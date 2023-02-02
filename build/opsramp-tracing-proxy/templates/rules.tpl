@@ -1,3 +1,8 @@
+{{/*
+Complete Rules TOML
+*/}}
+
+{{- define "rulesTOML" -}}
 ############################
 ## Sampling Rules Config ##
 ############################
@@ -287,3 +292,4 @@ SampleRate = 1
     Sampler = "TotalThroughputSampler"
     GoalThroughputPerSec = 100
     FieldList = "[request.method]"
+{{- end }}
