@@ -1,16 +1,15 @@
-//go:build all || race
-// +build all race
-
 package collect
 
 import (
+	"fmt"
+	"math/rand"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/facebookgo/inject"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/opsramp/tracing-proxy/collect/cache"
@@ -21,6 +20,8 @@ import (
 	"github.com/opsramp/tracing-proxy/transmit"
 	"github.com/opsramp/tracing-proxy/types"
 )
+
+const legacyAPIKey = "c9945edf5d245834089a1bd6cc9ad01e"
 
 // TestAddRootSpan tests that adding a root span winds up with a trace object in
 // the cache and that that trace gets sent
@@ -46,9 +47,9 @@ func TestAddRootSpan(t *testing.T) {
 
 	c := cache.NewInMemCache(3, &metrics.NullMetrics{}, &logger.NullLogger{})
 	coll.cache = c
-	stc, err := lru.New(15)
+	stc, err := cache.NewLegacySentCache(15)
 	assert.NoError(t, err, "lru cache should start")
-	coll.sentTraceCache = stc
+	coll.sampleTraceCache = stc
 
 	coll.incoming = make(chan *types.Span, 5)
 	coll.fromPeer = make(chan *types.Span, 5)
@@ -63,6 +64,7 @@ func TestAddRootSpan(t *testing.T) {
 		TraceID: traceID1,
 		Event: types.Event{
 			Dataset: "aoeu",
+			APIKey:  legacyAPIKey,
 		},
 	}
 	coll.AddSpan(span)
@@ -82,6 +84,7 @@ func TestAddRootSpan(t *testing.T) {
 		TraceID: traceID2,
 		Event: types.Event{
 			Dataset: "aoeu",
+			APIKey:  legacyAPIKey,
 		},
 	}
 	coll.AddSpanFromPeer(span)
@@ -95,6 +98,127 @@ func TestAddRootSpan(t *testing.T) {
 	assert.Equal(t, 2, len(transmission.Events), "adding another root span should send the span")
 	assert.Equal(t, "aoeu", transmission.Events[1].Dataset, "sending a root span should immediately send that span via transmission")
 	transmission.Mux.RUnlock()
+}
+
+// #490, SampleRate getting stomped could cause confusion if sampling was
+// happening upstream of refinery. Writing down what got sent to refinery
+// will help people figure out what is going on.
+func TestOriginalSampleRateIsNotedInMetaField(t *testing.T) {
+	transmission := &transmit.MockTransmission{}
+	transmission.Start()
+	conf := &config.MockConfig{
+		GetSendDelayVal:    0,
+		GetTraceTimeoutVal: 60 * time.Second,
+		GetSamplerTypeVal:  &config.DeterministicSamplerConfig{SampleRate: 2},
+		SendTickerVal:      2 * time.Millisecond,
+	}
+	coll := &InMemCollector{
+		Config:       conf,
+		Logger:       &logger.NullLogger{},
+		Transmission: transmission,
+		Metrics:      &metrics.NullMetrics{},
+		SamplerFactory: &sample.SamplerFactory{
+			Config: conf,
+			Logger: &logger.NullLogger{},
+		},
+	}
+
+	c := cache.NewInMemCache(3, &metrics.NullMetrics{}, &logger.NullLogger{})
+	coll.cache = c
+	stc, err := cache.NewLegacySentCache(15)
+	assert.NoError(t, err, "lru cache should start")
+	coll.sampleTraceCache = stc
+
+	coll.incoming = make(chan *types.Span, 5)
+	coll.fromPeer = make(chan *types.Span, 5)
+	coll.datasetSamplers = make(map[string]sample.Sampler)
+	go coll.collect()
+	defer coll.Stop()
+
+	// Spin until a sample gets triggered
+	sendAttemptCount := 0
+	for getEventsLength(transmission) < 1 || sendAttemptCount > 10 {
+		sendAttemptCount++
+		span := &types.Span{
+			TraceID: fmt.Sprintf("trace-%v", sendAttemptCount),
+			Event: types.Event{
+				Dataset:    "aoeu",
+				APIKey:     legacyAPIKey,
+				SampleRate: 50,
+				Data:       make(map[string]interface{}),
+			},
+		}
+		coll.AddSpan(span)
+		time.Sleep(conf.SendTickerVal * 2)
+	}
+
+	transmission.Mux.RLock()
+	assert.Greater(t, len(transmission.Events), 0, "should be some events transmitted")
+	assert.Equal(t, uint(50), transmission.Events[0].Data["meta.refinery.original_sample_rate"], "metadata should be populated with original sample rate")
+	transmission.Mux.RUnlock()
+}
+
+// HoneyComb treats a missing or 0 SampleRate the same as 1, but
+// behaves better/more consistently if the SampleRate is explicitly
+// set instead of inferred
+func TestTransmittedSpansShouldHaveASampleRateOfAtLeastOne(t *testing.T) {
+	transmission := &transmit.MockTransmission{}
+	transmission.Start()
+	conf := &config.MockConfig{
+		GetSendDelayVal:    0,
+		GetTraceTimeoutVal: 60 * time.Second,
+		GetSamplerTypeVal:  &config.DeterministicSamplerConfig{SampleRate: 1},
+		SendTickerVal:      2 * time.Millisecond,
+	}
+	coll := &InMemCollector{
+		Config:       conf,
+		Logger:       &logger.NullLogger{},
+		Transmission: transmission,
+		Metrics:      &metrics.NullMetrics{},
+		SamplerFactory: &sample.SamplerFactory{
+			Config: conf,
+			Logger: &logger.NullLogger{},
+		},
+	}
+
+	c := cache.NewInMemCache(3, &metrics.NullMetrics{}, &logger.NullLogger{})
+	coll.cache = c
+	stc, err := cache.NewLegacySentCache(15)
+	assert.NoError(t, err, "lru cache should start")
+	coll.sampleTraceCache = stc
+
+	coll.incoming = make(chan *types.Span, 5)
+	coll.fromPeer = make(chan *types.Span, 5)
+	coll.datasetSamplers = make(map[string]sample.Sampler)
+	go coll.collect()
+	defer coll.Stop()
+
+	span := &types.Span{
+		TraceID: fmt.Sprintf("trace-%v", 1),
+		Event: types.Event{
+			Dataset:    "aoeu",
+			APIKey:     legacyAPIKey,
+			SampleRate: 0, // This should get lifted to 1
+			Data:       make(map[string]interface{}),
+		},
+	}
+
+	coll.AddSpan(span)
+
+	time.Sleep(conf.SendTickerVal * 2)
+
+	transmission.Mux.RLock()
+	assert.Equal(t, 1, len(transmission.Events), "should be some events transmitted")
+	assert.Equal(t, uint(1), transmission.Events[0].SampleRate,
+		"SampleRate should be reset to one after starting at zero")
+	transmission.Mux.RUnlock()
+}
+
+func getEventsLength(transmission *transmit.MockTransmission) int {
+	transmission.Mux.RLock()
+	defer transmission.Mux.RUnlock()
+
+	return len(transmission.Events)
 }
 
 // TestAddSpan tests that adding a span winds up with a trace object in the
@@ -120,9 +244,9 @@ func TestAddSpan(t *testing.T) {
 	}
 	c := cache.NewInMemCache(3, &metrics.NullMetrics{}, &logger.NullLogger{})
 	coll.cache = c
-	stc, err := lru.New(15)
+	stc, err := cache.NewLegacySentCache(15)
 	assert.NoError(t, err, "lru cache should start")
-	coll.sentTraceCache = stc
+	coll.sampleTraceCache = stc
 
 	coll.incoming = make(chan *types.Span, 5)
 	coll.fromPeer = make(chan *types.Span, 5)
@@ -139,6 +263,7 @@ func TestAddSpan(t *testing.T) {
 			Data: map[string]interface{}{
 				"trace.parent_id": "unused",
 			},
+			APIKey: legacyAPIKey,
 		},
 	}
 	coll.AddSpanFromPeer(span)
@@ -151,6 +276,7 @@ func TestAddSpan(t *testing.T) {
 		Event: types.Event{
 			Dataset: "aoeu",
 			Data:    map[string]interface{}{},
+			APIKey:  legacyAPIKey,
 		},
 	}
 	coll.AddSpan(rootSpan)
@@ -181,7 +307,7 @@ func TestDryRunMode(t *testing.T) {
 		Config: conf,
 		Logger: &logger.NullLogger{},
 	}
-	sampler := samplerFactory.GetSamplerImplementationForDataset("test")
+	sampler := samplerFactory.GetSamplerImplementationForKey("test", true)
 	coll := &InMemCollector{
 		Config:         conf,
 		Logger:         &logger.NullLogger{},
@@ -191,9 +317,9 @@ func TestDryRunMode(t *testing.T) {
 	}
 	c := cache.NewInMemCache(3, &metrics.NullMetrics{}, &logger.NullLogger{})
 	coll.cache = c
-	stc, err := lru.New(15)
+	stc, err := cache.NewLegacySentCache(15)
 	assert.NoError(t, err, "lru cache should start")
-	coll.sentTraceCache = stc
+	coll.sampleTraceCache = stc
 
 	coll.incoming = make(chan *types.Span, 5)
 	coll.fromPeer = make(chan *types.Span, 5)
@@ -205,19 +331,20 @@ func TestDryRunMode(t *testing.T) {
 	var traceID2 = "def456"
 	var traceID3 = "ghi789"
 	// sampling decisions based on trace ID
-	_, keepTraceID1 := sampler.GetSampleRate(&types.Trace{TraceID: traceID1})
+	_, keepTraceID1, _ := sampler.GetSampleRate(&types.Trace{TraceID: traceID1})
 	// would be dropped if dry run mode was not enabled
 	assert.False(t, keepTraceID1)
-	_, keepTraceID2 := sampler.GetSampleRate(&types.Trace{TraceID: traceID2})
+	_, keepTraceID2, _ := sampler.GetSampleRate(&types.Trace{TraceID: traceID2})
 	assert.True(t, keepTraceID2)
-	_, keepTraceID3 := sampler.GetSampleRate(&types.Trace{TraceID: traceID3})
+	_, keepTraceID3, _ := sampler.GetSampleRate(&types.Trace{TraceID: traceID3})
 	// would be dropped if dry run mode was not enabled
 	assert.False(t, keepTraceID3)
 
 	span := &types.Span{
 		TraceID: traceID1,
 		Event: types.Event{
-			Data: map[string]interface{}{},
+			Data:   map[string]interface{}{},
+			APIKey: legacyAPIKey,
 		},
 	}
 	coll.AddSpan(span)
@@ -240,6 +367,7 @@ func TestDryRunMode(t *testing.T) {
 			Data: map[string]interface{}{
 				"trace.parent_id": "unused",
 			},
+			APIKey: legacyAPIKey,
 		},
 	}
 	coll.AddSpanFromPeer(span)
@@ -249,7 +377,8 @@ func TestDryRunMode(t *testing.T) {
 	span = &types.Span{
 		TraceID: traceID2,
 		Event: types.Event{
-			Data: map[string]interface{}{},
+			Data:   map[string]interface{}{},
+			APIKey: legacyAPIKey,
 		},
 	}
 	coll.AddSpanFromPeer(span)
@@ -265,7 +394,8 @@ func TestDryRunMode(t *testing.T) {
 	span = &types.Span{
 		TraceID: traceID3,
 		Event: types.Event{
-			Data: map[string]interface{}{},
+			Data:   map[string]interface{}{},
+			APIKey: legacyAPIKey,
 		},
 	}
 	coll.AddSpan(span)
@@ -315,6 +445,7 @@ func TestCacheSizeReload(t *testing.T) {
 		Data: map[string]interface{}{
 			"trace.parent_id": "1",
 		},
+		APIKey: legacyAPIKey,
 	}
 
 	coll.AddSpan(&types.Span{TraceID: "1", Event: event})
@@ -389,6 +520,7 @@ func TestSampleConfigReload(t *testing.T) {
 		TraceID: "1",
 		Event: types.Event{
 			Dataset: dataset,
+			APIKey:  legacyAPIKey,
 		},
 	}
 
@@ -416,6 +548,7 @@ func TestSampleConfigReload(t *testing.T) {
 		TraceID: "2",
 		Event: types.Event{
 			Dataset: dataset,
+			APIKey:  legacyAPIKey,
 		},
 	}
 
@@ -430,7 +563,7 @@ func TestSampleConfigReload(t *testing.T) {
 	}, conf.GetTraceTimeoutVal*2, conf.SendTickerVal)
 }
 
-func TestMaxAlloc(t *testing.T) {
+func TestOldMaxAlloc(t *testing.T) {
 	transmission := &transmit.MockTransmission{}
 	transmission.Start()
 	conf := &config.MockConfig{
@@ -451,9 +584,9 @@ func TestMaxAlloc(t *testing.T) {
 	}
 	c := cache.NewInMemCache(1000, &metrics.NullMetrics{}, &logger.NullLogger{})
 	coll.cache = c
-	stc, err := lru.New(15)
+	stc, err := cache.NewLegacySentCache(15)
 	assert.NoError(t, err, "lru cache should start")
-	coll.sentTraceCache = stc
+	coll.sampleTraceCache = stc
 
 	coll.incoming = make(chan *types.Span, 1000)
 	coll.fromPeer = make(chan *types.Span, 5)
@@ -470,6 +603,7 @@ func TestMaxAlloc(t *testing.T) {
 					"trace.parent_id": "unused",
 					"id":              i,
 				},
+				APIKey: legacyAPIKey,
 			},
 		}
 		coll.AddSpan(span)
@@ -505,7 +639,7 @@ func TestMaxAlloc(t *testing.T) {
 		time.Sleep(conf.SendTickerVal)
 	}
 
-	assert.Equal(t, 450, len(traces), "should have shrunk cache to 90% of previous size")
+	assert.Equal(t, 450, len(traces), "should have shrunk cache to 90%% of previous size")
 	for i, trace := range traces {
 		assert.False(t, trace.Sent)
 		assert.Equal(t, strconv.Itoa(i+50), trace.TraceID)
@@ -514,10 +648,109 @@ func TestMaxAlloc(t *testing.T) {
 
 	// We discarded the first 50 spans, and sent them.
 	transmission.Mux.Lock()
-	assert.Equal(t, 50, len(transmission.Events), "should have sent 10% of traces")
+	assert.Equal(t, 50, len(transmission.Events), "should have sent 10%% of traces")
 	for i, ev := range transmission.Events {
 		assert.Equal(t, i, ev.Data["id"])
 	}
+
+	transmission.Mux.Unlock()
+}
+
+func TestStableMaxAlloc(t *testing.T) {
+	transmission := &transmit.MockTransmission{}
+	transmission.Start()
+	conf := &config.MockConfig{
+		GetSendDelayVal:      0,
+		GetTraceTimeoutVal:   10 * time.Minute,
+		GetSamplerTypeVal:    &config.DeterministicSamplerConfig{SampleRate: 1},
+		SendTickerVal:        2 * time.Millisecond,
+		CacheOverrunStrategy: "impact",
+	}
+	coll := &InMemCollector{
+		Config:       conf,
+		Logger:       &logger.NullLogger{},
+		Transmission: transmission,
+		Metrics:      &metrics.NullMetrics{},
+		SamplerFactory: &sample.SamplerFactory{
+			Config: conf,
+			Logger: &logger.NullLogger{},
+		},
+	}
+	spandata := make([]map[string]interface{}, 500)
+	for i := 0; i < 500; i++ {
+		spandata[i] = map[string]interface{}{
+			"trace.parent_id": "unused",
+			"id":              i,
+			"str1":            strings.Repeat("abc", rand.Intn(100)+1),
+			"str2":            strings.Repeat("def", rand.Intn(100)+1),
+		}
+	}
+
+	c := cache.NewInMemCache(1000, &metrics.NullMetrics{}, &logger.NullLogger{})
+	coll.cache = c
+	stc, err := cache.NewLegacySentCache(15)
+	assert.NoError(t, err, "lru cache should start")
+	coll.sampleTraceCache = stc
+
+	coll.incoming = make(chan *types.Span, 1000)
+	coll.fromPeer = make(chan *types.Span, 5)
+	coll.datasetSamplers = make(map[string]sample.Sampler)
+	go coll.collect()
+	defer coll.Stop()
+
+	for i := 0; i < 500; i++ {
+		span := &types.Span{
+			TraceID: strconv.Itoa(i),
+			Event: types.Event{
+				Dataset: "aoeu",
+				Data:    spandata[i],
+				APIKey:  legacyAPIKey,
+			},
+		}
+		coll.AddSpan(span)
+	}
+
+	for len(coll.incoming) > 0 {
+		time.Sleep(conf.SendTickerVal)
+	}
+
+	// Now there should be 500 traces in the cache.
+	coll.mutex.Lock()
+	assert.Equal(t, 500, len(coll.cache.GetAll()))
+
+	// We want to induce an eviction event, so set MaxAlloc a bit below
+	// our current post-GC alloc.
+	runtime.GC()
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+	// Set MaxAlloc, which should cause cache evictions.
+	conf.GetInMemoryCollectorCacheCapacityVal.MaxAlloc = mem.Alloc * 99 / 100
+
+	coll.mutex.Unlock()
+
+	// wait for the cache to take some action
+	var traces []*types.Trace
+	for {
+		coll.mutex.Lock()
+		traces = coll.cache.GetAll()
+		if len(traces) < 500 {
+			break
+		}
+		coll.mutex.Unlock()
+
+		time.Sleep(conf.SendTickerVal)
+	}
+
+	assert.Equal(t, 1000, coll.cache.(*cache.DefaultInMemCache).GetCacheSize(), "cache size shouldn't change")
+
+	tracesLeft := len(traces)
+	assert.Less(t, tracesLeft, 480, "should have sent some traces")
+	assert.Greater(t, tracesLeft, 100, "should have NOT sent some traces")
+	coll.mutex.Unlock()
+
+	// We discarded the most costly spans, and sent them.
+	transmission.Mux.Lock()
+	assert.Equal(t, 500-len(traces), len(transmission.Events), "should have sent traces that weren't kept")
 
 	transmission.Mux.Unlock()
 }
@@ -543,9 +776,9 @@ func TestAddSpanNoBlock(t *testing.T) {
 	}
 	c := cache.NewInMemCache(10, &metrics.NullMetrics{}, &logger.NullLogger{})
 	coll.cache = c
-	stc, err := lru.New(15)
+	stc, err := cache.NewLegacySentCache(15)
 	assert.NoError(t, err, "lru cache should start")
-	coll.sentTraceCache = stc
+	coll.sampleTraceCache = stc
 
 	coll.incoming = make(chan *types.Span, 3)
 	coll.fromPeer = make(chan *types.Span, 3)
@@ -556,6 +789,7 @@ func TestAddSpanNoBlock(t *testing.T) {
 		TraceID: "1",
 		Event: types.Event{
 			Dataset: "aoeu",
+			APIKey:  legacyAPIKey,
 		},
 	}
 
@@ -588,4 +822,145 @@ func TestDependencyInjection(t *testing.T) {
 	if err := g.Populate(); err != nil {
 		t.Error(err)
 	}
+}
+
+// TestAddSpanCount tests that adding a root span winds up with a trace object in
+// the cache and that that trace gets span count added to it
+func TestAddSpanCount(t *testing.T) {
+	transmission := &transmit.MockTransmission{}
+	transmission.Start()
+	conf := &config.MockConfig{
+		GetSendDelayVal:    0,
+		GetTraceTimeoutVal: 60 * time.Second,
+		GetSamplerTypeVal:  &config.DeterministicSamplerConfig{SampleRate: 1},
+		SendTickerVal:      2 * time.Millisecond,
+		AddSpanCountToRoot: true,
+	}
+	coll := &InMemCollector{
+		Config:       conf,
+		Logger:       &logger.NullLogger{},
+		Transmission: transmission,
+		Metrics:      &metrics.NullMetrics{},
+		SamplerFactory: &sample.SamplerFactory{
+			Config: conf,
+			Logger: &logger.NullLogger{},
+		},
+	}
+	c := cache.NewInMemCache(3, &metrics.NullMetrics{}, &logger.NullLogger{})
+	coll.cache = c
+	stc, err := cache.NewLegacySentCache(15)
+	assert.NoError(t, err, "lru cache should start")
+	coll.sampleTraceCache = stc
+
+	coll.incoming = make(chan *types.Span, 5)
+	coll.fromPeer = make(chan *types.Span, 5)
+	coll.datasetSamplers = make(map[string]sample.Sampler)
+	go coll.collect()
+	defer coll.Stop()
+
+	var traceID = "mytrace"
+
+	span := &types.Span{
+		TraceID: traceID,
+		Event: types.Event{
+			Dataset: "aoeu",
+			Data: map[string]interface{}{
+				"trace.parent_id": "unused",
+			},
+			APIKey: legacyAPIKey,
+		},
+	}
+	coll.AddSpanFromPeer(span)
+	time.Sleep(conf.SendTickerVal * 2)
+	assert.Equal(t, traceID, coll.getFromCache(traceID).TraceID, "after adding the span, we should have a trace in the cache with the right trace ID")
+	assert.Equal(t, 0, len(transmission.Events), "adding a non-root span should not yet send the span")
+	// ok now let's add the root span and verify that both got sent
+	rootSpan := &types.Span{
+		TraceID: traceID,
+		Event: types.Event{
+			Dataset: "aoeu",
+			Data:    map[string]interface{}{},
+			APIKey:  legacyAPIKey,
+		},
+	}
+	coll.AddSpan(rootSpan)
+	time.Sleep(conf.SendTickerVal * 2)
+	assert.Nil(t, coll.getFromCache(traceID), "after adding a leaf and root span, it should be removed from the cache")
+	transmission.Mux.RLock()
+	assert.Equal(t, 2, len(transmission.Events), "adding a root span should send all spans in the trace")
+	assert.Equal(t, nil, transmission.Events[0].Data["meta.span_count"], "child span metadata should NOT be populated with span count")
+	assert.Equal(t, int64(2), transmission.Events[1].Data["meta.span_count"], "root span metadata should be populated with span count")
+	transmission.Mux.RUnlock()
+}
+
+// TestLateRootGetsSpanCount tests that the root span gets decorated with the right span count
+// even if the trace had already been sent
+func TestLateRootGetsSpanCount(t *testing.T) {
+	transmission := &transmit.MockTransmission{}
+	transmission.Start()
+	conf := &config.MockConfig{
+		GetSendDelayVal:    0,
+		GetTraceTimeoutVal: 5 * time.Millisecond,
+		GetSamplerTypeVal:  &config.DeterministicSamplerConfig{SampleRate: 1},
+		SendTickerVal:      2 * time.Millisecond,
+		AddSpanCountToRoot: true,
+	}
+	coll := &InMemCollector{
+		Config:       conf,
+		Logger:       &logger.NullLogger{},
+		Transmission: transmission,
+		Metrics:      &metrics.NullMetrics{},
+		SamplerFactory: &sample.SamplerFactory{
+			Config: conf,
+			Logger: &logger.NullLogger{},
+		},
+	}
+	c := cache.NewInMemCache(3, &metrics.NullMetrics{}, &logger.NullLogger{})
+	coll.cache = c
+	stc, err := cache.NewLegacySentCache(15)
+	assert.NoError(t, err, "lru cache should start")
+	coll.sampleTraceCache = stc
+
+	coll.incoming = make(chan *types.Span, 5)
+	coll.fromPeer = make(chan *types.Span, 5)
+	coll.datasetSamplers = make(map[string]sample.Sampler)
+	go coll.collect()
+	defer coll.Stop()
+
+	var traceID = "mytrace"
+
+	span := &types.Span{
+		TraceID: traceID,
+		Event: types.Event{
+			Dataset: "aoeu",
+			Data: map[string]interface{}{
+				"trace.parent_id": "unused",
+			},
+			APIKey: legacyAPIKey,
+		},
+	}
+	coll.AddSpanFromPeer(span)
+	time.Sleep(conf.SendTickerVal * 10)
+
+	trace := coll.getFromCache(traceID)
+	assert.Nil(t, trace, "trace should have been sent although the root span hasn't arrived")
+	assert.Equal(t, 1, len(transmission.Events), "adding a non-root span and waiting should send the span")
+	// now we add the root span and verify that both got sent and that the root span had the span count
+	rootSpan := &types.Span{
+		TraceID: traceID,
+		Event: types.Event{
+			Dataset: "aoeu",
+			Data:    map[string]interface{}{},
+			APIKey:  legacyAPIKey,
+		},
+	}
+	coll.AddSpan(rootSpan)
+	time.Sleep(conf.SendTickerVal * 2)
+	assert.Nil(t, coll.getFromCache(traceID), "after adding a leaf and root span, it should be removed from the cache")
+	transmission.Mux.RLock()
+	assert.Equal(t, 2, len(transmission.Events), "adding a root span should send all spans in the trace")
+	assert.Equal(t, nil, transmission.Events[0].Data["meta.span_count"], "child span metadata should NOT be populated with span count")
+	assert.Equal(t, int64(2), transmission.Events[1].Data["meta.span_count"], "root span metadata should be populated with span count")
+	transmission.Mux.RUnlock()
+
 }

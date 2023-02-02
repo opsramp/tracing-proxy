@@ -36,6 +36,8 @@ type MockConfig struct {
 	GetPeersVal                []string
 	GetRedisHostErr            error
 	GetRedisHostVal            string
+	GetRedisUsernameErr        error
+	GetRedisUsernameVal        string
 	GetRedisPasswordErr        error
 	GetRedisPasswordVal        string
 	GetUseTLSErr               error
@@ -43,6 +45,7 @@ type MockConfig struct {
 	GetUseTLSInsecureErr       error
 	GetUseTLSInsecureVal       bool
 	GetSamplerTypeErr          error
+	GetSamplerTypeName         string
 	GetSamplerTypeVal          interface{}
 	GetMetricsTypeErr          error
 	GetMetricsTypeVal          string
@@ -50,6 +53,7 @@ type MockConfig struct {
 	GetOpsRampMetricsConfigVal OpsRampMetricsConfig
 	GetSendDelayErr            error
 	GetSendDelayVal            time.Duration
+	GetBatchTimeoutVal         time.Duration
 	GetTraceTimeoutErr         error
 	GetTraceTimeoutVal         time.Duration
 	GetMaxBatchSizeVal         uint
@@ -60,10 +64,26 @@ type MockConfig struct {
 	UseIPV6Identifier          bool
 	RedisIdentifier            string
 	PeerManagementType         string
+	PeerManagementStrategy     string
 	DebugServiceAddr           string
 	DryRun                     bool
 	DryRunFieldName            string
 	AddHostMetadataToTrace     bool
+	AddRuleReasonToTrace       bool
+	EnvironmentCacheTTL        time.Duration
+	DatasetPrefix              string
+	QueryAuthToken             string
+	GRPCMaxConnectionIdle      time.Duration
+	GRPCMaxConnectionAge       time.Duration
+	GRPCMaxConnectionAgeGrace  time.Duration
+	GRPCTime                   time.Duration
+	GRPCTimeout                time.Duration
+	PeerTimeout                time.Duration
+	AdditionalErrorFields      []string
+	AddSpanCountToRoot         bool
+	CacheOverrunStrategy       string
+	SampleCache                SampleCacheConfig
+	CfgMetadata                []ConfigMetadata
 
 	Mux sync.RWMutex
 }
@@ -76,71 +96,83 @@ func (m *MockConfig) ReloadConfig() {
 		callback()
 	}
 }
+
 func (m *MockConfig) RegisterReloadCallback(callback func()) {
 	m.Mux.Lock()
 	m.Callbacks = append(m.Callbacks, callback)
 	m.Mux.Unlock()
 }
+
 func (m *MockConfig) GetAPIKeys() ([]string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetAPIKeysVal, m.GetAPIKeysErr
 }
+
 func (m *MockConfig) GetCollectorType() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetCollectorTypeVal, m.GetCollectorTypeErr
 }
+
 func (m *MockConfig) GetInMemCollectorCacheCapacity() (InMemoryCollectorCacheCapacity, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetInMemoryCollectorCacheCapacityVal, m.GetInMemoryCollectorCacheCapacityErr
 }
+
 func (m *MockConfig) GetOpsrampAPI() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetOpsrampAPIVal, m.GetOpsrampAPIErr
 }
+
 func (m *MockConfig) GetListenAddr() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetListenAddrVal, m.GetListenAddrErr
 }
+
 func (m *MockConfig) GetPeerListenAddr() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetPeerListenAddrVal, m.GetPeerListenAddrErr
 }
+
 func (m *MockConfig) GetCompressPeerCommunication() bool {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetCompressPeerCommunicationsVal
 }
+
 func (m *MockConfig) GetGRPCListenAddr() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetGRPCListenAddrVal, m.GetGRPCListenAddrErr
 }
+
 func (m *MockConfig) GetLoggerType() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetLoggerTypeVal, m.GetLoggerTypeErr
 }
+
 func (m *MockConfig) GetLoggingLevel() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetLoggingLevelVal, m.GetLoggingLevelErr
 }
+
 func (m *MockConfig) GetOtherConfig(name string, iface interface{}) error {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
@@ -151,54 +183,77 @@ func (m *MockConfig) GetOtherConfig(name string, iface interface{}) error {
 	}
 	return m.GetOtherConfigErr
 }
+
 func (m *MockConfig) GetPeers() ([]string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetPeersVal, m.GetPeersErr
 }
+
 func (m *MockConfig) GetRedisHost() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetRedisHostVal, m.GetRedisHostErr
 }
+
+func (m *MockConfig) GetRedisUsername() (string, error) {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.GetRedisUsernameVal, m.GetRedisUsernameErr
+}
+
 func (m *MockConfig) GetRedisPassword() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetRedisPasswordVal, m.GetRedisPasswordErr
 }
+
 func (m *MockConfig) GetUseTLS() (bool, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetUseTLSVal, m.GetUseTLSErr
 }
+
 func (m *MockConfig) GetUseTLSInsecure() (bool, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetUseTLSInsecureVal, m.GetUseTLSInsecureErr
 }
+
 func (m *MockConfig) GetMetricsType() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetMetricsTypeVal, m.GetMetricsTypeErr
 }
+
 func (m *MockConfig) GetPrometheusMetricsConfig() (OpsRampMetricsConfig, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetOpsRampMetricsConfigVal, m.GetOpsRampMetricsConfigErr
 }
+
 func (m *MockConfig) GetSendDelay() (time.Duration, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
 	return m.GetSendDelayVal, m.GetSendDelayErr
 }
+
+func (m *MockConfig) GetBatchTimeout() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.GetBatchTimeoutVal
+}
+
 func (m *MockConfig) GetTraceTimeout() (time.Duration, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
@@ -214,11 +269,20 @@ func (m *MockConfig) GetMaxBatchSize() uint {
 }
 
 // TODO: allow per-dataset mock values
-func (m *MockConfig) GetSamplerConfigForDataset(dataset string) (interface{}, error) {
+func (m *MockConfig) GetSamplerConfigForDataset(dataset string) (interface{}, string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
-	return m.GetSamplerTypeVal, m.GetSamplerTypeErr
+	return m.GetSamplerTypeVal, m.GetSamplerTypeName, m.GetSamplerTypeErr
+}
+
+// GetAllSamplerRules returns all dataset rules, including the default
+func (m *MockConfig) GetAllSamplerRules() (map[string]interface{}, error) {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	v := map[string]interface{}{"dataset1": m.GetSamplerTypeVal}
+	return v, m.GetSamplerTypeErr
 }
 
 func (m *MockConfig) GetUpstreamBufferSize() int {
@@ -227,6 +291,7 @@ func (m *MockConfig) GetUpstreamBufferSize() int {
 
 	return m.GetUpstreamBufferSizeVal
 }
+
 func (m *MockConfig) GetPeerBufferSize() int {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
@@ -269,6 +334,13 @@ func (m *MockConfig) GetPeerManagementType() (string, error) {
 	return m.PeerManagementType, nil
 }
 
+func (m *MockConfig) GetPeerManagementStrategy() (string, error) {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.PeerManagementStrategy, nil
+}
+
 func (m *MockConfig) GetDebugServiceAddr() (string, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
@@ -295,4 +367,109 @@ func (m *MockConfig) GetAddHostMetadataToTrace() bool {
 	defer m.Mux.RUnlock()
 
 	return m.AddHostMetadataToTrace
+}
+
+func (m *MockConfig) GetAddRuleReasonToTrace() bool {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.AddRuleReasonToTrace
+}
+
+func (f *MockConfig) GetEnvironmentCacheTTL() time.Duration {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.EnvironmentCacheTTL
+}
+
+func (f *MockConfig) GetDatasetPrefix() string {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.DatasetPrefix
+}
+
+func (f *MockConfig) GetQueryAuthToken() string {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.QueryAuthToken
+}
+
+func (f *MockConfig) GetGRPCMaxConnectionIdle() time.Duration {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.GRPCMaxConnectionIdle
+}
+
+func (f *MockConfig) GetGRPCMaxConnectionAge() time.Duration {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.GRPCMaxConnectionAge
+}
+
+func (f *MockConfig) GetGRPCMaxConnectionAgeGrace() time.Duration {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.GRPCMaxConnectionAgeGrace
+}
+
+func (f *MockConfig) GetGRPCTime() time.Duration {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.GRPCTime
+}
+
+func (f *MockConfig) GetGRPCTimeout() time.Duration {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.GRPCTimeout
+}
+
+func (f *MockConfig) GetPeerTimeout() time.Duration {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.PeerTimeout
+}
+
+func (f *MockConfig) GetAdditionalErrorFields() []string {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.AdditionalErrorFields
+}
+
+func (f *MockConfig) GetAddSpanCountToRoot() bool {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.AddSpanCountToRoot
+}
+
+func (f *MockConfig) GetCacheOverrunStrategy() string {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.CacheOverrunStrategy
+}
+
+func (f *MockConfig) GetSampleCacheConfig() SampleCacheConfig {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.SampleCache
+}
+
+func (f *MockConfig) GetConfigMetadata() []ConfigMetadata {
+	f.Mux.RLock()
+	defer f.Mux.RUnlock()
+
+	return f.CfgMetadata
 }

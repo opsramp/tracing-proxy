@@ -1,6 +1,3 @@
-//go:build all || race
-// +build all race
-
 package sample
 
 import (
@@ -18,6 +15,7 @@ type TestRulesData struct {
 	Spans        []*types.Span
 	ExpectedRate uint
 	ExpectedKeep bool
+	ExpectedName string
 }
 
 func TestRules(t *testing.T) {
@@ -165,6 +163,7 @@ func TestRules(t *testing.T) {
 			},
 			ExpectedKeep: true,
 			ExpectedRate: 10,
+			ExpectedName: "fallback",
 		},
 		{
 			Rules: &config.RulesBasedSamplerConfig{
@@ -301,6 +300,7 @@ func TestRules(t *testing.T) {
 			ExpectedKeep: true,
 			// the trace does not match all the rules so we expect the default sample rate
 			ExpectedRate: 1,
+			ExpectedName: "no rule matched",
 		},
 		{
 			Rules: &config.RulesBasedSamplerConfig{
@@ -496,6 +496,101 @@ func TestRules(t *testing.T) {
 			ExpectedKeep: true,
 			ExpectedRate: 10,
 		},
+		{
+			Rules: &config.RulesBasedSamplerConfig{
+				Rule: []*config.RulesBasedSamplerRule{
+					{
+						Name:       "Check root span for span count",
+						SampleRate: 1,
+						Condition: []*config.RulesBasedSamplerCondition{
+							{
+								Field:    "meta.span_count",
+								Operator: "=",
+								Value:    int(2),
+							},
+						},
+					},
+				},
+			},
+			Spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"trace.trace_id":  "12345",
+							"trace.span_id":   "54321",
+							"meta.span_count": int64(2),
+							"test":            int64(2),
+						},
+					},
+				},
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"trace.trace_id":  "12345",
+							"trace.span_id":   "654321",
+							"trace.parent_id": "54321",
+							"test":            int64(2),
+						},
+					},
+				},
+			},
+			ExpectedName: "Check root span for span count",
+			ExpectedKeep: true,
+			ExpectedRate: 1,
+		},
+		{
+			Rules: &config.RulesBasedSamplerConfig{
+				Rule: []*config.RulesBasedSamplerRule{
+					{
+						Name:       "Check root span for span count",
+						Drop:       true,
+						SampleRate: 0,
+						Condition: []*config.RulesBasedSamplerCondition{
+							{
+								Field:    "meta.span_count",
+								Operator: ">=",
+								Value:    int(2),
+							},
+						},
+					},
+				},
+			},
+			Spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"trace.trace_id":  "12345",
+							"trace.span_id":   "54321",
+							"meta.span_count": int64(2),
+							"test":            int64(2),
+						},
+					},
+				},
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"trace.trace_id":  "12345",
+							"trace.span_id":   "654321",
+							"trace.parent_id": "54321",
+							"test":            int64(2),
+						},
+					},
+				},
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"trace.trace_id":  "12345",
+							"trace.span_id":   "754321",
+							"trace.parent_id": "54321",
+							"test":            int64(3),
+						},
+					},
+				},
+			},
+			ExpectedName: "Check root span for span count",
+			ExpectedKeep: false,
+			ExpectedRate: 0,
+		},
 	}
 
 	for _, d := range data {
@@ -511,9 +606,168 @@ func TestRules(t *testing.T) {
 			trace.AddSpan(span)
 		}
 
-		rate, keep := sampler.GetSampleRate(trace)
+		rate, keep, reason := sampler.GetSampleRate(trace)
 
 		assert.Equal(t, d.ExpectedRate, rate, d.Rules)
+		name := d.ExpectedName
+		if name == "" {
+			name = d.Rules.Rule[0].Name
+		}
+		assert.Contains(t, reason, name)
+
+		// we can only test when we don't expect to keep the trace
+		if !d.ExpectedKeep {
+			assert.Equal(t, d.ExpectedKeep, keep, d.Rules)
+		}
+	}
+}
+
+func TestRulesWithNestedFields(t *testing.T) {
+	data := []TestRulesData{
+		{
+			Rules: &config.RulesBasedSamplerConfig{
+				Rule: []*config.RulesBasedSamplerRule{
+					{
+						Name:       "nested field",
+						SampleRate: 10,
+						Condition: []*config.RulesBasedSamplerCondition{
+							{
+								Field:    "test.test1",
+								Operator: "=",
+								Value:    "a",
+							},
+						},
+					},
+				},
+				CheckNestedFields: true,
+			},
+			Spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"test": map[string]interface{}{
+								"test1": "a",
+							},
+						},
+					},
+				},
+			},
+			ExpectedKeep: true,
+			ExpectedRate: 10,
+		},
+		{
+			Rules: &config.RulesBasedSamplerConfig{
+				Rule: []*config.RulesBasedSamplerRule{
+					{
+						Name:       "field not nested",
+						SampleRate: 10,
+						Condition: []*config.RulesBasedSamplerCondition{
+							{
+								Field:    "test.test1",
+								Operator: "=",
+								Value:    "a",
+							},
+						},
+					},
+				},
+				CheckNestedFields: true,
+			},
+			Spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"test.test1": "a",
+						},
+					},
+				},
+			},
+			ExpectedKeep: true,
+			ExpectedRate: 10,
+		},
+		{
+			Rules: &config.RulesBasedSamplerConfig{
+				Rule: []*config.RulesBasedSamplerRule{
+					{
+						Name:       "not exists test",
+						SampleRate: 4,
+						Condition: []*config.RulesBasedSamplerCondition{
+							{
+								Field:    "test.test1",
+								Operator: "not-exists",
+							},
+						},
+					},
+				},
+				CheckNestedFields: true,
+			},
+			Spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"test": map[string]interface{}{
+								"test2": "b",
+							},
+						},
+					},
+				},
+			},
+			ExpectedKeep: true,
+			ExpectedRate: 4,
+		},
+		{
+			Rules: &config.RulesBasedSamplerConfig{
+				Rule: []*config.RulesBasedSamplerRule{
+					{
+						Name:       "do not check nested",
+						SampleRate: 4,
+						Condition: []*config.RulesBasedSamplerCondition{
+							{
+								Field:    "test.test1",
+								Operator: "exists",
+							},
+						},
+					},
+				},
+				CheckNestedFields: false,
+			},
+			Spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"test": map[string]interface{}{
+								"test1": "a",
+							},
+						},
+					},
+				},
+			},
+			ExpectedKeep: true,
+			ExpectedRate: 1,
+			ExpectedName: "no rule matched",
+		},
+	}
+
+	for _, d := range data {
+		sampler := &RulesBasedSampler{
+			Config:  d.Rules,
+			Logger:  &logger.NullLogger{},
+			Metrics: &metrics.NullMetrics{},
+		}
+
+		trace := &types.Trace{}
+
+		for _, span := range d.Spans {
+			trace.AddSpan(span)
+		}
+
+		rate, keep, reason := sampler.GetSampleRate(trace)
+
+		assert.Equal(t, d.ExpectedRate, rate, d.Rules)
+		name := d.ExpectedName
+		if name == "" {
+			name = d.Rules.Rule[0].Name
+		}
+		assert.Contains(t, reason, name)
 
 		// we can only test when we don't expect to keep the trace
 		if !d.ExpectedKeep {
@@ -584,9 +838,14 @@ func TestRulesWithDynamicSampler(t *testing.T) {
 		}
 
 		sampler.Start()
-		rate, keep := sampler.GetSampleRate(trace)
+		rate, keep, reason := sampler.GetSampleRate(trace)
 
 		assert.Equal(t, d.ExpectedRate, rate, d.Rules)
+		name := d.ExpectedName
+		if name == "" {
+			name = d.Rules.Rule[0].Name
+		}
+		assert.Contains(t, reason, name)
 
 		// we can only test when we don't expect to keep the trace
 		if !d.ExpectedKeep {
@@ -667,9 +926,14 @@ func TestRulesWithEMADynamicSampler(t *testing.T) {
 		}
 
 		sampler.Start()
-		rate, keep := sampler.GetSampleRate(trace)
+		rate, keep, reason := sampler.GetSampleRate(trace)
 
 		assert.Equal(t, d.ExpectedRate, rate, d.Rules)
+		name := d.ExpectedName
+		if name == "" {
+			name = d.Rules.Rule[0].Name
+		}
+		assert.Contains(t, reason, name)
 
 		// we can only test when we don't expect to keep the trace
 		if !d.ExpectedKeep {
@@ -685,5 +949,114 @@ func TestRulesWithEMADynamicSampler(t *testing.T) {
 				"meta.key":         "200•,",
 			}, "should add the sampling key to all spans in the trace")
 		}
+	}
+}
+
+func TestRuleMatchesSpanMatchingSpan(t *testing.T) {
+	testCases := []struct {
+		name           string
+		spans          []*types.Span
+		keepSpanScope  bool
+		keepTraceScope bool
+	}{
+		{
+			name:           "all conditions match single span",
+			keepSpanScope:  true,
+			keepTraceScope: true,
+			spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"rule_test":        int64(1),
+							"http.status_code": "200",
+						},
+					},
+				},
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"rule_test":        int64(5),
+							"http.status_code": "500",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:           "all conditions do not match single span",
+			keepSpanScope:  false,
+			keepTraceScope: true,
+			spans: []*types.Span{
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"rule_test":        int64(1),
+							"http.status_code": "500",
+						},
+					},
+				},
+				{
+					Event: types.Event{
+						Data: map[string]interface{}{
+							"rule_test":        int64(5),
+							"http.status_code": "200",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, scope := range []string{"span", "trace"} {
+				sampler := &RulesBasedSampler{
+					Config: &config.RulesBasedSamplerConfig{
+						Rule: []*config.RulesBasedSamplerRule{
+							{
+								Name:       "Rule to match span",
+								Scope:      scope,
+								SampleRate: 1,
+								Condition: []*config.RulesBasedSamplerCondition{
+									{
+										Field:    "rule_test",
+										Operator: "=",
+										Value:    int64(1),
+									},
+									{
+										Field:    "http.status_code",
+										Operator: "=",
+										Value:    "200",
+									},
+								},
+							},
+							{
+								Name:       "Default rule",
+								Drop:       true,
+								SampleRate: 1,
+							},
+						},
+					},
+					Logger:  &logger.NullLogger{},
+					Metrics: &metrics.NullMetrics{},
+				}
+
+				trace := &types.Trace{}
+
+				for _, span := range tc.spans {
+					trace.AddSpan(span)
+				}
+
+				sampler.Start()
+				rate, keep, _ := sampler.GetSampleRate(trace)
+
+				assert.Equal(t, uint(1), rate, rate)
+				if scope == "span" {
+					assert.Equal(t, tc.keepSpanScope, keep, keep)
+				} else {
+					assert.Equal(t, tc.keepTraceScope, keep, keep)
+				}
+			}
+		})
 	}
 }
