@@ -1,0 +1,7 @@
+Package: tracing-proxy
+Version: 5.0.0
+Architecture: amd64
+Essential: no
+Priority: optional
+Maintainer: sai kalyan
+Description: This is tracing proxy debian package

@@ -1,0 +1,13 @@
+[Unit]
+Description=tracing-proxy OpsRamp Trace-Aware Sampling Proxy
+After=network.target
+
+[Service]
+ExecStart=/opt/opsramp/tracing-proxy/bin/tracing-proxy -c /opt/opsramp/tracing-proxy/conf/config_complete.toml -r /opt/opsramp/tracing-proxy/conf/rules_complete.toml
+KillMode=process
+Restart=on-failure
+LimitNOFILE=infinity
+
+[Install]
+Alias=tracing-proxy tracing-proxy.service
+
