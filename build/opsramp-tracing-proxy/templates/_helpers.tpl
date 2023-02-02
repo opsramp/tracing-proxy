@@ -49,3 +49,30 @@ Selector labels
 app.kubernetes.io/name: {{ include "opsramp-tracing-proxy.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Image Defaults
+*/}}
+{{- define "imagePullPolicy" -}}
+{{ if .Values.image }} {{ default "Always" .Values.image.pullPolicy | quote }} {{ else }} "Always" {{ end }}
+{{- end }}
+
+
+{{/*
+Redis Defaults
+*/}}
+{{- define "opsramp-tracing-proxy.redis.fullname" -}}
+{{ include "opsramp-tracing-proxy.fullname" . }}-redis
+{{- end }}
+{{- define "opsramp-tracing-proxy.redis.labels" -}}
+helm.sh/chart: {{ include "opsramp-tracing-proxy.chart" . }}
+{{ include "opsramp-tracing-proxy.redis.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+{{- define "opsramp-tracing-proxy.redis.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "opsramp-tracing-proxy.name" . }}-redis
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

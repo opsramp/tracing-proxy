@@ -45,9 +45,17 @@ type Config interface {
 
 	GetPeerManagementType() (string, error)
 
+	// GetPeerManagementStrategy returns the strategy specified for
+	// Peer management.
+	GetPeerManagementStrategy() (string, error)
+
 	// GetRedisHost returns the address of a Redis instance to use for peer
 	// management.
 	GetRedisHost() (string, error)
+
+	// GetRedisUsername returns the username of a Redis instance to use for peer
+	// management.
+	GetRedisUsername() (string, error)
 
 	// GetRedisPassword returns the password of a Redis instance to use for peer
 	// management.
@@ -71,6 +79,9 @@ type Config interface {
 	// complete before sending it, to allow stragglers to arrive
 	GetSendDelay() (time.Duration, error)
 
+	// GetBatchTimeout returns how often to send off batches in seconds
+	GetBatchTimeout() time.Duration
+
 	// GetTraceTimeout is how long to wait before sending a trace even if it's
 	// not complete. This should be longer than the longest expected trace
 	// duration.
@@ -92,8 +103,11 @@ type Config interface {
 	// GetInMemCollectorCacheCapacity returns the config specific to the InMemCollector
 	GetInMemCollectorCacheCapacity() (InMemoryCollectorCacheCapacity, error)
 
-	// GetSamplerConfigForDataset returns the sampler type to use for the given dataset
-	GetSamplerConfigForDataset(string) (interface{}, error)
+	// GetSamplerConfigForDataset returns the sampler type and name to use for the given dataset
+	GetSamplerConfigForDataset(string) (interface{}, string, error)
+
+	// GetAllSamplerRules returns all dataset rules in a map, including the default
+	GetAllSamplerRules() (map[string]interface{}, error)
 
 	// GetLogrusConfig returns the config specific to Logrus
 	GetLogrusConfig() (*LogrusLoggerConfig, error)
@@ -137,7 +151,7 @@ type Config interface {
 
 	// GetProxyProtocol returns protocol on which to listen for
 	// proxy traffic
-	GetProxyProtocol()(string,error )
+	GetProxyProtocol() (string, error)
 
 	// GetProxyServer returns the address on which to listen for
 	// proxy traffic
@@ -145,21 +159,59 @@ type Config interface {
 
 	// GetProxyPort returns the port on which to listen for
 	// proxy traffic
-	GetProxyPort() (int64)
+	GetProxyPort() int64
 
 	// GetProxyUsername returns the username on which to listen for
 	// proxy traffic
-	GetProxyUsername()(string,error)
+	GetProxyUsername() (string, error)
 
 	// GetProxyPassword returns the password of proxy user on which to listen for
 	// proxy traffic
-	GetProxyPassword()(string,error)
+	GetProxyPassword() (string, error)
 
-	GetOpsrampKey()(string, error)
+	GetOpsrampKey() (string, error)
 
-	GetOpsrampSecret()(string, error)
+	GetOpsrampSecret() (string, error)
 
-	GetTenantId()(string, error)
+	GetTenantId() (string, error)
 
-	GetDataset()(string, error)
+	GetDataset() (string, error)
+
+	GetAddRuleReasonToTrace() bool
+
+	GetEnvironmentCacheTTL() time.Duration
+
+	GetDatasetPrefix() string
+
+	// GetQueryAuthToken returns the token that must be used to access the /query endpoints
+	GetQueryAuthToken() string
+
+	GetGRPCMaxConnectionIdle() time.Duration
+
+	GetGRPCMaxConnectionAge() time.Duration
+
+	GetGRPCMaxConnectionAgeGrace() time.Duration
+
+	GetGRPCTime() time.Duration
+
+	GetGRPCTimeout() time.Duration
+
+	GetPeerTimeout() time.Duration
+
+	GetAdditionalErrorFields() []string
+
+	GetAddSpanCountToRoot() bool
+
+	GetCacheOverrunStrategy() string
+
+	GetConfigMetadata() []ConfigMetadata
+
+	GetSampleCacheConfig() SampleCacheConfig
+}
+
+type ConfigMetadata struct {
+	Type     string `json:"type"`
+	ID       string `json:"id"`
+	Hash     string `json:"hash"`
+	LoadedAt string `json:"loaded_at"`
 }

@@ -62,6 +62,7 @@ type RulesBasedSamplerRule struct {
 	SampleRate int
 	Sampler    *RulesBasedDownstreamSampler
 	Drop       bool
+	Scope      string `validate:"oneof=span trace"`
 	Condition  []*RulesBasedSamplerCondition
 }
 
@@ -70,7 +71,8 @@ func (r *RulesBasedSamplerRule) String() string {
 }
 
 type RulesBasedSamplerConfig struct {
-	Rule []*RulesBasedSamplerRule
+	Rule              []*RulesBasedSamplerRule
+	CheckNestedFields bool
 }
 
 func (r *RulesBasedSamplerConfig) String() string {
