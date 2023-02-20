@@ -15,6 +15,8 @@ cp ../../config_complete.toml tracing/opt/opsramp/tracing-proxy/conf/config_comp
 cp ../../rules_complete.toml tracing/opt/opsramp/tracing-proxy/conf/rules_complete.toml
 go build ../cmd/tracing-proxy/main.go
 cp ../../cmd/tracing-proxy/main tracing/opt/opsramp/tracing-proxy/bin/tracing-proxy
+go build configure.go
+cp configure tracing/opt/opsramp/tracing-proxy/bin/configure
 
 dpkg -b tracing
 
