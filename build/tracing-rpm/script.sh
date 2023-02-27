@@ -9,10 +9,15 @@ Version=$1
 sed -i "/^\%define version/s/^.*$/\%define version     ${Version}/g" tracing-proxy.spec
 
 # Updating the files
+mkdir -p opt/opsramp/tracing-proxy/conf
+mkdir -p opt/opsramp/tracing-proxy/bin
 cp ../../config_complete.toml opt/opsramp/tracing-proxy/conf/config_complete.toml
 cp ../../rules_complete.toml opt/opsramp/tracing-proxy/conf/rules_complete.toml
 go build ../../cmd/tracing-proxy/main.go
+go build configure.go
 cp ../../cmd/tracing-proxy/main opt/opsramp/tracing-proxy/bin/tracing-proxy
+cp configure opt/opsramp/tracing-proxy/bin/configure
+
 
 
 mkdir tracing-proxy-$1

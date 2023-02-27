@@ -3,7 +3,6 @@ module github.com/opsramp/tracing-proxy
 go 1.19
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/dgryski/go-wyhash v0.0.0-20191203203029-c4841ae36371
 	github.com/facebookgo/inject v0.0.0-20180706035515-f23751cae28b
 	github.com/facebookgo/startstop v0.0.0-20161013234910-bc158412526d
@@ -42,6 +41,7 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-metro v0.0.0-20200812162917-85c65e2d0165 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
@@ -71,6 +71,7 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/net v0.4.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/text v0.5.0 // indirect

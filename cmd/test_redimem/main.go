@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gomodule/redigo/redis"
 	"github.com/sirupsen/logrus"
 
@@ -234,49 +233,49 @@ func singleTestRandomLength(limit, registerDurLimitSec int, rm *redimem.RedisMem
 
 // adds two entries with various sleeps and verifies they're there at the
 // expected times
-func linearTest(rm *redimem.RedisMembership) {
-	ctx := context.Background()
-	logrus.Infoln("about to register one for 3sec")
-	rm.Register(ctx, "one", 3*time.Second)
-
-	logrus.Infoln("about to sleep for 2sec")
-	time.Sleep(2 * time.Second)
-
-	logrus.Infoln("checking for one")
-	list, _ := rm.GetMembers(ctx)
-	spew.Dump(list)
-
-	logrus.Infoln("about to register two for 3sec")
-	rm.Register(ctx, "two", 3*time.Second)
-
-	logrus.Infoln("checking for one and two")
-	list, _ = rm.GetMembers(ctx)
-	spew.Dump(list)
-
-	logrus.Infoln("about to sleep for 1.5sec")
-	time.Sleep(1500 * time.Millisecond)
-
-	logrus.Infoln("checking list; one should be missing, two should be there")
-	list, _ = rm.GetMembers(ctx)
-	spew.Dump(list)
-
-	logrus.Infoln("about to re-register two for 3sec")
-	rm.Register(ctx, "two", 3*time.Second)
-
-	logrus.Infoln("about to sleep for 2sec")
-	time.Sleep(2 * time.Second)
-
-	logrus.Infoln("checking list; one should be missing, two should be there")
-	list, _ = rm.GetMembers(ctx)
-	spew.Dump(list)
-
-	logrus.Infoln("about to sleep for 1.5sec")
-	time.Sleep(1500 * time.Millisecond)
-
-	logrus.Infoln("checking list; both should be missing")
-	list, _ = rm.GetMembers(ctx)
-	spew.Dump(list)
-}
+//func linearTest(rm *redimem.RedisMembership) {
+//	ctx := context.Background()
+//	logrus.Infoln("about to register one for 3sec")
+//	rm.Register(ctx, "one", 3*time.Second)
+//
+//	logrus.Infoln("about to sleep for 2sec")
+//	time.Sleep(2 * time.Second)
+//
+//	logrus.Infoln("checking for one")
+//	list, _ := rm.GetMembers(ctx)
+//	spew.Dump(list)
+//
+//	logrus.Infoln("about to register two for 3sec")
+//	rm.Register(ctx, "two", 3*time.Second)
+//
+//	logrus.Infoln("checking for one and two")
+//	list, _ = rm.GetMembers(ctx)
+//	spew.Dump(list)
+//
+//	logrus.Infoln("about to sleep for 1.5sec")
+//	time.Sleep(1500 * time.Millisecond)
+//
+//	logrus.Infoln("checking list; one should be missing, two should be there")
+//	list, _ = rm.GetMembers(ctx)
+//	spew.Dump(list)
+//
+//	logrus.Infoln("about to re-register two for 3sec")
+//	rm.Register(ctx, "two", 3*time.Second)
+//
+//	logrus.Infoln("about to sleep for 2sec")
+//	time.Sleep(2 * time.Second)
+//
+//	logrus.Infoln("checking list; one should be missing, two should be there")
+//	list, _ = rm.GetMembers(ctx)
+//	spew.Dump(list)
+//
+//	logrus.Infoln("about to sleep for 1.5sec")
+//	time.Sleep(1500 * time.Millisecond)
+//
+//	logrus.Infoln("checking list; both should be missing")
+//	list, _ = rm.GetMembers(ctx)
+//	spew.Dump(list)
+//}
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
