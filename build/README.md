@@ -57,10 +57,9 @@ $ gcloud artifacts docker images list LOCATION-docker.pkg.dev/PROJECT/REPOSITORY
 $ helm pull oci://LOCATION-docker.pkg.dev/PROJECT/REPOSITORY/IMAGE \
     --version VERSION \
     --untar
-
-$ helm create ns NAMESPACE
-
 $ cd opsramp-tracing-proxy
+
+$ kubectl create ns NAMESPACE
 $ helm install opsramp-tracing-proxy -n opsramp-tracing-proxy .
 ```
 
