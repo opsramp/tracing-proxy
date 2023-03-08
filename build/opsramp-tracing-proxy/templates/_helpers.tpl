@@ -51,6 +51,23 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Service Ports
+*/}}
+{{- define "httpPort" -}}
+{{ if .Values.service }} {{ default 8082 .Values.service.http }} {{ else }} 8082 {{ end }}
+{{- end }}
+{{- define "grpcPort" -}}
+{{ if .Values.service }} {{ default 9090 .Values.service.grpc }} {{ else }} 9090 {{ end }}
+{{- end }}
+{{- define "httpPeerPort" -}}
+{{ if .Values.service }} {{ default 8081 .Values.service.peer }} {{ else }} 8081 {{ end }}
+{{- end }}
+{{- define "grpcPeerPort" -}}
+{{ if .Values.service }} {{ default 8084 .Values.service.grpcPeer }} {{ else }} 8084 {{ end }}
+{{- end }}
+
+
+{{/*
 Image Defaults
 */}}
 {{- define "imagePullPolicy" -}}

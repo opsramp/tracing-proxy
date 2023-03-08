@@ -24,22 +24,23 @@ fullnameOverride: ""
 
 service:
   type: ClusterIP
-  port: 80
-  grpcPort: 9090
-  peerPort: 8081
+  http: 8082
+  peer: 8081
+  grpc: 9090
+  grpcPeer: 8084
   annotations: { }
 
 config:
   # ListenAddr is the IP and port on which to listen for incoming events.
-  ListenAddr: 0.0.0.0:8080
+  ListenAddr: 0.0.0.0:{{include "httpPort" . | trim }}
 
   # GRPCListenAddr is the IP and port on which to listen for incoming events over gRPC.
-  GRPCListenAddr: 0.0.0.0:9090
+  GRPCListenAddr: 0.0.0.0:{{include "grpcPort" . | trim }}
 
   # PeerListenAddr is the IP and port on which to listen for traffic being rerouted from a peer.
-  PeerListenAddr: 0.0.0.0:8081
+  PeerListenAddr: 0.0.0.0:{{include "httpPeerPort" . | trim }}
 
-  GRPCPeerListenAddr: 0.0.0.0:8084
+  GRPCPeerListenAddr: 0.0.0.0:{{include "grpcPeerPort" . | trim }}
 
   # ProxyProtocol accepts http and https
   # Not Eligible for live reload.

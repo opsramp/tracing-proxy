@@ -33,14 +33,16 @@ spec:
             - "-r"
             - "/etc/tracing-proxy/rules.yaml"
           ports:
-            - name: data
-              containerPort: {{ .Values.service.port }}
+            - name: http
+              containerPort: {{include "httpPort" . | trim }}
               protocol: TCP
             - name: peer
-              containerPort: {{ .Values.service.peerPort }}
+              containerPort: {{include "httpPeerPort" . | trim }}
               protocol: TCP
-            - containerPort: {{ .Values.service.grpcPort }}
+            - containerPort: {{include "grpcPort" . | trim }}
               name: grpc
+            - containerPort: {{include "grpcPeerPort" . | trim }}
+              name: grpc-peer
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
