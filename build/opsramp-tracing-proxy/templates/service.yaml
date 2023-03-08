@@ -12,13 +12,20 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.grpcPort }}
+    - port: {{include "httpPort" . | trim }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{include "httpPeerPort" . | trim }}
+      targetPort: peer
+      protocol: TCP
+      name: peer
+    - port: {{include "grpcPort" . | trim }}
       targetPort: grpc
-      protocol: TCP
       name: grpc
-    - port: {{ .Values.service.port }}
-      targetPort: data
-      protocol: TCP
-      name: data
+    - port: {{include "grpcPeerPort" . | trim }}
+      targetPort: grpc-peer
+      name: grpc-peer
+
   selector:
     {{- include "opsramp-tracing-proxy.selectorLabels" . | nindent 4 }}
