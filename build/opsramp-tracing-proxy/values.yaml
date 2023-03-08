@@ -59,7 +59,7 @@ config:
   ProxyPassword: ""
 
   # CompressPeerCommunication determines whether trace-proxy will compress span data
-  # it forwards to peers. If it costs money to transmit data between refinery
+  # it forwards to peers. If it costs money to transmit data between OpsRamp-Tracing-Proxy
   # instances (e.g. they're spread across AWS availability zones), then you
   # almost certainly want compression enabled to reduce your bill. The option to
   # disable it is provided as an escape hatch for deployments that value lower CPU
@@ -127,22 +127,22 @@ config:
 
   # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
   # an API key with an environment name.
-  # Cache misses lookup the environment name using HoneycombAPI config value.
+  # Cache misses lookup the environment name using OpsRampAPI config value.
   # Default is 1 hour ("1h").
   # Not eligible for live reload.
   EnvironmentCacheTTL: "1h"
 
   # QueryAuthToken, if specified, provides a token that must be specified with
-  # the header "X-Honeycomb-Refinery-Query" in order for a /query request to succeed.
-  # These /query requests are intended for debugging refinery installations and
+  # the header "X-OpsRamp-Tracing-Proxy-Query" in order for a /query request to succeed.
+  # These /query requests are intended for debugging OpsRamp-Tracing-Proxy installations and
   # are not typically needed in normal operation.
-  # Can be specified in the environment as REFINERY_QUERY_AUTH_TOKEN.
+  # Can be specified in the environment as TRACING_PROXY_QUERY_AUTH_TOKEN.
   # If left unspecified, the /query endpoints are inaccessible.
   # Not eligible for live reload.
   # QueryAuthToken: "some-random-value"
 
-  # AddRuleReasonToTrace causes traces that are sent to Honeycomb to include the field `meta.refinery.reason`.
-  # This field contains text indicating which rule was evaluated that caused the trace to be included.
+  # AddRuleReasonToTrace causes traces that are sent to OpsRamp to include a field which
+  # contains text indicating which rule was evaluated that caused the trace to be included.
   # Eligible for live reload.
   AddRuleReasonToTrace: true
 
@@ -178,7 +178,7 @@ config:
   # in OpsRampMetrics and only works when the Metrics is set to "prometheus")
   SendMetricsToOpsRamp: false
 
-  # Configure how Refinery peers are discovered and managed
+  # Configure how OpsRamp-Tracing-Proxy peers are discovered and managed
   PeerManagement:
     Strategy: "hash" # Always use hash for balanced distribution of traces
 
@@ -186,7 +186,7 @@ config:
     Type: "redis"
 
     # RedisHost is used to connect to redis for peer cluster membership management.
-    # Further, if the environment variable 'REFINERY_REDIS_HOST' is set it takes
+    # Further, if the environment variable 'TRACING_PROXY_REDIS_HOST' is set it takes
     # precedence and this value is ignored.
     # Not eligible for live reload.
     # RedisHost will default to the name used for the release or name overrides depending on what is used,
@@ -194,13 +194,13 @@ config:
     RedisHost: '{{include "opsramp-tracing-proxy.redis.fullname" .}}:6379'
 
     # RedisUsername is the username used to connect to redis for peer cluster membership management.
-    # If the environment variable 'REFINERY_REDIS_USERNAME' is set it takes
+    # If the environment variable 'TRACING_PROXY_REDIS_USERNAME' is set it takes
     # precedence and this value is ignored.
     # Not eligible for live reload.
     RedisUsername: ""
 
     # RedisPassword is the password used to connect to redis for peer cluster membership management.
-    # If the environment variable 'REFINERY_REDIS_PASSWORD' is set it takes
+    # If the environment variable 'TRACING_PROXY_REDIS_PASSWORD' is set it takes
     # precedence and this value is ignored.
     # Not eligible for live reload.
     RedisPassword: ""
@@ -226,7 +226,7 @@ config:
   ############################
   ## Implementation Choices ##
   ############################
-  # Each of the config options below chooses an implementation of a Refinery
+  # Each of the config options below chooses an implementation of a OpsRamp-Tracing-Proxy
   # component to use. Depending on the choice there may be more configuration
   # required below in the section for that choice. Changing implementation choices
   # requires a process restart; these changes will not be picked up by a live
@@ -271,7 +271,7 @@ config:
 
   OpsRampMetrics:
     # MetricsListenAddr determines the interface and port on which Prometheus will
-    # listen for requests for /metrics. Must be different from the main Refinery
+    # listen for requests for /metrics. Must be different from the main OpsRamp-Tracing-Proxy
     # listener.
     # Not eligible for live reload.
     MetricsListenAddr: 'localhost:2112'
