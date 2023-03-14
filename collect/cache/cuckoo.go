@@ -3,7 +3,7 @@ package cache
 import (
 	"sync"
 
-	"github.com/honeycombio/refinery/metrics"
+	"github.com/opsramp/tracing-proxy/metrics"
 	cuckoo "github.com/panmari/cuckoofilter"
 )
 
