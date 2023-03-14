@@ -161,7 +161,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		fmt.Printf("unable to initialize upstream libtrace client")
+		fmt.Printf("unable to initialize upstream libtrace client: %v", err)
 		os.Exit(1)
 	}
 
@@ -182,7 +182,7 @@ func main() {
 		},
 	})
 	if err != nil {
-		fmt.Printf("unable to initialize upstream libtrace client")
+		fmt.Printf("unable to initialize upstream libtrace client: %v", err)
 		os.Exit(1)
 	}
 
