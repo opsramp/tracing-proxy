@@ -36,8 +36,7 @@ type configContents struct {
 	CompressPeerCommunication bool
 	GRPCListenAddr            string
 	GRPCPeerListenAddr        string
-	APIKeys                   []string `validate:"required"`
-	OpsrampAPI                string   `validate:"required,url"`
+	OpsrampAPI                string `validate:"required,url"`
 	OpsrampKey                string
 	OpsrampSecret             string
 	TenantId                  string
@@ -453,13 +452,6 @@ func (f *fileConfig) GetGRPCPeerListenAddr() (string, error) {
 	return f.conf.GRPCPeerListenAddr, nil
 }
 
-func (f *fileConfig) GetAPIKeys() ([]string, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
-	return f.conf.APIKeys, nil
-}
-
 func (f *fileConfig) GetPeerManagementType() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
@@ -500,6 +492,25 @@ func (f *fileConfig) GetRedisPassword() (string, error) {
 	defer f.mux.RUnlock()
 
 	return f.config.GetString("PeerManagement.RedisPassword"), nil
+}
+
+func (f *fileConfig) GetRedisPrefix() string {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	prefix := f.config.GetString("PeerManagement.RedisPrefix")
+	if prefix == "" {
+		prefix = "tracing-proxy"
+	}
+
+	return prefix
+}
+
+func (f *fileConfig) GetRedisDatabase() int {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.config.GetInt("PeerManagement.RedisDatabase")
 }
 
 func (f *fileConfig) GetProxyProtocol() (string, error) {

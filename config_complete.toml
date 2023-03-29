@@ -5,9 +5,9 @@
 # ListenAddr is the IP and port on which to listen for incoming events. Incoming
 # traffic is expected to be HTTP, so if using SSL put something like nginx in
 # front to do the decryption.
-# Should be of the form 0.0.0.0:8080
+# Should be of the form 0.0.0.0:8082
 # Not eligible for live reload.
-ListenAddr = "0.0.0.0:8080"
+ListenAddr = "0.0.0.0:8082"
 
 # GRPCListenAddr is the IP and port on which to listen for incoming events over
 # gRPC. Incoming traffic is expected to be unencrypted, so if using SSL put
@@ -23,7 +23,7 @@ GRPCListenAddr = "0.0.0.0:4317"
 # Should be of the form 0.0.0.0:8081
 # Not eligible for live reload.
 PeerListenAddr = "0.0.0.0:8083"
-GRPCPeerListenAddr = "0.0.0.0:8084"
+GRPCPeerListenAddr = "tracing-proxy:8084"
 
 # ProxyProtocol accepts http and https
 # Not Eligible for live reload.
@@ -31,11 +31,11 @@ ProxyProtocol = ""
 
 # ProxyServer takes the proxy server address
 # Not Eligible for live reload.
-ProxyServer= ""
+ProxyServer = ""
 
 # ProxyPort takes the proxy server port
 # Not Eligible for live reload.
-ProxyPort=0
+ProxyPort = 0
 
 # ProxyUserName takes the proxy username
 # Not Eligible for live reload.
@@ -53,32 +53,19 @@ ProxyPassword = ""
 # utilization over data transfer costs.
 CompressPeerCommunication = true
 
-# APIKeys is a list of Opsramp API keys that the proxy will accept. This list
-# only applies to events - other Opsramp API actions will fall through to the
-# upstream API directly.
-# Adding keys here causes events arriving with API keys not in this list to be
-# rejected with an HTTP 401 error If an API key that is a literal '*' is in the
-# list, all API keys are accepted.
-# Eligible for live reload.
-APIKeys = [
-    # "replace-me",
-    # "more-optional-keys",
-    "*", # wildcard accept all keys
-]
-
 # OpsrampAPI is the URL for the upstream Opsramp API.
 # Eligible for live reload.
 #OpsrampAPI = "localhost:50052"
-OpsrampAPI = "https://int.opsramp.net"
+OpsrampAPI = ""
 
 # OpsrampKey is used to get the OauthToken
-OpsrampKey = "***REMOVED***"
+OpsrampKey = ""
 
 # OpsrampSecret is used to get the OauthToken
-OpsrampSecret = "***REMOVED***"
+OpsrampSecret = ""
 
 # Traces are send to the client with given tenantid
-TenantId = "3748c67e-bec1-4cad-bd8b-8f2f8ea840f3"
+TenantId = ""
 
 # Dataset you want to use for sampling
 Dataset = "ds"
@@ -170,7 +157,7 @@ EnvironmentCacheTTL = "1h"
 # Default is ["trace.span_id"].
 # Eligible for live reload.
 AdditionalErrorFields = [
-	"trace.span_id"
+    "trace.span_id"
 ]
 
 # AddSpanCountToRoot adds a new metadata field, `meta.span_count` to root spans to indicate
@@ -193,7 +180,7 @@ AdditionalErrorFields = [
 
 # Metrics are sent to OpsRamp (The collection happens based on configuration specifie
 # in OpsRampMetrics and only works when the Metrics is set to "prometheus")
-SendMetricsToOpsRamp = true
+SendMetricsToOpsRamp = false
 
 ############################
 ## Implementation Choices ##
@@ -215,28 +202,28 @@ Collector = "InMemCollector"
 ## Peer Management     ##
 #########################
 
-[PeerManagement]
-Type = "file"
-# Peers is the list of all servers participating in this proxy cluster. Events
-# will be sharded evenly across all peers based on the Trace ID. Values here
-# should be the base URL used to access the peer, and should include scheme,
-# hostname (or ip address) and port. All servers in the cluster should be in
-# this list, including this host.
-Peers = [
-    "http://127.0.0.1:8084", #only grpc peer listener used
-    # "http://127.0.0.1:8083",
-    # "http://10.1.2.3.4:8080",
-    # "http://refinery-1231:8080",
-    # "http://peer-3.fqdn" // assumes port 80
-]
+#[PeerManagement]
+#Type = "file"
+## Peers is the list of all servers participating in this proxy cluster. Events
+## will be sharded evenly across all peers based on the Trace ID. Values here
+## should be the base URL used to access the peer, and should include scheme,
+## hostname (or ip address) and port. All servers in the cluster should be in
+## this list, including this host.
+#Peers = [
+#    "http://127.0.0.1:8084", #only grpc peer listener used
+#    # "http://127.0.0.1:8083",
+#    # "http://10.1.2.3.4:8080",
+#    # "http://refinery-1231:8080",
+#    # "http://peer-3.fqdn" // assumes port 80
+#]
 
-# [PeerManagement]
-# Type = "redis"
+[PeerManagement]
+Type = "redis"
 # RedisHost is is used to connect to redis for peer cluster membership management.
 # Further, if the environment variable 'REFINERY_REDIS_HOST' is set it takes
 # precedence and this value is ignored.
 # Not eligible for live reload.
-# RedisHost = "localhost:6379"
+RedisHost = "redis:22122"
 
 # RedisUsername is the username used to connect to redis for peer cluster membership management.
 # If the environment variable 'REFINERY_REDIS_USERNAME' is set it takes
@@ -249,6 +236,18 @@ Peers = [
 # precedence and this value is ignored.
 # Not eligible for live reload.
 # RedisPassword = ""
+
+# RedisPrefix is a string used as a prefix for the keys in redis while storing
+# the peer membership. It might be useful to set this in any situation where
+# multiple tracing-proxy clusters or multiple applications want to share a single
+# Redis instance. If not set then "tracing-proxy" is used as prefix
+# RedisPrefix = "customPrefix"
+
+# RedisDatabase is an integer from 0-15 indicating the database number to use
+# for the Redis instance storing the peer membership. It might be useful to set
+# this in any situation where multiple trace-proxy clusters or multiple
+# applications want to share a single Redis instance. if not set Default = 0
+# RedisDatabase = 1
 
 # UseTLS enables TLS when connecting to redis for peer cluster membership management, and sets the MinVersion to 1.2.
 # Not eligible for live reload.
@@ -291,7 +290,7 @@ Peers = [
 # The "hash" strategy is strongly recommended, as only 1/N traces (where N is the
 # number of nodes) are disrupted when the node count changes.
 # Not eligible for live reload.
-# Strategy = "hash"
+Strategy = "hash"
 
 #########################
 ## In-Memory Collector ##

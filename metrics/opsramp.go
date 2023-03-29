@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/snappy"
+	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/prompb"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,18 +20,18 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/gorilla/mux"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var metricsServer sync.Once
 
 type OpsRampMetrics struct {
 	Config config.Config `inject:""`
 	Logger logger.Logger `inject:""`
-	// metrics keeps a record of all the registered metrics so we can increment
+	// metrics keeps a record of all the registered metrics so that we can increment
 	// them by name
 	metrics map[string]interface{}
 	lock    sync.RWMutex
@@ -55,34 +57,41 @@ func (p *OpsRampMetrics) Start() error {
 		return err
 	}
 
-	if p.prefix == "" && p.Config.GetSendMetricsToOpsRamp() {
+	if p.Config.GetSendMetricsToOpsRamp() {
 		go func() {
 			metricsTicker := time.NewTicker(time.Duration(metricsConfig.OpsRampMetricsReportingInterval) * time.Second)
 			defer metricsTicker.Stop()
-			p.PopulateOpsRampMetrics(metricsConfig)
+			p.Populate(metricsConfig)
 
 			// populating the oAuth Token Initially
-			err := p.RenewOpsRampOAuthToken()
+			err := p.RenewOAuthToken()
 			if err != nil {
 				p.Logger.Error().Logf("error while initializing oAuth Token Err: %v", err)
 			}
 
-			for _ = range metricsTicker.C {
-				statusCode, err := p.PushMetricsToOpsRamp()
+			for range metricsTicker.C {
+				statusCode, err := p.PushMetrics()
 				if err != nil {
 					p.Logger.Error().Logf("error while pushing metrics with statusCode: %d and Error: %v", statusCode, err)
 				}
 			}
 		}()
-
 	}
 
 	p.metrics = make(map[string]interface{})
 
-	muxxer := mux.NewRouter()
+	metricsServer.Do(func() {
+		muxer := mux.NewRouter()
+		muxer.Handle("/metrics", promhttp.Handler())
 
-	muxxer.Handle("/metrics", promhttp.Handler())
-	go http.ListenAndServe(metricsConfig.MetricsListenAddr, muxxer)
+		go func() {
+			err := http.ListenAndServe(metricsConfig.MetricsListenAddr, muxer)
+			if err != nil {
+				p.Logger.Error().Logf("failed to create /metrics server Error: %v", err)
+			}
+		}()
+	})
+
 	return nil
 }
 
@@ -92,48 +101,47 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	newmet, exists := p.metrics[name]
+	newMetric, exists := p.metrics[name]
 
 	// don't attempt to add the metric again as this will cause a panic
 	if exists {
 		return
 	}
 
-	hostMap := make(map[string]string)
+	constantLabels := make(map[string]string)
 
 	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-
-		hostMap["hostname"] = hostname
+		constantLabels["hostname"] = hostname
 	}
 
 	switch metricType {
 	case "counter":
-		newmet = promauto.NewCounter(prometheus.CounterOpts{
+		newMetric = promauto.NewCounter(prometheus.CounterOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        name,
-			ConstLabels: hostMap,
+			ConstLabels: constantLabels,
 		})
 	case "gauge":
-		newmet = promauto.NewGauge(prometheus.GaugeOpts{
+		newMetric = promauto.NewGauge(prometheus.GaugeOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        name,
-			ConstLabels: hostMap,
+			ConstLabels: constantLabels,
 		})
 	case "histogram":
-		newmet = promauto.NewHistogram(prometheus.HistogramOpts{
+		newMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
 			Buckets:     prometheus.ExponentialBuckets(1, 4, 16),
-			ConstLabels: hostMap,
+			ConstLabels: constantLabels,
 		})
 	}
 
-	p.metrics[name] = newmet
+	p.metrics[name] = newMetric
 }
 
 // RegisterWithDescriptionLabels takes a name, a metric type, description, labels. The type should be one of "counter",
@@ -142,7 +150,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	newmet, exists := p.metrics[name]
+	newMetric, exists := p.metrics[name]
 
 	// don't attempt to add the metric again as this will cause a panic
 	if exists {
@@ -156,14 +164,14 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 
 	switch metricType {
 	case "counter":
-		newmet = promauto.NewCounterVec(prometheus.CounterOpts{
+		newMetric = promauto.NewCounterVec(prometheus.CounterOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        desc,
 			ConstLabels: hostMap,
 		}, labels)
 	case "gauge":
-		newmet = promauto.NewGaugeVec(
+		newMetric = promauto.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        name,
 				Namespace:   p.prefix,
@@ -172,7 +180,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 			},
 			labels)
 	case "histogram":
-		newmet = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		newMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        desc,
@@ -184,15 +192,15 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 
 	}
 
-	p.metrics[name] = newmet
+	p.metrics[name] = newMetric
 }
 
 func (p *OpsRampMetrics) Increment(name string) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if counterIface, ok := p.metrics[name]; ok {
-		if counter, ok := counterIface.(prometheus.Counter); ok {
+	if counterInterface, ok := p.metrics[name]; ok {
+		if counter, ok := counterInterface.(prometheus.Counter); ok {
 			counter.Inc()
 		}
 	}
@@ -201,8 +209,8 @@ func (p *OpsRampMetrics) Count(name string, n interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if counterIface, ok := p.metrics[name]; ok {
-		if counter, ok := counterIface.(prometheus.Counter); ok {
+	if counterInterface, ok := p.metrics[name]; ok {
+		if counter, ok := counterInterface.(prometheus.Counter); ok {
 			counter.Add(ConvertNumeric(n))
 		}
 	}
@@ -211,8 +219,8 @@ func (p *OpsRampMetrics) Gauge(name string, val interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if gaugeIface, ok := p.metrics[name]; ok {
-		if gauge, ok := gaugeIface.(prometheus.Gauge); ok {
+	if gaugeInterface, ok := p.metrics[name]; ok {
+		if gauge, ok := gaugeInterface.(prometheus.Gauge); ok {
 			gauge.Set(ConvertNumeric(val))
 		}
 	}
@@ -221,8 +229,8 @@ func (p *OpsRampMetrics) Histogram(name string, obs interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if histIface, ok := p.metrics[name]; ok {
-		if hist, ok := histIface.(prometheus.Histogram); ok {
+	if histInterface, ok := p.metrics[name]; ok {
+		if hist, ok := histInterface.(prometheus.Histogram); ok {
 			hist.Observe(ConvertNumeric(obs))
 		}
 	}
@@ -232,8 +240,8 @@ func (p *OpsRampMetrics) GaugeWithLabels(name string, labels map[string]string, 
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if gaugeIface, ok := p.metrics[name]; ok {
-		if gaugeVec, ok := gaugeIface.(*prometheus.GaugeVec); ok {
+	if gaugeInterface, ok := p.metrics[name]; ok {
+		if gaugeVec, ok := gaugeInterface.(*prometheus.GaugeVec); ok {
 			gaugeVec.With(labels).Set(value)
 		}
 	}
@@ -243,8 +251,8 @@ func (p *OpsRampMetrics) IncrementWithLabels(name string, labels map[string]stri
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if gaugeIface, ok := p.metrics[name]; ok {
-		if gaugeVec, ok := gaugeIface.(*prometheus.CounterVec); ok {
+	if gaugeInterface, ok := p.metrics[name]; ok {
+		if gaugeVec, ok := gaugeInterface.(*prometheus.CounterVec); ok {
 			gaugeVec.With(labels).Inc()
 		}
 	}
@@ -257,16 +265,15 @@ type OpsRampAuthTokenResponse struct {
 	Scope       string `json:"scope"`
 }
 
-func (p *OpsRampMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMetricsConfig) {
-
+func (p *OpsRampMetrics) Populate(metricsConfig *config.OpsRampMetricsConfig) {
 	p.apiEndpoint = metricsConfig.OpsRampMetricsAPI
 	p.apiKey = metricsConfig.OpsRampMetricsAPIKey
 	p.apiSecret = metricsConfig.OpsRampMetricsAPISecret
 	p.tenantID = metricsConfig.OpsRampTenantID
 	p.retryCount = metricsConfig.OpsRampMetricsRetryCount
 
-	// Creating Regex for list of metrics
-	regexString := ".*" // default value is to take everything
+	// Creating Regex for a list of metrics
+	regexString := ".*" // the default value is to take everything
 	if len(metricsConfig.OpsRampMetricsList) >= 1 {
 		regexString = metricsConfig.OpsRampMetricsList[0]
 		for index := 0; index < len(metricsConfig.OpsRampMetricsList); index++ {
@@ -286,7 +293,7 @@ func (p *OpsRampMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMet
 
 	p.Client = http.Client{
 		Transport: &http.Transport{Proxy: http.ProxyFromEnvironment},
-		Timeout:   time.Duration(10) * time.Second,
+		Timeout:   time.Duration(240) * time.Second,
 	}
 	if proxyUrl != "" {
 		proxyURL, err := url.Parse(proxyUrl)
@@ -295,13 +302,13 @@ func (p *OpsRampMetrics) PopulateOpsRampMetrics(metricsConfig *config.OpsRampMet
 		} else {
 			p.Client = http.Client{
 				Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
-				Timeout:   time.Duration(10) * time.Second,
+				Timeout:   time.Duration(240) * time.Second,
 			}
 		}
 	}
 }
 
-func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
+func (p *OpsRampMetrics) PushMetrics() (int, error) {
 	metricFamilySlice, err := prometheus.DefaultGatherer.Gather()
 	if err != nil {
 		return -1, err
@@ -309,15 +316,14 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 
 	presentTime := time.Now().UnixMilli()
 
-	timeSeries := []prompb.TimeSeries{}
+	var timeSeries []prompb.TimeSeries
 
 	for _, metricFamily := range metricFamilySlice {
-
 		if !p.re.MatchString(metricFamily.GetName()) {
 			continue
 		}
 		for _, metric := range metricFamily.GetMetric() {
-			labels := []prompb.Label{}
+			var labels []prompb.Label
 			for _, label := range metric.GetLabel() {
 				labels = append(labels, prompb.Label{
 					Name:  label.GetName(),
@@ -468,13 +474,9 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 	}
 
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
-	req.Header.Set("Connection", "close")
+	//req.Header.Set("Connection", "close")
 	req.Header.Set("Content-Encoding", "snappy")
 	req.Header.Set("Content-Type", "application/x-protobuf")
-
-	if !strings.Contains(p.oAuthToken.Scope, "metrics:write") {
-		return -1, fmt.Errorf("auth token provided not not have metrics:write scope")
-	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
 
 	resp, err := p.SendWithRetry(req)
@@ -482,8 +484,8 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 		return -1, err
 	}
 	defer resp.Body.Close()
-	// Depending on version and configuration of the PGW, StatusOK or StatusAccepted may be returned.
-	body, err := ioutil.ReadAll(resp.Body)
+	// Depending on the version and configuration of the PGW, StatusOK or StatusAccepted may be returned.
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		p.Logger.Error().Logf("failed to parse response body Err: %v", err)
 	}
@@ -495,15 +497,14 @@ func (p *OpsRampMetrics) PushMetricsToOpsRamp() (int, error) {
 	return resp.StatusCode, nil
 }
 
-func (p *OpsRampMetrics) RenewOpsRampOAuthToken() error {
-
+func (p *OpsRampMetrics) RenewOAuthToken() error {
 	p.oAuthToken = new(OpsRampAuthTokenResponse)
 
-	url := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(p.apiEndpoint, "/"))
+	endpoint := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(p.apiEndpoint, "/"))
 
 	requestBody := strings.NewReader("client_id=" + p.apiKey + "&client_secret=" + p.apiSecret + "&grant_type=client_credentials")
 
-	req, err := http.NewRequest(http.MethodPost, url, requestBody)
+	req, err := http.NewRequest(http.MethodPost, endpoint, requestBody)
 	if err != nil {
 		return err
 	}
@@ -516,7 +517,7 @@ func (p *OpsRampMetrics) RenewOpsRampOAuthToken() error {
 		return err
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -531,13 +532,13 @@ func (p *OpsRampMetrics) RenewOpsRampOAuthToken() error {
 }
 
 func (p *OpsRampMetrics) SendWithRetry(request *http.Request) (*http.Response, error) {
-
 	response, err := p.Client.Do(request)
 	if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 		return response, nil
 	}
 	if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
-		p.RenewOpsRampOAuthToken()
+		p.RenewOAuthToken()
+		request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
 	}
 
 	// retry if the error is not nil
@@ -547,7 +548,8 @@ func (p *OpsRampMetrics) SendWithRetry(request *http.Request) (*http.Response, e
 			return response, nil
 		}
 		if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
-			p.RenewOpsRampOAuthToken()
+			p.RenewOAuthToken()
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
 		}
 	}
 
