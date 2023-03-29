@@ -113,7 +113,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// upstreamTransport is the http transport used to send things on to Honeycomb
+	// upstreamTransport is the http transport used to send things on to OpsRamp
 	upstreamTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
