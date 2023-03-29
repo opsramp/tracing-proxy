@@ -31,6 +31,15 @@ func (s *RulesBasedSampler) Start() error {
 
 	// Check if any rule has a downstream sampler and create it
 	for _, rule := range s.Config.Rule {
+		for _, cond := range rule.Condition {
+			if err := cond.Init(); err != nil {
+				s.Logger.Debug().WithFields(map[string]interface{}{
+					"rule_name": rule.Name,
+					"condition": cond.String(),
+				}).Logf("error creating rule evaluation function: %s", err)
+				continue
+			}
+		}
 		if rule.Sampler != nil {
 			var sampler Sampler
 			if rule.Sampler.DynamicSampler != nil {

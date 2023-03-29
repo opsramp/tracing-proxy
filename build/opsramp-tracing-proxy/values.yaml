@@ -66,15 +66,6 @@ config:
   # utilization over data transfer costs.
   CompressPeerCommunication: true
 
-  # APIKeys is a list of OpsRamp API keys that the proxy will accept. This list
-  # only applies to events - other OpsRamp API actions will fall through to the
-  # upstream API directly.
-  # Adding keys here causes events arriving with API keys not in this list to be
-  # rejected with an HTTP 401 error If an API key that is a literal '*' is in the
-  # list, all API keys are accepted.
-  # Eligible for live reload.
-  APIKeys: [ "*" ]# wildcard accepts all keys
-
   # OpsrampAPI is the URL for the upstream Opsramp API.
   # Eligible for live reload.
   OpsrampAPI: ""
@@ -204,6 +195,18 @@ config:
     # precedence and this value is ignored.
     # Not eligible for live reload.
     RedisPassword: ""
+
+    # RedisPrefix is a string used as a prefix for the keys in redis while storing
+    # the peer membership. It might be useful to set this in any situation where
+    # multiple trace-proxy clusters or multiple applications want to share a single
+    # Redis instance. It may not be blank.
+    RedisPrefix: "tracing-proxy"
+
+    # RedisDatabase is an integer from 0-15 indicating the database number to use
+    # for the Redis instance storing the peer membership. It might be useful to set
+    # this in any situation where multiple trace-proxy clusters or multiple
+    # applications want to share a single Redis instance.
+    RedisDatabase: 0
 
     # UseTLS enables TLS when connecting to redis for peer cluster membership management, and sets the MinVersion to 1.2.
     # Not eligible for live reload.

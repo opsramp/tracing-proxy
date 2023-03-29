@@ -19,6 +19,8 @@ import (
 func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	ri := huskyotlp.GetRequestInfoFromHttpHeaders(req.Header)
 
+	r.Logger.Info().Logf("ri: %+v", ri)
+
 	result, err := huskyotlp.TranslateTraceRequestFromReader(req.Body, ri)
 	if err != nil {
 		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
@@ -26,8 +28,11 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	token := ri.ApiToken
-	tenantId := ri.ApiTenantId
-	if err := processTraceRequest(req.Context(), r, result.Batches, ri.Dataset, token, tenantId); err != nil {
+	tenantID := ri.ApiTenantId
+	if tenantID == "" {
+		tenantID, _ = r.Config.GetTenantId()
+	}
+	if err := processTraceRequest(req.Context(), r, result.Batches, ri.Dataset, token, tenantID); err != nil {
 		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 	}
 }
@@ -42,10 +47,10 @@ func (r *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServ
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 	token := ri.ApiToken
-	tenantId := ri.ApiTenantId
-	if len(tenantId) == 0 {
-		OpsrampTenantId, _ := r.Config.GetTenantId()
-		tenantId = OpsrampTenantId
+	tenantID := ri.ApiTenantId
+	if len(tenantID) == 0 {
+		opsrampTenantID, _ := r.Config.GetTenantId()
+		tenantID = opsrampTenantID
 	}
 
 	if len(ri.Dataset) == 0 {
@@ -53,10 +58,7 @@ func (r *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServ
 		ri.Dataset = dataset
 	}
 
-	r.Logger.Debug().Logf("TenantId: %s", tenantId)
-	r.Logger.Debug().Logf("dataset:", ri.Dataset)
-
-	if err := processTraceRequest(ctx, r, result.Batches, ri.Dataset, token, tenantId); err != nil {
+	if err := processTraceRequest(ctx, r, result.Batches, ri.Dataset, token, tenantID); err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 
@@ -69,7 +71,7 @@ func processTraceRequest(
 	batches []huskyotlp.Batch,
 	datasetName string,
 	token string,
-	tenantId string) error {
+	tenantID string) error {
 
 	var requestID types.RequestIDContextKey
 	apiHost, err := router.Config.GetOpsrampAPI()
@@ -84,7 +86,7 @@ func processTraceRequest(
 				Context:     ctx,
 				APIHost:     apiHost,
 				APIToken:    token,
-				APITenantId: tenantId,
+				APITenantId: tenantID,
 				Dataset:     datasetName,
 				Environment: "",
 				SampleRate:  uint(ev.SampleRate),

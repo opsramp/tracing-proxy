@@ -172,7 +172,6 @@ func (r *Router) LnS(incomingOrPeer string) {
 
 	// require an auth header for events and batches
 	authedMuxxer := muxxer.PathPrefix("/1/").Methods("POST").Subrouter()
-	authedMuxxer.Use(r.apiKeyChecker)
 
 	// handle events and batches
 	authedMuxxer.HandleFunc("/events/{datasetName}", r.event).Name("event")
@@ -180,7 +179,6 @@ func (r *Router) LnS(incomingOrPeer string) {
 
 	// require an auth header for OTLP requests
 	otlpMuxxer := muxxer.PathPrefix("/v1/").Methods("POST").Subrouter()
-	otlpMuxxer.Use(r.apiKeyChecker)
 
 	// handle OTLP trace requests
 	otlpMuxxer.HandleFunc("/traces", r.postOTLP).Name("otlp")
@@ -409,9 +407,6 @@ func (r *Router) event(w http.ResponseWriter, req *http.Request) {
 func (r *Router) requestToEvent(req *http.Request, reqBod []byte) (*types.Event, error) {
 	// get necessary bits out of the incoming event
 	apiKey := req.Header.Get(types.APIKeyHeader)
-	if apiKey == "" {
-		apiKey = req.Header.Get(types.APIKeyHeaderShort)
-	}
 	sampleRate, err := strconv.Atoi(req.Header.Get(types.SampleRateHeader))
 	if err != nil {
 		sampleRate = 1
@@ -477,9 +472,6 @@ func (r *Router) batch(w http.ResponseWriter, req *http.Request) {
 	}
 
 	apiKey := req.Header.Get(types.APIKeyHeader)
-	if apiKey == "" {
-		apiKey = req.Header.Get(types.APIKeyHeaderShort)
-	}
 
 	// get environment name - will be empty for legacy keys
 	environment, err := r.getEnvironmentName(apiKey)
@@ -738,16 +730,6 @@ func unmarshal(r *http.Request, data io.Reader, v interface{}) error {
 	default:
 		return jsoniter.NewDecoder(data).Decode(v)
 	}
-}
-
-func getAPIKeyAndDatasetFromMetadata(md metadata.MD) (apiKey string, dataset string) {
-	apiKey = getFirstValueFromMetadata(types.APIKeyHeader, md)
-	if apiKey == "" {
-		apiKey = getFirstValueFromMetadata(types.APIKeyHeaderShort, md)
-	}
-	dataset = getFirstValueFromMetadata(types.DatasetHeader, md)
-
-	return apiKey, dataset
 }
 
 // getFirstValueFromMetadata returns the first value of a metadata entry using a
