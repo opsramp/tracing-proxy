@@ -116,8 +116,8 @@ type Config interface {
 	// GetLogrusConfig returns the config specific to Logrus
 	GetLogrusConfig() (*LogrusLoggerConfig, error)
 
-	// GetOpsRampMetricsConfig returns the config specific to PrometheusMetrics
-	GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error)
+	// GetMetricsConfig returns the config specific to PrometheusMetrics
+	GetMetricsConfig() MetricsConfig
 
 	// GetUpstreamBufferSize returns the size of the libtrace buffer to use for the upstream
 	// libtrace client
@@ -153,29 +153,11 @@ type Config interface {
 	// GetUseTLSInsecureSkip returns false when certificate checks are disabled
 	GetGlobalUseTLSInsecureSkip() bool
 
-	// GetProxyProtocol returns protocol on which to listen for
-	// proxy traffic
-	GetProxyProtocol() (string, error)
+	// GetProxyConfig returns proxy configuration
+	GetProxyConfig() ProxyConfiguration
 
-	// GetProxyServer returns the address on which to listen for
-	// proxy traffic
-	GetProxyServer() (string, error)
-
-	// GetProxyPort returns the port on which to listen for
-	// proxy traffic
-	GetProxyPort() int64
-
-	// GetProxyUsername returns the username on which to listen for
-	// proxy traffic
-	GetProxyUsername() (string, error)
-
-	// GetProxyPassword returns the password of proxy user on which to listen for
-	// proxy traffic
-	GetProxyPassword() (string, error)
-
-	GetOpsrampKey() (string, error)
-
-	GetOpsrampSecret() (string, error)
+	// GetAuthConfig return the authentication configuration
+	GetAuthConfig() AuthConfiguration
 
 	GetTenantId() (string, error)
 

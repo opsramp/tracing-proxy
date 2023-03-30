@@ -20,6 +20,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	DefaultDataset = "ds"
+)
+
 type fileConfig struct {
 	config        *viper.Viper
 	rules         *viper.Viper
@@ -37,9 +41,6 @@ type configContents struct {
 	GRPCListenAddr            string
 	GRPCPeerListenAddr        string
 	OpsrampAPI                string `validate:"required,url"`
-	OpsrampKey                string
-	OpsrampSecret             string
-	TenantId                  string
 	Dataset                   string
 	LoggingLevel              string        `validate:"required"`
 	Collector                 string        `validate:"required,oneof= InMemCollector"`
@@ -67,14 +68,28 @@ type configContents struct {
 	CacheOverrunStrategy      string
 	SampleCache               SampleCacheConfig `validate:"required"`
 
-	SendMetricsToOpsRamp bool
-	UseTls               bool
-	UseTlsInSecure       bool
-	ProxyProtocol        string
-	ProxyServer          string
-	ProxyPort            int64
-	ProxyUsername        string
-	ProxyPassword        string
+	UseTls         bool
+	UseTlsInSecure bool
+
+	ProxyConfiguration
+	AuthConfiguration
+	MetricsConfig
+}
+
+type ProxyConfiguration struct {
+	Protocol string
+	Host     string
+	Port     int64
+	Username string
+	Password string
+}
+
+type AuthConfiguration struct {
+	SkipAuth bool
+	Endpoint string `validate:"url"`
+	Key      string
+	Secret   string
+	TenantId string
 }
 
 type InMemoryCollectorCacheCapacity struct {
@@ -94,20 +109,13 @@ type LogrusLoggerConfig struct {
 	} `toml:"File"`
 }
 
-type OpsRampMetricsConfig struct {
-	MetricsListenAddr               string `validate:"required"`
-	OpsRampMetricsAPI               string
-	OpsRampTenantID                 string
-	OpsRampMetricsAPIKey            string
-	OpsRampMetricsAPISecret         string
-	OpsRampMetricsReportingInterval int64
-	OpsRampMetricsRetryCount        int64
-	ProxyProtocol                   string
-	ProxyServer                     string
-	ProxyPort                       int64
-	ProxyUserName                   string
-	ProxyPassword                   string
-	OpsRampMetricsList              []string
+type MetricsConfig struct {
+	Enable            bool   `validate:"required"`
+	ListenAddr        string `validate:"required"`
+	OpsRampAPI        string
+	ReportingInterval int64
+	RetryCount        int64
+	MetricsList       []string
 }
 
 type PeerManagementConfig struct {
@@ -147,29 +155,19 @@ type GRPCServerParameters struct {
 func NewConfig(config, rules string, errorCallback func(error)) (Config, error) {
 	c := viper.New()
 
-	c.BindEnv("GRPCListenAddr", "TRACE_PROXY_GRPC_LISTEN_ADDRESS")
-	c.BindEnv("PeerManagement.RedisHost", "TRACE_PROXY_REDIS_HOST")
-	c.BindEnv("PeerManagement.RedisUsername", "TRACE_PROXY_REDIS_USERNAME")
-	c.BindEnv("PeerManagement.RedisPassword", "TRACE_PROXY_REDIS_PASSWORD")
-	c.BindEnv("QueryAuthToken", "TRACE_PROXY_QUERY_AUTH_TOKEN")
-
-	c.SetDefault("ListenAddr", "0.0.0.0:8080")
-	c.SetDefault("PeerListenAddr", "0.0.0.0:8081")
+	c.SetDefault("ListenAddr", "0.0.0.0:8082")
+	c.SetDefault("PeerListenAddr", "0.0.0.0:8083")
 	c.SetDefault("CompressPeerCommunication", true)
-	c.SetDefault("APIKeys", []string{"*"})
-	c.SetDefault("PeerManagement.Peers", []string{"http://127.0.0.1:8081"})
+	c.SetDefault("PeerManagement.Peers", []string{"http://127.0.0.1:8082"})
 	c.SetDefault("PeerManagement.Type", "file")
 	c.SetDefault("PeerManagement.UseTLS", false)
 	c.SetDefault("PeerManagement.UseTLSInsecure", false)
 	c.SetDefault("PeerManagement.UseIPV6Identifier", false)
 	c.SetDefault("OpsrampAPI", "")
-	c.SetDefault("OpsrampKey", "")
-	c.SetDefault("OpsrampSecret", "")
-	c.SetDefault("TenantId", "")
-	c.SetDefault("Dataset", "ds")
+	c.SetDefault("Dataset", DefaultDataset)
 	c.SetDefault("PeerManagement.Timeout", 5*time.Second)
 	c.SetDefault("PeerManagement.Strategy", "legacy")
-	c.SetDefault("LoggingLevel", "debug")
+	c.SetDefault("LoggingLevel", "info")
 	c.SetDefault("Collector", "InMemCollector")
 	c.SetDefault("SendDelay", 2*time.Second)
 	c.SetDefault("BatchTimeout", libtrace.DefaultBatchTimeout)
@@ -194,12 +192,16 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("SampleCache.KeptSize", 10_000)
 	c.SetDefault("SampleCache.DroppedSize", 1_000_000)
 	c.SetDefault("SampleCache.SizeCheckInterval", 10*time.Second)
-	c.SetDefault("SendMetricsToOpsRamp", false)
-	c.SetDefault("ProxyProtocol", "")
-	c.SetDefault("ProxyServer", "")
-	c.SetDefault("ProxyPort", int64(0))
-	c.SetDefault("ProxyUsername", "")
-	c.SetDefault("ProxyPassword", "")
+
+	// AuthConfig Defaults
+	c.SetDefault("AuthConfiguration.SkipAuth", false)
+
+	// MetricsConfig Defaults
+	c.SetDefault("MetricsConfig.Enable", false)
+	c.SetDefault("MetricsConfig.ListenAddr", "0.0.0.0:2112")
+	c.SetDefault("MetricsConfig.ReportingInterval", 10)
+	c.SetDefault("MetricsConfig.RetryCount", 2)
+	c.SetDefault("MetricsConfig.MetricsList", []string{".*"})
 
 	c.SetConfigFile(config)
 	err := c.ReadInConfig()
@@ -310,10 +312,17 @@ func (f *fileConfig) validateGeneralConfigs() error {
 	f.lastLoadTime = time.Now()
 
 	// validate metrics config
-	_, err := f.GetOpsRampMetricsConfig()
-	if err != nil {
-		return err
+	metricsConfig := f.GetMetricsConfig()
+	if metricsConfig.RetryCount < 0 || metricsConfig.RetryCount > 10 {
+		return fmt.Errorf("metrics retry count %d invalid, must be in range 1-10", metricsConfig.RetryCount)
 	}
+	if metricsConfig.ReportingInterval < 10 {
+		return fmt.Errorf("mertics reporting interval %d not allowed, must be >= 10", metricsConfig.ReportingInterval)
+	}
+	if len(metricsConfig.MetricsList) < 1 {
+		return fmt.Errorf("mertics list cant be empty")
+	}
+
 	return nil
 }
 
@@ -513,30 +522,11 @@ func (f *fileConfig) GetRedisDatabase() int {
 	return f.config.GetInt("PeerManagement.RedisDatabase")
 }
 
-func (f *fileConfig) GetProxyProtocol() (string, error) {
+func (f *fileConfig) GetProxyConfig() ProxyConfiguration {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
-	return f.conf.ProxyProtocol, nil
-}
-func (f *fileConfig) GetProxyServer() (string, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-	return f.conf.ProxyServer, nil
-}
-func (f *fileConfig) GetProxyPort() int64 {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-	return f.conf.ProxyPort
-}
-func (f *fileConfig) GetProxyUsername() (string, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-	return f.conf.ProxyUsername, nil
-}
-func (f *fileConfig) GetProxyPassword() (string, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-	return f.conf.ProxyPassword, nil
+
+	return f.conf.ProxyConfiguration
 }
 
 func (f *fileConfig) GetUseTLS() (bool, error) {
@@ -586,18 +576,11 @@ func (f *fileConfig) GetOpsrampAPI() (string, error) {
 	return fmt.Sprintf("%s://%s", u.Scheme, u.Hostname()), nil
 }
 
-func (f *fileConfig) GetOpsrampKey() (string, error) {
+func (f *fileConfig) GetAuthConfig() AuthConfiguration {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.OpsrampKey, nil
-}
-
-func (f *fileConfig) GetOpsrampSecret() (string, error) {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
-	return f.conf.OpsrampSecret, nil
+	return f.conf.AuthConfiguration
 }
 
 func (f *fileConfig) GetDataset() (string, error) {
@@ -611,7 +594,7 @@ func (f *fileConfig) GetTenantId() (string, error) {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.TenantId, nil
+	return f.conf.AuthConfiguration.TenantId, nil
 }
 
 func (f *fileConfig) GetLoggingLevel() (string, error) {
@@ -757,68 +740,11 @@ func (f *fileConfig) GetLogrusConfig() (*LogrusLoggerConfig, error) {
 	return nil, errors.New("No config found for LogrusConfig")
 }
 
-func (f *fileConfig) GetOpsRampMetricsConfig() (*OpsRampMetricsConfig, error) {
+func (f *fileConfig) GetMetricsConfig() MetricsConfig {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	opsRampMetricsConfig := &OpsRampMetricsConfig{}
-
-	if sub := f.config.Sub("OpsRampMetrics"); sub != nil {
-		err := sub.UnmarshalExact(opsRampMetricsConfig)
-		if err != nil {
-			return opsRampMetricsConfig, err
-		}
-
-		if opsRampMetricsConfig.OpsRampMetricsRetryCount < 0 || opsRampMetricsConfig.OpsRampMetricsRetryCount > 10 {
-			opsRampMetricsConfig.OpsRampMetricsRetryCount = 2
-		}
-
-		if opsRampMetricsConfig.OpsRampMetricsReportingInterval < 10 {
-			opsRampMetricsConfig.OpsRampMetricsReportingInterval = 10
-		}
-
-		if len(opsRampMetricsConfig.OpsRampMetricsList) < 1 {
-			opsRampMetricsConfig.OpsRampMetricsList = []string{".*"}
-		}
-
-		// setting values from main configurations when OpsRampMetrics is empty
-		if opsRampMetricsConfig.OpsRampMetricsAPI == "" {
-			opsRampMetricsConfig.OpsRampMetricsAPI = f.conf.OpsrampAPI
-		}
-		if opsRampMetricsConfig.OpsRampMetricsAPIKey == "" {
-			opsRampMetricsConfig.OpsRampMetricsAPIKey = f.conf.OpsrampKey
-		}
-		if opsRampMetricsConfig.OpsRampMetricsAPISecret == "" {
-			opsRampMetricsConfig.OpsRampMetricsAPISecret = f.conf.OpsrampSecret
-		}
-		if opsRampMetricsConfig.OpsRampTenantID == "" {
-			opsRampMetricsConfig.OpsRampTenantID = f.conf.TenantId
-		}
-		if opsRampMetricsConfig.ProxyServer == "" {
-			opsRampMetricsConfig.ProxyServer = f.conf.ProxyServer
-		}
-		if opsRampMetricsConfig.ProxyPort <= 0 {
-			opsRampMetricsConfig.ProxyPort = f.conf.ProxyPort
-		}
-		if opsRampMetricsConfig.ProxyProtocol != "" {
-			opsRampMetricsConfig.ProxyProtocol = f.conf.ProxyProtocol
-		}
-		if opsRampMetricsConfig.ProxyUserName != "" {
-			opsRampMetricsConfig.ProxyUserName = f.conf.ProxyUsername
-		}
-		if opsRampMetricsConfig.ProxyPassword != "" {
-			opsRampMetricsConfig.ProxyPassword = f.conf.ProxyPassword
-		}
-
-		v := validator.New()
-		err = v.Struct(opsRampMetricsConfig)
-		if err != nil {
-			return opsRampMetricsConfig, err
-		}
-
-		return opsRampMetricsConfig, nil
-	}
-	return nil, errors.New("No config found for OpsRampMetrics")
+	return f.conf.MetricsConfig
 }
 
 func (f *fileConfig) GetSendDelay() (time.Duration, error) {
@@ -921,7 +847,7 @@ func (f *fileConfig) GetSendMetricsToOpsRamp() bool {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	return f.conf.SendMetricsToOpsRamp
+	return f.conf.MetricsConfig.Enable
 }
 
 func (f *fileConfig) GetGlobalUseTLS() bool {
