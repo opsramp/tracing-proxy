@@ -1,5 +1,5 @@
 Package: tracing-proxy
-Version: 5.0.0
+Version: 1.0.0
 Architecture: amd64
 Essential: no
 Priority: optional
