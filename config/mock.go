@@ -50,7 +50,7 @@ type MockConfig struct {
 	GetMetricsTypeErr          error
 	GetMetricsTypeVal          string
 	GetOpsRampMetricsConfigErr error
-	GetOpsRampMetricsConfigVal OpsRampMetricsConfig
+	GetOpsRampMetricsConfigVal MetricsConfig
 	GetSendDelayErr            error
 	GetSendDelayVal            time.Duration
 	GetBatchTimeoutVal         time.Duration
@@ -233,7 +233,7 @@ func (m *MockConfig) GetMetricsType() (string, error) {
 	return m.GetMetricsTypeVal, m.GetMetricsTypeErr
 }
 
-func (m *MockConfig) GetPrometheusMetricsConfig() (OpsRampMetricsConfig, error) {
+func (m *MockConfig) GetPrometheusMetricsConfig() (MetricsConfig, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 

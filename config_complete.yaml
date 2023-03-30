@@ -1,0 +1,403 @@
+########################
+## Trace Proxy Config ##
+########################
+
+# ListenAddr is the IP and port on which to listen for incoming events. Incoming
+# traffic is expected to be HTTP, so if using SSL put something like nginx in
+# front to do the TLS Termination.
+ListenAddr: 0.0.0.0:8082
+
+# GRPCListenAddr is the IP and port on which to listen for incoming events over
+# gRPC. Incoming traffic is expected to be unencrypted, so if using SSL put something like nginx in
+# front to do the TLS Termination.
+GRPCListenAddr: 0.0.0.0:4317
+
+# PeerListenAddr is the IP and port on which to listen for traffic being
+# rerouted from a peer. Peer traffic is expected to be HTTP, so if using SSL
+# put something like nginx in front to do the decryption. Must be different from
+# ListenAddr
+PeerListenAddr: 0.0.0.0:8083
+
+GRPCPeerListenAddr: 0.0.0.0:8084
+
+# CompressPeerCommunication determines whether to compress span data
+# it forwards to peers. If it costs money to transmit data between different
+# instances (e.g. they're spread across AWS availability zones), then you
+# almost certainly want compression enabled to reduce your bill. The option to
+# disable it is provided as an escape hatch for deployments that value lower CPU
+# utilization over data transfer costs.
+CompressPeerCommunication: true
+
+# OpsrampAPI is the URL for the upstream Opsramp API.
+OpsrampAPI: ""
+
+# Dataset you want to use for sampling
+Dataset: "ds"
+
+#Tls Options
+UseTls: true
+UseTlsInsecure: false
+
+# LoggingLevel valid options are "debug", "info", "error", and "panic".
+LoggingLevel: error
+
+# SendDelay is a short timer that will be triggered when a trace is complete.
+# Trace Proxy will wait for this duration before actually sending the trace.  The
+# reason for this short delay is to allow for small network delays or clock
+# jitters to elapse and any final spans to arrive before actually sending the
+# trace.  This supports duration strings with supplied units. Set to 0 for
+# immediate sends.
+SendDelay: 2s
+
+# BatchTimeout dictates how frequently to send unfulfilled batches. By default
+# this will use the DefaultBatchTimeout in libtrace as its value, which is 100ms.
+# Eligible for live reload.
+BatchTimeout: 1s
+
+# TraceTimeout is a long timer; it represents the outside boundary of how long
+# to wait before sending an incomplete trace. Normally traces are sent when the
+# root span arrives. Sometimes the root span never arrives (due to crashes or
+# whatever), and this timer will send a trace even without having received the
+# root span. If you have particularly long-lived traces you should increase this
+# timer. This supports duration strings with supplied units.
+TraceTimeout: 60s
+
+# MaxBatchSize is the number of events to be included in the batch for sending
+MaxBatchSize: 500
+
+# SendTicker is a short timer; it determines the duration to use to check for traces to send
+SendTicker: 100ms
+
+# UpstreamBufferSize and PeerBufferSize control how large of an event queue to use
+# when buffering events that will be forwarded to peers or the upstream API.
+UpstreamBufferSize: 1000
+PeerBufferSize: 1000
+
+# AddHostMetadataToTrace determines whether to add information about
+# the host that Refinery is running on to the spans that it processes.
+# If enabled, information about the host will be added to each span with the
+# prefix `meta.refinery.`.
+# Currently, the only value added is 'meta.refinery.local_hostname'.
+AddHostMetadataToTrace: false
+
+# EnvironmentCacheTTL is the amount of time a cache entry will live that associates
+# an API key with an environment name.
+# Cache misses lookup the environment name using OpsRampAPI config value.
+# Default is 1 hour ("1h").
+EnvironmentCacheTTL: "1h"
+
+# QueryAuthToken, if specified, provides a token that must be specified with
+# the header "X-OpsRamp-Tracing-Proxy-Query" in order for a /query request to succeed.
+# These /query requests are intended for debugging OpsRamp-Tracing-Proxy installations and
+# are not typically needed in normal operation.
+# Can be specified in the environment as TRACING_PROXY_QUERY_AUTH_TOKEN.
+# If left unspecified, the /query endpoints are inaccessible.
+# QueryAuthToken: "some-random-value"
+
+# AddRuleReasonToTrace causes traces that are sent to OpsRamp to include a field which
+# contains text indicating which rule was evaluated that caused the trace to be included.
+AddRuleReasonToTrace: true
+
+# AdditionalErrorFields should be a list of span fields that should be included when logging
+# errors that happen during ingestion of events (for example, the span too large error).
+# This is primarily useful in trying to track down misbehaving senders in a large installation.
+# The fields `dataset`, `apihost`, and `environment` are always included.
+# If a field is not present in the span, it will not be present in the error log.
+# Default is ["trace.span_id"].
+AdditionalErrorFields:
+  - trace.span_id
+
+# AddSpanCountToRoot adds a new metadata field, `meta.span_count` to root spans to indicate
+# the number of child spans on the trace at the time the sampling decision was made.
+# This value is available to the rules-based sampler, making it possible to write rules that
+# are dependent upon the number of spans in the trace.
+# Default is false.
+AddSpanCountToRoot: false
+
+# CacheOverrunStrategy controls the cache management behavior under memory pressure.
+# "resize" means that when a cache overrun occurs, the cache is shrunk and never grows again,
+# which is generally not helpful unless it occurs because of a permanent change in traffic patterns.
+# In the "impact" strategy, the items having the most impact on the cache size are
+# ejected from the cache earlier than normal but the cache is not resized.
+# In all cases, it only applies if MaxAlloc is nonzero.
+# Default is "resize" for compatibility but "impact" is recommended for most installations.
+CacheOverrunStrategy: "impact"
+
+#########################
+## Proxy Configuration ##
+#########################
+ProxyConfiguration:
+  # Protocol accepts http and https
+  Protocol: "http"
+  # Host takes the proxy server address
+  Host: ""
+  # Port takes the proxy server port
+  Port: 3128
+  # UserName takes the proxy username
+  Username: ""
+  # Password takes the proxy password
+  Password: ""
+
+##################################
+## Authentication Configuration ##
+##################################
+AuthConfiguration:
+  # SkipAuth - skips authentication while sending requests (only to be used for debugging)
+  SkipAuth: false
+
+  # Endpoint - the APIServer address provided in OpsRamp Portal to which auth token request is to be made
+  Endpoint: ""
+  # Key - authentication key provided in OpsRamp Portal
+  Key: ""
+  # Secret - authentication Secret provided in OpsRamp Portal
+  Secret: ""
+  # TenantId - tenant/client id to which the traces are to be posted
+  TenantId: ""
+
+############################
+## Implementation Choices ##
+############################
+# Each of the config options below chooses an implementation of a Trace Proxy
+# component to use. Depending on the choice, there may be more configuration
+# required below in the section for that choice. Changing implementation choices
+# requires a process restart.
+# Collector describes which collector to use for collecting traces. The only
+# current valid option is "InMemCollector". More can be added by adding
+# implementations of the Collector interface.
+Collector: "InMemCollector"
+
+# InMemCollector brings together all the settings that are relevant to
+# collecting spans together to make traces.
+InMemCollector:
+
+  # The collection cache is used to collect all spans into a trace as well as
+  # remember the sampling decision for any spans that might come in after the
+  # trace has been marked "complete" (either by timing out or seeing the root
+  # span). The number of traces in the cache should be many multiples (100x to
+  # 1000x) of the total number of concurrently active traces (trace throughput *
+  # trace duration).
+  CacheCapacity: 1000
+
+  # MaxAlloc is optional. If set, it must be an integer >= 0.
+  # If set to a non-zero value, once per tick (see SendTicker) the collector
+  # will compare total allocated bytes to this value. If allocation is too
+  # high, cache capacity will be reduced and an error will be logged.
+  # Useful values for this setting are generally in the range of 75%-90% of
+  # available system memory. Using 80% is the recommended.
+  # This value should be set in according to the resources.limits.memory
+  # By default that setting is 4GB, and this is set to 85% of that limit
+  # 4 * 1024 * 1024 * 1024 * 0.80 = 3,435,973,837
+  # MaxAlloc: 3435973836
+  MaxAlloc: 0
+
+#####################
+## Peer Management ##
+#####################
+
+# Configure how OpsRamp-Tracing-Proxy peers are discovered and managed
+PeerManagement:
+  # Strategy controls the way that traces are assigned to Trace Proxy nodes.
+  # The "legacy" strategy uses a simple algorithm that unfortunately causes
+  # 1/2 of the in-flight traces to be assigned to a different node whenever the
+  # number of nodes changes.
+  # The legacy strategy is deprecated and is intended to be removed in a future release.
+  # The "hash" strategy is strongly recommended, as only 1/N traces (where N is the
+  # number of nodes) are disrupted when the node count changes.
+  # Not eligible for live reload.
+  Strategy: "hash"
+
+  ###########################################################
+  ###### File (Suitable only for VM based deployments) ######
+  ###########################################################
+  #  Type: "file"
+  #
+  #  # Peers is the list of all servers participating in this proxy cluster. Events
+  #  # will be sharded evenly across all peers based on the Trace ID. Values here
+  #  # should be the base URL used to access the peer, and should include scheme,
+  #  # hostname (or ip address) and port. All servers in the cluster should be in
+  #  # this list, including this host.
+  #  Peers: [
+  #    "http://127.0.0.1:8084", #only grpc peer listener used
+  #    # "http://127.0.0.1:8083",
+  #    # "http://10.1.2.3.4:8080",
+  #    # "http://refinery-1231:8080",
+  #    # "http://peer-3.fqdn" // assumes port 80
+  #  ]
+  ###########################################################
+
+  ###########################################################
+  ###### Redis (Suitable for all types of deployments) ######
+  ###########################################################
+  # The type should always be redis when deployed to Kubernetes environments
+  Type: "redis"
+
+  # RedisHost is used to connect to redis for peer cluster membership management.
+  # Further, if the environment variable 'TRACING_PROXY_REDIS_HOST' is set it takes
+  # precedence and this value is ignored.
+  # Not eligible for live reload.
+  # RedisHost will default to the name used for the release or name overrides depending on what is used,
+  # but can be overriden to a specific value.
+  RedisHost: 0.0.0.0:22122
+
+  # RedisUsername is the username used to connect to redis for peer cluster membership management.
+  # If the environment variable 'TRACING_PROXY_REDIS_USERNAME' is set it takes
+  # precedence and this value is ignored.
+  # Not eligible for live reload.
+  RedisUsername: ""
+
+  # RedisPassword is the password used to connect to redis for peer cluster membership management.
+  # If the environment variable 'TRACING_PROXY_REDIS_PASSWORD' is set it takes
+  # precedence and this value is ignored.
+  # Not eligible for live reload.
+  RedisPassword: ""
+
+  # RedisPrefix is a string used as a prefix for the keys in redis while storing
+  # the peer membership. It might be useful to set this in any situation where
+  # multiple trace-proxy clusters or multiple applications want to share a single
+  # Redis instance. It may not be blank.
+  RedisPrefix: "tracing-proxy"
+
+  # RedisDatabase is an integer from 0-15 indicating the database number to use
+  # for the Redis instance storing the peer membership. It might be useful to set
+  # this in any situation where multiple trace-proxy clusters or multiple
+  # applications want to share a single Redis instance.
+  RedisDatabase: 0
+
+  # UseTLS enables TLS when connecting to redis for peer cluster membership management, and sets the MinVersion to 1.2.
+  # Not eligible for live reload.
+  UseTLS: false
+
+  # UseTLSInsecure disables certificate checks
+  # Not eligible for live reload.
+  UseTLSInsecure: false
+
+  # IdentifierInterfaceName is optional.
+  # Due to the nature of DNS in Kubernetes, it is recommended to set this value to the 'eth0' interface name.
+  # When configured the pod's IP will be used in the peer list
+  IdentifierInterfaceName: eth0
+
+  # UseIPV6Identifier is optional. If using IdentifierInterfaceName, Trace Proxy will default to the first
+  # IPv4 unicast address it finds for the specified interface. If UseIPV6Identifier is used, will use
+  # the first IPV6 unicast address found.
+  UseIPV6Identifier: false
+  ###########################################################
+
+# LogrusLogger is a section of the config only used if you are using the
+# LogrusLogger to send all logs to STDOUT using the logrus package.
+LogrusLogger:
+  # LogFormatter specifies the log format. Accepted values are one of ["logfmt", "json"]
+  LogFormatter: 'json'
+  # LogOutput specifies where the logs are supposed to be written. Accpets one of ["stdout", "stderr", "file"]
+  LogOutput: 'stdout'
+
+  # specifies configs for logs when LogOutput is set to "file"
+  File:
+    # FileName specifies the location where the logs are supposed be stored
+    FileName: "/var/log/opsramp/tracing-proxy.log"
+    # MaxSize is the maximum size in megabytes of the log file before it gets rotated.
+    MaxSize: 1
+    # MaxBackups is the maximum number of old log files to retain.
+    MaxBackups: 3
+    # Compress determines if the rotated log files should be compressed
+    # using gzip.
+    Compress: true
+
+MetricsConfig:
+  # Enable specifies whether the metrics are supposed to be collected and exported to OpsRamp
+  Enable: true
+
+  # ListenAddr determines the interface and port on which Prometheus will
+  # listen for requests for /metrics. Must be different from the main Trace Proxy
+  # listener.
+  ListenAddr: '0.0.0.0:2112'
+
+  # OpsRampAPI is the URL for the upstream OpsRamp API.
+  OpsRampAPI: ""
+
+  # ReportingInterval is the frequency specified in seconds at which
+  # the metrics are collected and sent to OpsRamp
+  ReportingInterval: 10
+
+  # OpsRampMetricsRetryCount is the number of times we retry incase the send fails
+  RetryCount: 2
+
+  # MetricsList is a list of regular expressions which match the metric
+  # names. Keep the list as small as possible since too many regular expressions can lead to bad performance.
+  # Internally, all the items in the list are concatenated using '|' to make the computation faster.
+  MetricsList: [ ".*" ]
+
+GRPCServerParameters:
+# MaxConnectionIdle is a duration for the amount of time after which an
+# idle connection would be closed by sending a GoAway. Idleness duration is
+# defined since the most recent time the number of outstanding RPCs became
+# zero or the connection establishment.
+# 0s sets duration to infinity which is the default:
+# https://github.com/grpc/grpc-go/blob/60a3a7e969c401ca16dbcd0108ad544fb35aa61c/internal/transport/http2_server.go#L217-L219
+# MaxConnectionIdle: "1m"
+
+# MaxConnectionAge is a duration for the maximum amount of time a
+# connection may exist before it will be closed by sending a GoAway. A
+# random jitter of +/-10% will be added to MaxConnectionAge to spread out
+# connection storms.
+# 0s sets duration to infinity which is the default:
+# https://github.com/grpc/grpc-go/blob/60a3a7e969c401ca16dbcd0108ad544fb35aa61c/internal/transport/http2_server.go#L220-L222
+# MaxConnectionAge: "0s"
+
+# MaxConnectionAgeGrace is an additive period after MaxConnectionAge after
+# which the connection will be forcibly closed.
+# 0s sets duration to infinity which is the default:
+# https://github.com/grpc/grpc-go/blob/60a3a7e969c401ca16dbcd0108ad544fb35aa61c/internal/transport/http2_server.go#L225-L227
+# MaxConnectionAgeGrace: "0s"
+
+# After a duration of this time if the server doesn't see any activity it
+# pings the client to see if the transport is still alive.
+# If set below 1s, a minimum value of 1s will be used instead.
+# 0s sets duration to 2 hours which is the default:
+# https://github.com/grpc/grpc-go/blob/60a3a7e969c401ca16dbcd0108ad544fb35aa61c/internal/transport/http2_server.go#L228-L230
+# Time: "10s"
+
+# After having pinged for keepalive check, the server waits for a duration
+# of Timeout and if no activity is seen even after that the connection is
+# closed.
+# 0s sets duration to 20 seconds which is the default:
+# https://github.com/grpc/grpc-go/blob/60a3a7e969c401ca16dbcd0108ad544fb35aa61c/internal/transport/http2_server.go#L231-L233
+# Timeout: "2s"
+
+################################
+## Sample Cache Configuration ##
+################################
+
+# Sample Cache Configuration controls the sample cache used to retain information about trace
+# status after the sampling decision has been made.
+SampleCacheConfig:
+# Type controls the type of sample cache used.
+# "legacy" is a strategy where both keep and drop decisions are stored in a circular buffer that is
+# 5x the size of the trace cache. This is Refinery's original sample cache strategy.
+# "cuckoo" is a strategy where dropped traces are preserved in a "Cuckoo Filter", which can remember
+# a much larger number of dropped traces, leaving capacity to retain a much larger number of kept traces.
+# It is also more configurable. The cuckoo filter is recommended for most installations.
+# Default is "legacy".
+# Type: "cuckoo"
+
+# KeptSize controls the number of traces preserved in the cuckoo kept traces cache.
+# Refinery keeps a record of each trace that was kept and sent to Honeycomb, along with some
+# statistical information. This is most useful in cases where the trace was sent before sending
+# the root span, so that the root span can be decorated with accurate metadata.
+# Default is 10_000 traces (each trace in this cache consumes roughly 200 bytes).
+# It Does not apply to the "legacy" type of cache.
+# KeptSize: 10_000
+
+# DroppedSize controls the size of the cuckoo dropped traces cache.
+# This cache consumes 4-6 bytes per trace at a scale of millions of traces.
+# Changing its size with live reload sets a future limit, but does not have an immediate effect.
+# Default is 1_000_000 traces.
+# It Does not apply to the "legacy" type of cache.
+# DroppedSize: 1_000_000
+
+# SizeCheckInterval controls the duration of how often the cuckoo cache re-evaluates
+# the remaining capacity of its dropped traces cache and possibly cycles it.
+# This cache is quite resilient so it doesn't need to happen very often, but the
+# operation is also inexpensive.
+# Default is 10 seconds.
+# It Does not apply to the "legacy" type of cache.
+# SizeCheckInterval: "10s"

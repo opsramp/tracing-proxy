@@ -106,7 +106,7 @@ func TestMetricsAPIKeyEnvVar(t *testing.T) {
 				t.Error(err)
 			}
 
-			if d, _ := c.GetOpsRampMetricsConfig(); d.OpsRampMetricsAPIKey != tc.key {
+			if d := c.GetAuthConfig(); d.Key != tc.key {
 				t.Error("received", d, "expected", tc.key)
 			}
 		})
@@ -130,7 +130,7 @@ func TestMetricsAPIKeyMultipleEnvVar(t *testing.T) {
 		t.Error(err)
 	}
 
-	if d, _ := c.GetOpsRampMetricsConfig(); d.OpsRampMetricsAPIKey != specificKey {
+	if d := c.GetAuthConfig(); d.Key != specificKey {
 		t.Error("received", d, "expected", specificKey)
 	}
 }
@@ -147,7 +147,7 @@ func TestMetricsAPIKeyFallbackEnvVar(t *testing.T) {
 		t.Error(err)
 	}
 
-	if d, _ := c.GetOpsRampMetricsConfig(); d.OpsRampMetricsAPIKey != key {
+	if d := c.GetAuthConfig(); d.Key != key {
 		t.Error("received", d, "expected", key)
 	}
 }

@@ -134,8 +134,7 @@ func main() {
 	upstreamMetricsConfig := metrics.GetMetricsImplementation("libtrace_upstream")
 	peerMetricsConfig := metrics.GetMetricsImplementation("libtrace_peer")
 
-	opsrampkey, _ := c.GetOpsrampKey()
-	opsrampsecret, _ := c.GetOpsrampSecret()
+	authConfig := c.GetAuthConfig()
 	opsrampapi, err := c.GetOpsrampAPI()
 	if err != nil {
 		logrusLogger.Fatal(err)
@@ -143,7 +142,7 @@ func main() {
 
 	userAgentAddition := "tracing-proxy/" + version
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
-		Transmission: &transmission.Opsramptraceproxy{
+		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          c.GetBatchTimeout(),
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
@@ -155,9 +154,11 @@ func main() {
 			Metrics:               upstreamMetricsConfig,
 			UseTls:                c.GetGlobalUseTLS(),
 			UseTlsInsecure:        c.GetGlobalUseTLSInsecureSkip(),
-			OpsrampKey:            opsrampkey,
-			OpsrampSecret:         opsrampsecret,
+			AuthTokenEndpoint:     authConfig.Endpoint,
+			AuthTokenKey:          authConfig.Key,
+			AuthTokenSecret:       authConfig.Secret,
 			ApiHost:               opsrampapi,
+			TenantId:              authConfig.TenantId,
 		},
 	})
 	if err != nil {
@@ -166,7 +167,7 @@ func main() {
 	}
 
 	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
-		Transmission: &transmission.Opsramptraceproxy{
+		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          c.GetBatchTimeout(),
 			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
@@ -176,9 +177,11 @@ func main() {
 			DisableCompression:    !c.GetCompressPeerCommunication(),
 			EnableMsgpackEncoding: false,
 			Metrics:               peerMetricsConfig,
-			OpsrampKey:            opsrampkey,
-			OpsrampSecret:         opsrampsecret,
+			AuthTokenEndpoint:     authConfig.Endpoint,
+			AuthTokenKey:          authConfig.Key,
+			AuthTokenSecret:       authConfig.Secret,
 			ApiHost:               opsrampapi,
+			TenantId:              authConfig.TenantId,
 		},
 	})
 	if err != nil {

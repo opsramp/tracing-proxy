@@ -78,19 +78,15 @@ func (d *DefaultTransmission) Start() error {
 	d.responseCanceler = canceler
 	go d.processResponses(processCtx, d.LibhClient.TxResponses())
 
-	//proxy support for traces
-	proto, _ := d.Config.GetProxyProtocol()
-	server, _ := d.Config.GetProxyServer()
-	port := d.Config.GetProxyPort()
-	username, _ := d.Config.GetProxyUsername()
-	password, _ := d.Config.GetProxyPassword()
+	// get proxy details
+	proxyConfig := d.Config.GetProxyConfig()
 
 	proxyUrl := ""
-	if server != "" && proto != "" {
-		proxyUrl = fmt.Sprintf("%s://%s:%d/", proto, server, port)
-		if username != "" && password != "" {
-			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", proto, username, password, server, port)
-			d.Logger.Debug().Logf("Using Authentication for Proxy Communication for Traces")
+	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
+		proxyUrl = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
+		if proxyConfig.Username != "" && proxyConfig.Password != "" {
+			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
+			d.Logger.Debug().Logf("Using Authentication for ProxyConfiguration Communication for Traces")
 		}
 		os.Setenv("HTTPS_PROXY", proxyUrl)
 		os.Setenv("HTTP_PROXY", proxyUrl)
