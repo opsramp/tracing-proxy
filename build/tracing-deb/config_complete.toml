@@ -55,7 +55,6 @@ CompressPeerCommunication = true
 
 # OpsrampAPI is the URL for the upstream Opsramp API.
 # Eligible for live reload.
-#OpsrampAPI = "localhost:50052"
 OpsrampAPI =
 
 # OpsrampKey is used to get the OauthToken
