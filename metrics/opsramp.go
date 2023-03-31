@@ -2,10 +2,12 @@ package metrics
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/snappy"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
@@ -30,7 +32,14 @@ const (
 	missingMetricsWriteScope = "auth token provided not not have metrics:write scope"
 )
 
-var metricsServer sync.Once
+var (
+	muxer  *mux.Router
+	server *http.Server
+)
+
+func init() {
+	muxer = mux.NewRouter()
+}
 
 type OpsRampMetrics struct {
 	Config config.Config `inject:""`
@@ -52,6 +61,8 @@ type OpsRampMetrics struct {
 	apiKey            string
 	apiSecret         string
 	oAuthToken        *OpsRampAuthTokenResponse
+
+	promRegistry *prometheus.Registry
 }
 
 func (p *OpsRampMetrics) Start() error {
@@ -59,6 +70,48 @@ func (p *OpsRampMetrics) Start() error {
 	defer func() { p.Logger.Debug().Logf("Finished starting OpsRampMetrics") }()
 
 	metricsConfig := p.Config.GetMetricsConfig()
+
+	p.metrics = make(map[string]interface{})
+
+	// Create non-global registry.
+	p.promRegistry = prometheus.NewRegistry()
+
+	// Add go runtime metrics and process collectors to default metrics prefix
+	if p.prefix == "" {
+		p.promRegistry.MustRegister(
+			collectors.NewGoCollector(),
+			collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		)
+	}
+
+	listenURI := "/metrics"
+	if p.prefix != "" {
+		listenURI = fmt.Sprintf("/metrics/%s", strings.TrimSpace(p.prefix))
+	}
+	muxer.Handle(listenURI, promhttp.HandlerFor(
+		p.promRegistry,
+		promhttp.HandlerOpts{Registry: p.promRegistry, Timeout: 10 * time.Second},
+	),
+	)
+	p.Logger.Info().Logf("registered metrics at %s for prefix: %s", listenURI, p.prefix)
+
+	if server != nil {
+		err := server.Shutdown(context.Background())
+		if err != nil {
+			p.Logger.Error().Logf("metrics server shutdown: %v", err)
+		}
+	}
+	server = &http.Server{
+		Addr:              metricsConfig.ListenAddr,
+		Handler:           muxer,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			p.Logger.Error().Logf("failed to start metrics server: %v", err)
+		}
+	}()
 
 	if p.Config.GetSendMetricsToOpsRamp() {
 		go func() {
@@ -87,20 +140,6 @@ func (p *OpsRampMetrics) Start() error {
 			}
 		}()
 	}
-
-	p.metrics = make(map[string]interface{})
-
-	metricsServer.Do(func() {
-		muxer := mux.NewRouter()
-		muxer.Handle("/metrics", promhttp.Handler())
-
-		go func() {
-			err := http.ListenAndServe(metricsConfig.ListenAddr, muxer)
-			if err != nil {
-				p.Logger.Error().Logf("failed to create /metrics server Error: %v", err)
-			}
-		}()
-	})
 
 	return nil
 }
@@ -336,7 +375,7 @@ func (p *OpsRampMetrics) Populate() {
 }
 
 func (p *OpsRampMetrics) PushMetrics() (int, error) {
-	metricFamilySlice, err := prometheus.DefaultGatherer.Gather()
+	metricFamilySlice, err := p.promRegistry.Gather()
 	if err != nil {
 		return -1, err
 	}
