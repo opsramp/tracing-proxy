@@ -107,10 +107,7 @@ func (p *OpsRampMetrics) Start() error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			p.Logger.Error().Logf("failed to start metrics server: %v", err)
-		}
+		server.ListenAndServe()
 	}()
 
 	if p.Config.GetSendMetricsToOpsRamp() {
@@ -165,21 +162,21 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 
 	switch metricType {
 	case "counter":
-		newMetric = promauto.NewCounter(prometheus.CounterOpts{
+		newMetric = promauto.With(p.promRegistry).NewCounter(prometheus.CounterOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        name,
 			ConstLabels: constantLabels,
 		})
 	case "gauge":
-		newMetric = promauto.NewGauge(prometheus.GaugeOpts{
+		newMetric = promauto.With(p.promRegistry).NewGauge(prometheus.GaugeOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        name,
 			ConstLabels: constantLabels,
 		})
 	case "histogram":
-		newMetric = promauto.NewHistogram(prometheus.HistogramOpts{
+		newMetric = promauto.With(p.promRegistry).NewHistogram(prometheus.HistogramOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
@@ -207,20 +204,19 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	}
 	hostMap := make(map[string]string)
 	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-
 		hostMap["hostname"] = hostname
 	}
 
 	switch metricType {
 	case "counter":
-		newMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		newMetric = promauto.With(p.promRegistry).NewCounterVec(prometheus.CounterOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        desc,
 			ConstLabels: hostMap,
 		}, labels)
 	case "gauge":
-		newMetric = promauto.NewGaugeVec(
+		newMetric = promauto.With(p.promRegistry).NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        name,
 				Namespace:   p.prefix,
@@ -229,7 +225,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 			},
 			labels)
 	case "histogram":
-		newMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		newMetric = promauto.With(p.promRegistry).NewHistogramVec(prometheus.HistogramOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        desc,
