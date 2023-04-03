@@ -1,2 +1,2 @@
-/opt/opsramp/tracing-proxy/conf/config_complete.toml
-/opt/opsramp/tracing-proxy/conf/rules_complete.toml
+/opt/opsramp/tracing-proxy/conf/config_complete.yaml
+/opt/opsramp/tracing-proxy/conf/rules_complete.yaml
