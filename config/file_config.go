@@ -110,7 +110,7 @@ type LogrusLoggerConfig struct {
 }
 
 type MetricsConfig struct {
-	Enable            bool   `validate:"required"`
+	Enable            bool
 	ListenAddr        string `validate:"required"`
 	OpsRampAPI        string
 	ReportingInterval int64

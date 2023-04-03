@@ -26,8 +26,8 @@ install -p -d -m 0755 %{buildroot}/opt/opsramp/tracing-proxy/conf
 install -p -d -m 0755 %{buildroot}/etc/systemd/system
 install -m 0775 opt/opsramp/tracing-proxy/bin/tracing-proxy %{buildroot}/opt/opsramp/tracing-proxy/bin/
 install -m 0775 opt/opsramp/tracing-proxy/bin/configure %{buildroot}/opt/opsramp/tracing-proxy/bin
-install -m 0644 opt/opsramp/tracing-proxy/conf/config_complete.toml %{buildroot}/opt/opsramp/tracing-proxy/conf/
-install -m 0644 opt/opsramp/tracing-proxy/conf/rules_complete.toml %{buildroot}/opt/opsramp/tracing-proxy/conf/
+install -m 0644 opt/opsramp/tracing-proxy/conf/config_complete.yaml %{buildroot}/opt/opsramp/tracing-proxy/conf/
+install -m 0644 opt/opsramp/tracing-proxy/conf/rules_complete.yaml %{buildroot}/opt/opsramp/tracing-proxy/conf/
 install -m 0644 etc/systemd/system/tracing-proxy.service %{buildroot}/etc/systemd/system
 
 %clean
