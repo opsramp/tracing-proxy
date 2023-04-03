@@ -2,10 +2,12 @@ package metrics
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/snappy"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
@@ -26,7 +28,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var metricsServer sync.Once
+const (
+	missingMetricsWriteScope = "auth token provided not not have metrics:write scope"
+)
+
+var (
+	muxer  *mux.Router
+	server *http.Server
+)
+
+func init() {
+	muxer = mux.NewRouter()
+}
 
 type OpsRampMetrics struct {
 	Config config.Config `inject:""`
@@ -36,32 +49,72 @@ type OpsRampMetrics struct {
 	metrics map[string]interface{}
 	lock    sync.RWMutex
 
-	Client      http.Client
-	oAuthToken  *OpsRampAuthTokenResponse
+	Client http.Client
+
 	apiEndpoint string
 	tenantID    string
-	apiKey      string
-	apiSecret   string
 	retryCount  int64
 	re          *regexp.Regexp
+	prefix      string
 
-	prefix string
+	authTokenEndpoint string
+	apiKey            string
+	apiSecret         string
+	oAuthToken        *OpsRampAuthTokenResponse
+
+	promRegistry *prometheus.Registry
 }
 
 func (p *OpsRampMetrics) Start() error {
 	p.Logger.Debug().Logf("Starting OpsRampMetrics")
 	defer func() { p.Logger.Debug().Logf("Finished starting OpsRampMetrics") }()
 
-	metricsConfig, err := p.Config.GetOpsRampMetricsConfig()
-	if err != nil {
-		return err
+	metricsConfig := p.Config.GetMetricsConfig()
+
+	p.metrics = make(map[string]interface{})
+
+	// Create non-global registry.
+	p.promRegistry = prometheus.NewRegistry()
+
+	// Add go runtime metrics and process collectors to default metrics prefix
+	if p.prefix == "" {
+		p.promRegistry.MustRegister(
+			collectors.NewGoCollector(),
+			collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		)
 	}
+
+	listenURI := "/metrics"
+	if p.prefix != "" {
+		listenURI = fmt.Sprintf("/metrics/%s", strings.TrimSpace(p.prefix))
+	}
+	muxer.Handle(listenURI, promhttp.HandlerFor(
+		p.promRegistry,
+		promhttp.HandlerOpts{Registry: p.promRegistry, Timeout: 10 * time.Second},
+	),
+	)
+	p.Logger.Info().Logf("registered metrics at %s for prefix: %s", listenURI, p.prefix)
+
+	if server != nil {
+		err := server.Shutdown(context.Background())
+		if err != nil {
+			p.Logger.Error().Logf("metrics server shutdown: %v", err)
+		}
+	}
+	server = &http.Server{
+		Addr:              metricsConfig.ListenAddr,
+		Handler:           muxer,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	go func() {
+		server.ListenAndServe()
+	}()
 
 	if p.Config.GetSendMetricsToOpsRamp() {
 		go func() {
-			metricsTicker := time.NewTicker(time.Duration(metricsConfig.OpsRampMetricsReportingInterval) * time.Second)
+			metricsTicker := time.NewTicker(time.Duration(metricsConfig.ReportingInterval) * time.Second)
 			defer metricsTicker.Stop()
-			p.Populate(metricsConfig)
+			p.Populate()
 
 			// populating the oAuth Token Initially
 			err := p.RenewOAuthToken()
@@ -73,24 +126,17 @@ func (p *OpsRampMetrics) Start() error {
 				statusCode, err := p.PushMetrics()
 				if err != nil {
 					p.Logger.Error().Logf("error while pushing metrics with statusCode: %d and Error: %v", statusCode, err)
+					if err.Error() == missingMetricsWriteScope {
+						p.Logger.Info().Logf("renewing auth token since the existing token is missing metrics:write scope")
+						err := p.RenewOAuthToken()
+						if err != nil {
+							p.Logger.Error().Logf("error while initializing oAuth Token Err: %v", err)
+						}
+					}
 				}
 			}
 		}()
 	}
-
-	p.metrics = make(map[string]interface{})
-
-	metricsServer.Do(func() {
-		muxer := mux.NewRouter()
-		muxer.Handle("/metrics", promhttp.Handler())
-
-		go func() {
-			err := http.ListenAndServe(metricsConfig.MetricsListenAddr, muxer)
-			if err != nil {
-				p.Logger.Error().Logf("failed to create /metrics server Error: %v", err)
-			}
-		}()
-	})
 
 	return nil
 }
@@ -116,21 +162,21 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 
 	switch metricType {
 	case "counter":
-		newMetric = promauto.NewCounter(prometheus.CounterOpts{
+		newMetric = promauto.With(p.promRegistry).NewCounter(prometheus.CounterOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        name,
 			ConstLabels: constantLabels,
 		})
 	case "gauge":
-		newMetric = promauto.NewGauge(prometheus.GaugeOpts{
+		newMetric = promauto.With(p.promRegistry).NewGauge(prometheus.GaugeOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        name,
 			ConstLabels: constantLabels,
 		})
 	case "histogram":
-		newMetric = promauto.NewHistogram(prometheus.HistogramOpts{
+		newMetric = promauto.With(p.promRegistry).NewHistogram(prometheus.HistogramOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
@@ -158,20 +204,19 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	}
 	hostMap := make(map[string]string)
 	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-
 		hostMap["hostname"] = hostname
 	}
 
 	switch metricType {
 	case "counter":
-		newMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		newMetric = promauto.With(p.promRegistry).NewCounterVec(prometheus.CounterOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        desc,
 			ConstLabels: hostMap,
 		}, labels)
 	case "gauge":
-		newMetric = promauto.NewGaugeVec(
+		newMetric = promauto.With(p.promRegistry).NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:        name,
 				Namespace:   p.prefix,
@@ -180,7 +225,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 			},
 			labels)
 	case "histogram":
-		newMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		newMetric = promauto.With(p.promRegistry).NewHistogramVec(prometheus.HistogramOpts{
 			Name:        name,
 			Namespace:   p.prefix,
 			Help:        desc,
@@ -265,35 +310,47 @@ type OpsRampAuthTokenResponse struct {
 	Scope       string `json:"scope"`
 }
 
-func (p *OpsRampMetrics) Populate(metricsConfig *config.OpsRampMetricsConfig) {
-	p.apiEndpoint = metricsConfig.OpsRampMetricsAPI
-	p.apiKey = metricsConfig.OpsRampMetricsAPIKey
-	p.apiSecret = metricsConfig.OpsRampMetricsAPISecret
-	p.tenantID = metricsConfig.OpsRampTenantID
-	p.retryCount = metricsConfig.OpsRampMetricsRetryCount
+func (p *OpsRampMetrics) Populate() {
+
+	metricsConfig := p.Config.GetMetricsConfig()
+	authConfig := p.Config.GetAuthConfig()
+	proxyConfig := p.Config.GetProxyConfig()
+
+	p.apiEndpoint = metricsConfig.OpsRampAPI
+	p.retryCount = metricsConfig.RetryCount
+
+	p.authTokenEndpoint = authConfig.Endpoint
+	p.apiKey = authConfig.Key
+	p.apiSecret = authConfig.Secret
+	p.tenantID = authConfig.TenantId
 
 	// Creating Regex for a list of metrics
 	regexString := ".*" // the default value is to take everything
-	if len(metricsConfig.OpsRampMetricsList) >= 1 {
-		regexString = metricsConfig.OpsRampMetricsList[0]
-		for index := 0; index < len(metricsConfig.OpsRampMetricsList); index++ {
-			regexString = fmt.Sprintf("%s|%s", regexString, metricsConfig.OpsRampMetricsList[index])
+	if len(metricsConfig.MetricsList) >= 1 {
+		regexString = metricsConfig.MetricsList[0]
+		for index := 0; index < len(metricsConfig.MetricsList); index++ {
+			regexString = fmt.Sprintf("%s|%s", regexString, metricsConfig.MetricsList[index])
 		}
 	}
 	p.re = regexp.MustCompile(regexString)
 
 	proxyUrl := ""
-	if metricsConfig.ProxyServer != "" && metricsConfig.ProxyProtocol != "" {
-		proxyUrl = fmt.Sprintf("%s://%s:%d/", metricsConfig.ProxyProtocol, metricsConfig.ProxyServer, metricsConfig.ProxyPort)
-		if metricsConfig.ProxyUserName != "" && metricsConfig.ProxyPassword != "" {
-			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", metricsConfig.ProxyProtocol, metricsConfig.ProxyUserName, metricsConfig.ProxyPassword, metricsConfig.ProxyServer, metricsConfig.ProxyPort)
-			p.Logger.Debug().Logf("Using Authentication for Proxy Communication for Metrics")
+	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
+		proxyUrl = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
+		if proxyConfig.Username != "" && proxyConfig.Password != "" {
+			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
+			p.Logger.Debug().Logf("Using Authentication for ProxyConfiguration Communication for Metrics")
 		}
 	}
 
 	p.Client = http.Client{
-		Transport: &http.Transport{Proxy: http.ProxyFromEnvironment},
-		Timeout:   time.Duration(240) * time.Second,
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			MaxIdleConns:    10,
+			MaxConnsPerHost: 10,
+			IdleConnTimeout: 5 * time.Minute,
+		},
+		Timeout: time.Duration(240) * time.Second,
 	}
 	if proxyUrl != "" {
 		proxyURL, err := url.Parse(proxyUrl)
@@ -301,15 +358,20 @@ func (p *OpsRampMetrics) Populate(metricsConfig *config.OpsRampMetricsConfig) {
 			p.Logger.Error().Logf("skipping proxy err: %v", err)
 		} else {
 			p.Client = http.Client{
-				Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)},
-				Timeout:   time.Duration(240) * time.Second,
+				Transport: &http.Transport{
+					Proxy:           http.ProxyURL(proxyURL),
+					MaxIdleConns:    10,
+					MaxConnsPerHost: 10,
+					IdleConnTimeout: 5 * time.Minute,
+				},
+				Timeout: time.Duration(240) * time.Second,
 			}
 		}
 	}
 }
 
 func (p *OpsRampMetrics) PushMetrics() (int, error) {
-	metricFamilySlice, err := prometheus.DefaultGatherer.Gather()
+	metricFamilySlice, err := p.promRegistry.Gather()
 	if err != nil {
 		return -1, err
 	}
@@ -474,9 +536,12 @@ func (p *OpsRampMetrics) PushMetrics() (int, error) {
 	}
 
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
-	//req.Header.Set("Connection", "close")
 	req.Header.Set("Content-Encoding", "snappy")
 	req.Header.Set("Content-Type", "application/x-protobuf")
+
+	if !strings.Contains(p.oAuthToken.Scope, "metrics:write") {
+		return -1, fmt.Errorf(missingMetricsWriteScope)
+	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
 
 	resp, err := p.SendWithRetry(req)
@@ -500,7 +565,7 @@ func (p *OpsRampMetrics) PushMetrics() (int, error) {
 func (p *OpsRampMetrics) RenewOAuthToken() error {
 	p.oAuthToken = new(OpsRampAuthTokenResponse)
 
-	endpoint := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(p.apiEndpoint, "/"))
+	endpoint := fmt.Sprintf("%s/auth/oauth/token", strings.TrimRight(p.authTokenEndpoint, "/"))
 
 	requestBody := strings.NewReader("client_id=" + p.apiKey + "&client_secret=" + p.apiSecret + "&grant_type=client_credentials")
 

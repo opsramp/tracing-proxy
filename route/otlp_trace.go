@@ -19,7 +19,12 @@ import (
 func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	ri := huskyotlp.GetRequestInfoFromHttpHeaders(req.Header)
 
-	r.Logger.Info().Logf("ri: %+v", ri)
+	if ri.ApiTenantId == "" {
+		ri.ApiTenantId, _ = r.Config.GetTenantId()
+	}
+	if ri.Dataset == "" {
+		ri.Dataset, _ = r.Config.GetDataset()
+	}
 
 	result, err := huskyotlp.TranslateTraceRequestFromReader(req.Body, ri)
 	if err != nil {
@@ -27,12 +32,7 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	token := ri.ApiToken
-	tenantID := ri.ApiTenantId
-	if tenantID == "" {
-		tenantID, _ = r.Config.GetTenantId()
-	}
-	if err := processTraceRequest(req.Context(), r, result.Batches, ri.Dataset, token, tenantID); err != nil {
+	if err := processTraceRequest(req.Context(), r, result.Batches, ri.Dataset, ri.ApiToken, ri.ApiTenantId); err != nil {
 		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 	}
 }
@@ -40,25 +40,21 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 func (r *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServiceRequest) (*collectortrace.ExportTraceServiceResponse, error) {
 	ri := huskyotlp.GetRequestInfoFromGrpcMetadata(ctx)
 
+	if ri.ApiTenantId == "" {
+		ri.ApiTenantId, _ = r.Config.GetTenantId()
+	}
+	if ri.Dataset == "" {
+		ri.Dataset, _ = r.Config.GetDataset()
+	}
+
 	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
 	result, err := huskyotlp.TranslateTraceRequest(req, ri)
 	if err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
-	token := ri.ApiToken
-	tenantID := ri.ApiTenantId
-	if len(tenantID) == 0 {
-		opsrampTenantID, _ := r.Config.GetTenantId()
-		tenantID = opsrampTenantID
-	}
 
-	if len(ri.Dataset) == 0 {
-		dataset, _ := r.Config.GetDataset()
-		ri.Dataset = dataset
-	}
-
-	if err := processTraceRequest(ctx, r, result.Batches, ri.Dataset, token, tenantID); err != nil {
+	if err := processTraceRequest(ctx, r, result.Batches, ri.Dataset, ri.ApiToken, ri.ApiTenantId); err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 
@@ -72,7 +68,6 @@ func processTraceRequest(
 	datasetName string,
 	token string,
 	tenantID string) error {
-
 	var requestID types.RequestIDContextKey
 	apiHost, err := router.Config.GetOpsrampAPI()
 	if err != nil {

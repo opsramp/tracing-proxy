@@ -26,7 +26,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/metadata"
 	"gopkg.in/yaml.v2"
 
 	// grpc/gzip compressor, auto registers on import
@@ -730,15 +729,6 @@ func unmarshal(r *http.Request, data io.Reader, v interface{}) error {
 	default:
 		return jsoniter.NewDecoder(data).Decode(v)
 	}
-}
-
-// getFirstValueFromMetadata returns the first value of a metadata entry using a
-// case-insensitive key
-func getFirstValueFromMetadata(key string, md metadata.MD) string {
-	if values := md.Get(key); len(values) > 0 {
-		return values[0]
-	}
-	return ""
 }
 
 type environmentCache struct {
