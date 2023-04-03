@@ -11,10 +11,10 @@ sed -i "/^\%define version/s/^.*$/\%define version     ${Version}/g" tracing-pro
 # Updating the files
 mkdir -p opt/opsramp/tracing-proxy/conf
 mkdir -p opt/opsramp/tracing-proxy/bin
-cp .config_complete.toml opt/opsramp/tracing-proxy/conf/config_complete.toml
-cp rules_complete.toml opt/opsramp/tracing-proxy/conf/rules_complete.toml
+cp ../config_complete.yaml opt/opsramp/tracing-proxy/conf/config_complete.yaml
+cp ../rules_complete.yaml opt/opsramp/tracing-proxy/conf/rules_complete.yaml
 go build -o ../../cmd/tracing-proxy/main ../../cmd/tracing-proxy/main.go
-go build configure.go
+go build ../configure.go
 cp ../../cmd/tracing-proxy/main opt/opsramp/tracing-proxy/bin/tracing-proxy
 cp configure opt/opsramp/tracing-proxy/bin/configure
 
