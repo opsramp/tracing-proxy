@@ -159,6 +159,8 @@ type Config interface {
 	// GetAuthConfig return the authentication configuration
 	GetAuthConfig() AuthConfiguration
 
+	GetRetryConfig() *RetryConfiguration
+
 	GetTenantId() (string, error)
 
 	GetDataset() (string, error)

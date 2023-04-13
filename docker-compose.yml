@@ -2,19 +2,17 @@ version: '3.8'
 
 services:
   redis:
-    hostname: redis
-    image: dynomitedb/redis
-    expose:
-      - "22122"
+    image: redis
+    ports:
+      - "6379:6379"
     profiles:
       - redis
       - all
 
   redis-commander:
     image: rediscommander/redis-commander:latest
-    restart: always
     environment:
-      - REDIS_HOSTS=local:redis:22122
+      - REDIS_HOSTS=local:redis:6379
     ports:
       - "4042:8081"
     depends_on:

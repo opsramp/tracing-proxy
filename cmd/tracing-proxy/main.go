@@ -103,16 +103,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), c.GetPeerTimeout())
-	defer cancel()
-	done := make(chan struct{})
-	peers, err := peer.NewPeers(ctx, c, done)
-
-	if err != nil {
-		fmt.Printf("unable to load peers: %+v\n", err)
-		os.Exit(1)
-	}
-
 	// upstreamTransport is the http transport used to send things on to OpsRamp
 	upstreamTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -135,10 +125,15 @@ func main() {
 	peerMetricsConfig := metrics.GetMetricsImplementation("libtrace_peer")
 
 	authConfig := c.GetAuthConfig()
-	opsrampapi, err := c.GetOpsrampAPI()
+	opsrampAPI, err := c.GetOpsrampAPI()
 	if err != nil {
 		logrusLogger.Fatal(err)
 	}
+	dataset, err := c.GetDataset()
+	if err != nil {
+		logrusLogger.Fatal(err)
+	}
+	retryConfig := c.GetRetryConfig()
 
 	userAgentAddition := "tracing-proxy/" + version
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
@@ -157,8 +152,16 @@ func main() {
 			AuthTokenEndpoint:     authConfig.Endpoint,
 			AuthTokenKey:          authConfig.Key,
 			AuthTokenSecret:       authConfig.Secret,
-			ApiHost:               opsrampapi,
+			ApiHost:               opsrampAPI,
 			TenantId:              authConfig.TenantId,
+			Dataset:               dataset,
+			RetrySettings: &transmission.RetrySettings{
+				InitialInterval:     retryConfig.InitialInterval,
+				RandomizationFactor: retryConfig.RandomizationFactor,
+				Multiplier:          retryConfig.Multiplier,
+				MaxInterval:         retryConfig.MaxInterval,
+				MaxElapsedTime:      retryConfig.MaxElapsedTime,
+			},
 		},
 	})
 	if err != nil {
@@ -180,12 +183,29 @@ func main() {
 			AuthTokenEndpoint:     authConfig.Endpoint,
 			AuthTokenKey:          authConfig.Key,
 			AuthTokenSecret:       authConfig.Secret,
-			ApiHost:               opsrampapi,
+			ApiHost:               opsrampAPI,
 			TenantId:              authConfig.TenantId,
+			Dataset:               dataset,
+			RetrySettings: &transmission.RetrySettings{
+				InitialInterval:     retryConfig.InitialInterval,
+				RandomizationFactor: retryConfig.RandomizationFactor,
+				Multiplier:          retryConfig.Multiplier,
+				MaxInterval:         retryConfig.MaxInterval,
+				MaxElapsedTime:      retryConfig.MaxElapsedTime,
+			},
 		},
 	})
 	if err != nil {
 		fmt.Printf("unable to initialize upstream libtrace client: %v", err)
+		os.Exit(1)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.GetPeerTimeout())
+	defer cancel()
+	done := make(chan struct{})
+	peers, err := peer.NewPeers(ctx, c, done)
+	if err != nil {
+		fmt.Printf("unable to load peers: %+v\n", err)
 		os.Exit(1)
 	}
 
