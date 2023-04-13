@@ -121,8 +121,8 @@ func main() {
 		TLSHandshakeTimeout: 1200 * time.Millisecond,
 	}
 
-	upstreamMetricsConfig := metrics.GetMetricsImplementation("libtrace_upstream")
-	peerMetricsConfig := metrics.GetMetricsImplementation("libtrace_peer")
+	upstreamMetricsConfig := metrics.GetMetricsImplementation("upstream")
+	peerMetricsConfig := metrics.GetMetricsImplementation("peer")
 
 	authConfig := c.GetAuthConfig()
 	opsrampAPI, err := c.GetOpsrampAPI()
