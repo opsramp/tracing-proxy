@@ -336,9 +336,6 @@ MetricsConfig:
   # the metrics are collected and sent to OpsRamp
   ReportingInterval: 10
 
-  # OpsRampMetricsRetryCount is the number of times we retry incase the send fails
-  RetryCount: 2
-
   # MetricsList is a list of regular expressions which match the metric
   # names. Keep the list as small as possible since too many regular expressions can lead to bad performance.
   # Internally, all the items in the list are concatenated using '|' to make the computation faster.
