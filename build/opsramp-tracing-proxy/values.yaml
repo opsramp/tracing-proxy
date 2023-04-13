@@ -157,6 +157,24 @@ config:
   CacheOverrunStrategy: "impact"
 
   #########################
+  ## Retry Configuration ##
+  #########################
+  RetryConfiguration:
+    # InitialInterval the time to wait after the first failure before retrying.
+    InitialInterval: 500ms
+    # RandomizationFactor is a random factor used to calculate next backoff
+    # Randomized interval = RetryInterval * (1 ± RandomizationFactor)
+    RandomizationFactor: 0.5
+    # Multiplier is the value multiplied by the backoff interval bounds
+    Multiplier: 1.5
+    # MaxInterval is the upper bound on backoff interval. Once this value is reached, the delay between
+    # consecutive retries will always be `MaxInterval`.
+    MaxInterval: 60s
+    # MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request.
+    # Once this value is reached, the data is discarded.
+    MaxElapsedTime: 15m
+
+  #########################
   ## Proxy Configuration ##
   #########################
   ProxyConfiguration:
@@ -319,9 +337,6 @@ config:
     # ReportingInterval is the frequency specified in seconds at which
     # the metrics are collected and sent to OpsRamp
     ReportingInterval: 10
-
-    # OpsRampMetricsRetryCount is the number of times we retry incase the send fails
-    RetryCount: 2
 
     # MetricsList is a list of regular expressions which match the metric
     # names. Keep the list as small as possible since too many regular expressions can lead to bad performance.
