@@ -53,7 +53,6 @@ type OpsRampMetrics struct {
 
 	apiEndpoint string
 	tenantID    string
-	retryCount  int64
 	re          *regexp.Regexp
 	prefix      string
 
@@ -317,7 +316,6 @@ func (p *OpsRampMetrics) Populate() {
 	proxyConfig := p.Config.GetProxyConfig()
 
 	p.apiEndpoint = metricsConfig.OpsRampAPI
-	p.retryCount = metricsConfig.RetryCount
 
 	p.authTokenEndpoint = authConfig.Endpoint
 	p.apiKey = authConfig.Key
@@ -544,7 +542,7 @@ func (p *OpsRampMetrics) PushMetrics() (int, error) {
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
 
-	resp, err := p.SendWithRetry(req)
+	resp, err := p.Send(req)
 	if err != nil {
 		return -1, err
 	}
@@ -596,7 +594,7 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 	return nil
 }
 
-func (p *OpsRampMetrics) SendWithRetry(request *http.Request) (*http.Response, error) {
+func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
 	response, err := p.Client.Do(request)
 	if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 		return response, nil
@@ -604,19 +602,10 @@ func (p *OpsRampMetrics) SendWithRetry(request *http.Request) (*http.Response, e
 	if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
 		p.RenewOAuthToken()
 		request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
-	}
-
-	// retry if the error is not nil
-	for retries := p.retryCount; retries > 0; retries-- {
 		response, err = p.Client.Do(request)
 		if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 			return response, nil
 		}
-		if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
-			p.RenewOAuthToken()
-			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
-		}
 	}
-
 	return response, err
 }

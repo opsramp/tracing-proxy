@@ -124,7 +124,6 @@ type MetricsConfig struct {
 	ListenAddr        string `validate:"required"`
 	OpsRampAPI        string
 	ReportingInterval int64
-	RetryCount        int64
 	MetricsList       []string
 }
 
@@ -210,7 +209,6 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("MetricsConfig.Enable", false)
 	c.SetDefault("MetricsConfig.ListenAddr", "0.0.0.0:2112")
 	c.SetDefault("MetricsConfig.ReportingInterval", 10)
-	c.SetDefault("MetricsConfig.RetryCount", 2)
 	c.SetDefault("MetricsConfig.MetricsList", []string{".*"})
 
 	c.SetConfigFile(config)
@@ -323,9 +321,6 @@ func (f *fileConfig) validateGeneralConfigs() error {
 
 	// validate metrics config
 	metricsConfig := f.GetMetricsConfig()
-	if metricsConfig.RetryCount < 0 || metricsConfig.RetryCount > 10 {
-		return fmt.Errorf("metrics retry count %d invalid, must be in range 1-10", metricsConfig.RetryCount)
-	}
 	if metricsConfig.ReportingInterval < 10 {
 		return fmt.Errorf("mertics reporting interval %d not allowed, must be >= 10", metricsConfig.ReportingInterval)
 	}
