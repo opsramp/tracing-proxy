@@ -113,10 +113,6 @@ func (r *Router) SetVersion(ver string) {
 	r.versionStr = ver
 }
 
-type server struct {
-	proxypb.TraceProxyServiceServer
-}
-
 // LnS spins up the Listen and Serve portion of the router. A router is
 // initialized as being for either incoming traffic from clients or traffic from
 // a peer. They listen on different addresses so peer traffic can be

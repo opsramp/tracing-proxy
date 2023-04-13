@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/opsramp/libtrace-go/transmission"
 	"io"
 	"net"
 	"net/url"
@@ -74,6 +75,15 @@ type configContents struct {
 	ProxyConfiguration
 	AuthConfiguration
 	MetricsConfig
+	RetryConfiguration *RetryConfiguration
+}
+
+type RetryConfiguration struct {
+	InitialInterval     time.Duration
+	RandomizationFactor float64
+	Multiplier          float64
+	MaxInterval         time.Duration
+	MaxElapsedTime      time.Duration
 }
 
 type ProxyConfiguration struct {
@@ -581,6 +591,24 @@ func (f *fileConfig) GetAuthConfig() AuthConfiguration {
 	defer f.mux.RUnlock()
 
 	return f.conf.AuthConfiguration
+}
+
+func (f *fileConfig) GetRetryConfig() *RetryConfiguration {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	if f.conf.RetryConfiguration == nil {
+		defaultConfig := transmission.NewDefaultRetrySettings()
+		return &RetryConfiguration{
+			InitialInterval:     defaultConfig.InitialInterval,
+			RandomizationFactor: defaultConfig.RandomizationFactor,
+			Multiplier:          defaultConfig.Multiplier,
+			MaxInterval:         defaultConfig.MaxInterval,
+			MaxElapsedTime:      defaultConfig.MaxElapsedTime,
+		}
+	}
+
+	return f.conf.RetryConfiguration
 }
 
 func (f *fileConfig) GetDataset() (string, error) {

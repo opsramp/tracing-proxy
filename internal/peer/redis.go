@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/opsramp/libtrace-go/transmission"
 	"net"
 	"os"
 	"sort"
@@ -101,6 +102,10 @@ func newRedisPeers(ctx context.Context, c config.Config, done chan struct{}) (Pe
 	}
 
 	// register myself once
+	for !transmission.DefaultAvailability.Status() {
+		logrus.Info("peer is not available yet")
+		time.Sleep(5 * time.Second)
+	}
 	err = peers.store.Register(ctx, address, peerEntryTimeout)
 	if err != nil {
 		logrus.WithError(err).Errorf("failed to register self with redis peer store")
@@ -141,6 +146,9 @@ func (p *redisPeers) registerSelf(done chan struct{}) {
 	for {
 		select {
 		case <-tk.C:
+			if !transmission.DefaultAvailability.Status() {
+				continue
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), p.c.GetPeerTimeout())
 			// every interval, insert a timeout record. we ignore the error
 			// here since Register() logs the error for us.
