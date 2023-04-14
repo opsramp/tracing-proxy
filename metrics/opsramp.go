@@ -33,12 +33,15 @@ const (
 )
 
 var (
-	muxer  *mux.Router
-	server *http.Server
+	muxer    *mux.Router
+	server   *http.Server
+	hostname string
 )
 
 func init() {
 	muxer = mux.NewRouter()
+
+	hostname, _ = os.Hostname()
 }
 
 type OpsRampMetrics struct {
@@ -153,26 +156,18 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 		return
 	}
 
-	constantLabels := make(map[string]string)
-
-	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-		constantLabels["hostname"] = hostname
-	}
-
 	switch metricType {
 	case "counter":
 		newMetric = promauto.With(p.promRegistry).NewCounter(prometheus.CounterOpts{
-			Name:        name,
-			Namespace:   p.prefix,
-			Help:        name,
-			ConstLabels: constantLabels,
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      name,
 		})
 	case "gauge":
 		newMetric = promauto.With(p.promRegistry).NewGauge(prometheus.GaugeOpts{
-			Name:        name,
-			Namespace:   p.prefix,
-			Help:        name,
-			ConstLabels: constantLabels,
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      name,
 		})
 	case "histogram":
 		newMetric = promauto.With(p.promRegistry).NewHistogram(prometheus.HistogramOpts{
@@ -181,8 +176,7 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 			Help:      name,
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
-			Buckets:     prometheus.ExponentialBuckets(1, 4, 16),
-			ConstLabels: constantLabels,
+			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
 		})
 	}
 
@@ -201,34 +195,27 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	if exists {
 		return
 	}
-	constantLabels := make(map[string]string)
-	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-		constantLabels["hostname"] = hostname
-	}
 
 	switch metricType {
 	case "counter":
 		newMetric = promauto.With(p.promRegistry).NewCounterVec(prometheus.CounterOpts{
-			Name:        name,
-			Namespace:   p.prefix,
-			Help:        desc,
-			ConstLabels: constantLabels,
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      desc,
 		}, labels)
 	case "gauge":
 		newMetric = promauto.With(p.promRegistry).NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name:        name,
-				Namespace:   p.prefix,
-				Help:        desc,
-				ConstLabels: constantLabels,
+				Name:      name,
+				Namespace: p.prefix,
+				Help:      desc,
 			},
 			labels)
 	case "histogram":
 		newMetric = promauto.With(p.promRegistry).NewHistogramVec(prometheus.HistogramOpts{
-			Name:        name,
-			Namespace:   p.prefix,
-			Help:        desc,
-			ConstLabels: constantLabels,
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      desc,
 			// This is an attempt at a usable set of buckets for a wide range of metrics
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
 			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
@@ -381,7 +368,16 @@ func (p *OpsRampMetrics) Push() (int, error) {
 			continue
 		}
 		for _, metric := range metricFamily.GetMetric() {
-			var labels []prompb.Label
+			labels := []prompb.Label{
+				{
+					Name:  model.JobLabel,
+					Value: p.prefix,
+				},
+				{
+					Name:  "hostname",
+					Value: hostname,
+				},
+			}
 			for _, label := range metric.GetLabel() {
 				labels = append(labels, prompb.Label{
 					Name:  label.GetName(),
@@ -392,16 +388,10 @@ func (p *OpsRampMetrics) Push() (int, error) {
 			switch metricFamily.GetType() {
 			case io_prometheus_client.MetricType_COUNTER:
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, []prompb.Label{
-						{
-							Name:  model.MetricNameLabel,
-							Value: metricFamily.GetName(),
-						},
-						{
-							Name:  model.JobLabel,
-							Value: p.prefix,
-						},
-					}...),
+					Labels: append(labels, prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: metricFamily.GetName(),
+					}),
 					Samples: []prompb.Sample{
 						{
 							Value:     metric.GetCounter().GetValue(),
@@ -411,16 +401,10 @@ func (p *OpsRampMetrics) Push() (int, error) {
 				})
 			case io_prometheus_client.MetricType_GAUGE:
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, []prompb.Label{
-						{
-							Name:  model.MetricNameLabel,
-							Value: metricFamily.GetName(),
-						},
-						{
-							Name:  model.JobLabel,
-							Value: p.prefix,
-						},
-					}...),
+					Labels: append(labels, prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: metricFamily.GetName(),
+					}),
 					Samples: []prompb.Sample{
 						{
 							Value:     metric.GetGauge().GetValue(),
@@ -438,10 +422,6 @@ func (p *OpsRampMetrics) Push() (int, error) {
 								Value: metricFamily.GetName(),
 							},
 							{
-								Name:  model.JobLabel,
-								Value: p.prefix,
-							},
-							{
 								Name:  model.BucketLabel,
 								Value: fmt.Sprintf("%v", bucket.GetUpperBound()),
 							},
@@ -456,16 +436,10 @@ func (p *OpsRampMetrics) Push() (int, error) {
 				}
 				// samples for count and sum
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, []prompb.Label{
-						{
-							Name:  model.MetricNameLabel,
-							Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
-						},
-						{
-							Name:  model.JobLabel,
-							Value: p.prefix,
-						},
-					}...),
+					Labels: append(labels, prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
+					}),
 					Samples: []prompb.Sample{
 						{
 							Value:     metric.GetHistogram().GetSampleSum(),
@@ -474,16 +448,10 @@ func (p *OpsRampMetrics) Push() (int, error) {
 					},
 				})
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, []prompb.Label{
-						{
-							Name:  model.MetricNameLabel,
-							Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
-						},
-						{
-							Name:  model.JobLabel,
-							Value: p.prefix,
-						},
-					}...),
+					Labels: append(labels, prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
+					}),
 					Samples: []prompb.Sample{
 						{
 							Value:     float64(metric.GetHistogram().GetSampleCount()),
@@ -501,10 +469,6 @@ func (p *OpsRampMetrics) Push() (int, error) {
 								Value: metricFamily.GetName(),
 							},
 							{
-								Name:  model.JobLabel,
-								Value: p.prefix,
-							},
-							{
 								Name:  model.QuantileLabel,
 								Value: fmt.Sprintf("%v", quantile.GetQuantile()),
 							},
@@ -519,16 +483,10 @@ func (p *OpsRampMetrics) Push() (int, error) {
 				}
 				// samples for count and sum
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, []prompb.Label{
-						{
-							Name:  model.MetricNameLabel,
-							Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
-						},
-						{
-							Name:  model.JobLabel,
-							Value: p.prefix,
-						},
-					}...),
+					Labels: append(labels, prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
+					}),
 					Samples: []prompb.Sample{
 						{
 							Value:     metric.GetSummary().GetSampleSum(),
@@ -537,16 +495,10 @@ func (p *OpsRampMetrics) Push() (int, error) {
 					},
 				})
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, []prompb.Label{
-						{
-							Name:  model.MetricNameLabel,
-							Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
-						},
-						{
-							Name:  model.JobLabel,
-							Value: p.prefix,
-						},
-					}...),
+					Labels: append(labels, prompb.Label{
+						Name:  model.MetricNameLabel,
+						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
+					}),
 					Samples: []prompb.Sample{
 						{
 							Value:     float64(metric.GetSummary().GetSampleCount()),
