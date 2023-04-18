@@ -18,7 +18,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.15.12
 	github.com/opsramp/husky v0.0.0-20230330140711-461fc680ffa0
-	github.com/opsramp/libtrace-go v0.0.0-20230413051817-f2f9e8a750b4
+	github.com/opsramp/libtrace-go v0.0.0-20230417062015-cad5afe8ebcc
 	github.com/panmari/cuckoofilter v1.0.3
 	github.com/pelletier/go-toml/v2 v2.0.5
 	github.com/pkg/errors v0.9.1
