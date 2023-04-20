@@ -74,10 +74,10 @@ UpstreamBufferSize: 1000
 PeerBufferSize: 1000
 
 # AddHostMetadataToTrace determines whether to add information about
-# the host that Tracing-Proxy is running on to the spans that it processes.
+# the host that tracing proxy is running on to the spans that it processes.
 # If enabled, information about the host will be added to each span with the
-# prefix `meta.tracing_proxy.`.
-# Currently, the only value added is 'meta.tracing_proxy.local_hostname'.
+# prefix `meta.tracing proxy.`.
+# Currently, the only value added is 'meta.tracing proxy.local_hostname'.
 AddHostMetadataToTrace: false
 
 # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
@@ -122,6 +122,24 @@ AddSpanCountToRoot: false
 # In all cases, it only applies if MaxAlloc is nonzero.
 # Default is "resize" for compatibility but "impact" is recommended for most installations.
 CacheOverrunStrategy: "impact"
+
+#########################
+## Retry Configuration ##
+#########################
+RetryConfiguration:
+  # InitialInterval the time to wait after the first failure before retrying.
+  InitialInterval: 500ms
+  # RandomizationFactor is a random factor used to calculate next backoff
+  # Randomized interval = RetryInterval * (1 ± RandomizationFactor)
+  RandomizationFactor: 0.5
+  # Multiplier is the value multiplied by the backoff interval bounds
+  Multiplier: 1.5
+  # MaxInterval is the upper bound on backoff interval. Once this value is reached, the delay between
+  # consecutive retries will always be `MaxInterval`.
+  MaxInterval: 60s
+  # MaxElapsedTime is the maximum amount of time (including retries) spent trying to send a request.
+  # Once this value is reached, the data is discarded.
+  MaxElapsedTime: 15m
 
 #########################
 ## Proxy Configuration ##
@@ -274,7 +292,7 @@ PeerManagement:
   # IdentifierInterfaceName is optional.
   # Due to the nature of DNS in Kubernetes, it is recommended to set this value to the 'eth0' interface name.
   # When configured the pod's IP will be used in the peer list
-  IdentifierInterfaceName: eth0
+  # IdentifierInterfaceName: eth0
 
   # UseIPV6Identifier is optional. If using IdentifierInterfaceName, Trace Proxy will default to the first
   # IPv4 unicast address it finds for the specified interface. If UseIPV6Identifier is used, will use
@@ -317,9 +335,6 @@ MetricsConfig:
   # ReportingInterval is the frequency specified in seconds at which
   # the metrics are collected and sent to OpsRamp
   ReportingInterval: 10
-
-  # OpsRampMetricsRetryCount is the number of times we retry incase the send fails
-  RetryCount: 2
 
   # MetricsList is a list of regular expressions which match the metric
   # names. Keep the list as small as possible since too many regular expressions can lead to bad performance.
@@ -372,7 +387,7 @@ GRPCServerParameters:
 SampleCacheConfig:
 # Type controls the type of sample cache used.
 # "legacy" is a strategy where both keep and drop decisions are stored in a circular buffer that is
-# 5x the size of the trace cache. This is Tracing-Proxy's original sample cache strategy.
+# 5x the size of the trace cache. This is tracing proxy's original sample cache strategy.
 # "cuckoo" is a strategy where dropped traces are preserved in a "Cuckoo Filter", which can remember
 # a much larger number of dropped traces, leaving capacity to retain a much larger number of kept traces.
 # It is also more configurable. The cuckoo filter is recommended for most installations.
@@ -380,7 +395,7 @@ SampleCacheConfig:
 # Type: "cuckoo"
 
 # KeptSize controls the number of traces preserved in the cuckoo kept traces cache.
-# Tracing-Proxy keeps a record of each trace that was kept and sent to OpsRamp, along with some
+# tracing proxy keeps a record of each trace that was kept and sent to OpsRamp, along with some
 # statistical information. This is most useful in cases where the trace was sent before sending
 # the root span, so that the root span can be decorated with accurate metadata.
 # Default is 10_000 traces (each trace in this cache consumes roughly 200 bytes).
