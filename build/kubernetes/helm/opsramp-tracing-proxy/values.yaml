@@ -107,10 +107,10 @@ config:
   PeerBufferSize: 1000
 
   # AddHostMetadataToTrace determines whether to add information about
-  # the host that Refinery is running on to the spans that it processes.
+  # the host that tracing-proxy is running on to the spans that it processes.
   # If enabled, information about the host will be added to each span with the
-  # prefix `meta.refinery.`.
-  # Currently, the only value added is 'meta.refinery.local_hostname'.
+  # prefix `meta.tracing-proxy.`.
+  # Currently, the only value added is 'meta.tracing-proxy.local_hostname'.
   AddHostMetadataToTrace: false
 
   # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
@@ -389,7 +389,7 @@ config:
   SampleCacheConfig:
   # Type controls the type of sample cache used.
   # "legacy" is a strategy where both keep and drop decisions are stored in a circular buffer that is
-  # 5x the size of the trace cache. This is Refinery's original sample cache strategy.
+  # 5x the size of the trace cache. This is tracing-proxy's original sample cache strategy.
   # "cuckoo" is a strategy where dropped traces are preserved in a "Cuckoo Filter", which can remember
   # a much larger number of dropped traces, leaving capacity to retain a much larger number of kept traces.
   # It is also more configurable. The cuckoo filter is recommended for most installations.
@@ -397,7 +397,7 @@ config:
   # Type: "cuckoo"
 
   # KeptSize controls the number of traces preserved in the cuckoo kept traces cache.
-  # Refinery keeps a record of each trace that was kept and sent to OpsRamp, along with some
+  # tracing-proxy keeps a record of each trace that was kept and sent to OpsRamp, along with some
   # statistical information. This is most useful in cases where the trace was sent before sending
   # the root span, so that the root span can be decorated with accurate metadata.
   # Default is 10_000 traces (each trace in this cache consumes roughly 200 bytes).
