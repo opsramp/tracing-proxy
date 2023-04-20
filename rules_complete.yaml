@@ -31,10 +31,7 @@ dataset1:
   # implementation. This sampler collects the values of a number of fields from a
   # trace and uses them to form a key. This key is handed to the standard dynamic
   # sampler algorithm which generates a sample rate based on the frequency with
-  # which that key has appeared in the previous ClearFrequencySec seconds. See
-  # https://github.com/honeycombio/dynsampler-go for more detail on the mechanics
-  # of the dynamic sampler.  This sampler uses the AvgSampleRate algorithm from
-  # that package.
+  # which that key has appeared in the previous ClearFrequencySec seconds.
   Sampler: DynamicSampler
 
   # SampleRate is the goal rate at which to sample. It indicates a ratio, where
@@ -68,7 +65,7 @@ dataset1:
   # sampler as part of the key. The number of spans is exact, so if there are
   # normally small variations in trace length you may want to leave this off. If
   # traces are consistent lengths and changes in trace length is a useful
-  # indicator of traces you'd like to see in Honeycomb, set this to true.
+  # indicator of traces you'd like to see in OpsRamp, set this to true.
   UseTraceLength: true
 
   # AddSampleRateKeyToTrace when this is set to true, the sampler will add a field
@@ -142,7 +139,7 @@ dataset2:
   # sampler as part of the key. The number of spans is exact, so if there are
   # normally small variations in trace length you may want to leave this off. If
   # traces are consistent lengths and changes in trace length is a useful
-  # indicator of traces you'd like to see in Honeycomb, set this to true.
+  # indicator of traces you'd like to see in OpsRamp, set this to true.
   UseTraceLength: true
 
   # AddSampleRateKeyToTrace when this is set to true, the sampler will add a field
