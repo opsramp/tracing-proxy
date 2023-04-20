@@ -1,8 +1,8 @@
 # SPEC file for creating tracing-proxy RPM
 
 %define name        tracing-proxy
-%define release     1.0
-%define version     2.0.1
+%define release     
+%define version     1.1.0
 
 Summary:        Tracing Proxy 
 License:        OpsRamp
