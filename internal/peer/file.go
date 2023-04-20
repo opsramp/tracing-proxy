@@ -1,10 +1,14 @@
 package peer
 
 import (
+	"context"
+	"fmt"
+	"github.com/opsramp/libtrace-go/proto/proxypb"
 	"github.com/opsramp/tracing-proxy/config"
-	"net"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"net/url"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -86,14 +90,25 @@ func getPeerMembers(originalPeerlist []string) []string {
 	return workingPeers
 }
 
-func isOpen(peer string) bool {
-	urlBreaker := strings.Split(peer, ":")
-	peerUrl := string(urlBreaker[1][2:]) + ":" + urlBreaker[2]
-	conn, err := net.Dial("tcp", peerUrl)
-
-	if err == nil {
-		_ = conn.Close()
-		return true
+func isOpen(peerURL string) bool {
+	u, err := url.Parse(peerURL)
+	if err != nil {
+		return false
 	}
-	return false
+
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), opts...)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+	client := proxypb.NewTraceProxyServiceClient(conn)
+
+	resp, err := client.Status(context.TODO(), &proxypb.StatusRequest{})
+	if err != nil {
+		return false
+	}
+	return resp.GetPeerActive()
 }

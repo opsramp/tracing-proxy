@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
+	"github.com/opsramp/libtrace-go/proto/proxypb"
+	"github.com/opsramp/libtrace-go/transmission"
 	"google.golang.org/grpc/metadata"
 	"net/http"
 	"strings"
@@ -194,6 +195,12 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 		}
 	}
 	return &proxypb.ExportTraceProxyServiceResponse{Message: "Received Successfully by peer", Status: "Success"}, nil
+}
+
+func (r *Router) Status(context.Context, *proxypb.StatusRequest) (*proxypb.StatusResponse, error) {
+	return &proxypb.StatusResponse{
+		PeerActive: transmission.DefaultAvailability.Status(),
+	}, nil
 }
 
 func extractKeyValue(v *proxypb.AnyValue) string {
