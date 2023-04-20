@@ -397,7 +397,7 @@ config:
   # Type: "cuckoo"
 
   # KeptSize controls the number of traces preserved in the cuckoo kept traces cache.
-  # Refinery keeps a record of each trace that was kept and sent to Honeycomb, along with some
+  # Refinery keeps a record of each trace that was kept and sent to OpsRamp, along with some
   # statistical information. This is most useful in cases where the trace was sent before sending
   # the root span, so that the root span can be decorated with accurate metadata.
   # Default is 10_000 traces (each trace in this cache consumes roughly 200 bytes).
