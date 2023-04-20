@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: opsramp-tracing-proxy
-          image: lokeshopsramp/tracing-proxy
+          image: us-docker.pkg.dev/opsramp-registry/agent-images/trace-proxy
           imagePullPolicy: Always
           ports:
             - containerPort: 9090
@@ -35,12 +35,12 @@ spec:
               cpu: "4"
           volumeMounts:
             - name: opsramp-tracing-rules
-              mountPath: /etc/tracing-proxy/rules.toml
-              subPath: rules.toml
+              mountPath: /etc/tracing-proxy/rules.yaml
+              subPath: rules.yaml
               readOnly: true
             - name: opsramp-tracing-config
-              mountPath: /etc/tracing-proxy/config.toml
-              subPath: config.toml
+              mountPath: /etc/tracing-proxy/config.yaml
+              subPath: config.yaml
               readOnly: true
       volumes:
         - configMap:
