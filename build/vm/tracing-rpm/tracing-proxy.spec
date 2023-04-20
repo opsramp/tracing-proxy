@@ -48,6 +48,7 @@ systemctl start tracing-proxy
 %preun -p /bin/bash
 echo "Uninstalling Tracing Proxy"
 systemctl stop tracing-proxy
+systemctl disable tracing-proxy
 #if [ -f /etc/systemd/system/tracing-proxy.service ]; then
 #  rm -rf /etc/systemd/system/tracing-proxy.service > /dev/null 2>&1
 #fi

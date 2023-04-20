@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -14,7 +13,7 @@ func main() {
 	var fileContent string
 	var err error
 
-	configFile, err = ioutil.ReadFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml")
+	configFile, err = os.ReadFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml")
 
 	api := flag.String("A", "", "API To Send Data")
 	key := flag.String("K", "", "Opsramp Key")
@@ -30,12 +29,12 @@ func main() {
 	fileContent = strings.ReplaceAll(fileContent, "<SECRET>", *secret)
 	fileContent = strings.ReplaceAll(fileContent, "<TENANTID>", *tenant)
 
-	if err = ioutil.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 0666); err != nil {
+	if err = os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 0666); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	if _, err := exec.Command("systemctl", "start", "tracing-proxy").Output(); err != nil {
+	if _, err := exec.Command("systemctl", "enable", "--now", "tracing-proxy").Output(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
