@@ -13,9 +13,9 @@ mkdir -p opt/opsramp/tracing-proxy/conf
 mkdir -p opt/opsramp/tracing-proxy/bin
 cp ../config_complete.yaml opt/opsramp/tracing-proxy/conf/config_complete.yaml
 cp ../rules_complete.yaml opt/opsramp/tracing-proxy/conf/rules_complete.yaml
-go build -o ../../cmd/tracing-proxy/main ../../cmd/tracing-proxy/main.go
+go build -o ../../../cmd/tracing-proxy/main ../../../cmd/tracing-proxy/main.go
 go build ../configure.go
-cp ../../cmd/tracing-proxy/main opt/opsramp/tracing-proxy/bin/tracing-proxy
+cp ../../../cmd/tracing-proxy/main opt/opsramp/tracing-proxy/bin/tracing-proxy
 cp configure opt/opsramp/tracing-proxy/bin/configure
 
 
