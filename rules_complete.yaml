@@ -78,7 +78,7 @@ dataset1:
   # AddSampleRateKeyToTraceField is the name of the field the sampler will use
   # when adding the sample rate key to the trace. This setting is only used when
   # AddSampleRateKeyToTrace is true.
-  AddSampleRateKeyToTraceField: meta.refinery.dynsampler_key
+  AddSampleRateKeyToTraceField: meta.tracing-proxy.dynsampler_key
 
   # ClearFrequencySec is the name of the field the sampler will use to determine
   # the period over which it will calculate the sample rate. This setting defaults
@@ -152,7 +152,7 @@ dataset2:
   # AddSampleRateKeyToTraceField is the name of the field the sampler will use
   # when adding the sample rate key to the trace. This setting is only used when
   # AddSampleRateKeyToTrace is true.
-  AddSampleRateKeyToTraceField: meta.refinery.dynsampler_key
+  AddSampleRateKeyToTraceField: meta.tracing-proxy.dynsampler_key
 
   # AdjustmentInterval defines how often (in seconds) we adjust the moving average from
   # recent observations. Default 15s
@@ -225,7 +225,7 @@ dataset4:
             - request.method
             - request.route
           AddSampleRateKeyToTrace: true
-          AddSampleRateKeyToTraceField: meta.refinery.dynsampler_key
+          AddSampleRateKeyToTraceField: meta.tracing-proxy.dynsampler_key
     - name: dynamically sample 200 string responses
       condition:
         - field: status_code
@@ -240,7 +240,7 @@ dataset4:
             - request.method
             - request.route
           AddSampleRateKeyToTrace: true
-          AddSampleRateKeyToTraceField: meta.refinery.dynsampler_key
+          AddSampleRateKeyToTraceField: meta.tracing-proxy.dynsampler_key
     - name: sample traces originating from a service
       Scope: span
       SampleRate: 5
