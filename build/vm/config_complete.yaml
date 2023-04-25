@@ -29,7 +29,7 @@ GRPCPeerListenAddr: 0.0.0.0:8084
 CompressPeerCommunication: true
 
 # OpsrampAPI is the URL for the upstream Opsramp API.
-OpsrampAPI: "<OPSRAMPAPI>"
+OpsrampAPI: "<OPSRAMP_TRACES_API>"
 
 # Dataset you want to use for sampling
 Dataset: "ds"
@@ -164,13 +164,13 @@ AuthConfiguration:
   SkipAuth: false
 
   # Endpoint - the APIServer address provided in OpsRamp Portal to which auth token request is to be made
-  Endpoint: "<OPSRAMPAPI>"
+  Endpoint: "<OPSRAMP_API>"
   # Key - authentication key provided in OpsRamp Portal
   Key: "<KEY>"
   # Secret - authentication Secret provided in OpsRamp Portal
   Secret: "<SECRET>"
   # TenantId - tenant/client id to which the traces are to be posted
-  TenantId: "<TENANTID>"
+  TenantId: "<TENANT_ID>"
 
 ############################
 ## Implementation Choices ##
@@ -330,7 +330,7 @@ MetricsConfig:
   ListenAddr: '0.0.0.0:2112'
 
   # OpsRampAPI is the URL for the upstream OpsRamp API.
-  OpsRampAPI: "<OPSRAMPMETRICSAPI>"
+  OpsRampAPI: "<OPSRAMP_METRICS_API>"
 
   # ReportingInterval is the frequency specified in seconds at which
   # the metrics are collected and sent to OpsRamp
