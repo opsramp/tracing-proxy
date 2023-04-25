@@ -22,14 +22,15 @@ CGO_ENABLED=0 \
   -o configure \
   ../configure.go
 
-mkdir tracing-proxy-$1
-cp -r ../package_directories/* tracing-proxy-$1
-mv configure tracing-proxy-$1/opt/opsramp/tracing-proxy/bin/configure
-mv tracing-proxy tracing-proxy-$1/opt/opsramp/tracing-proxy/bin/tracing-proxy
+package_name="tracing-proxy-${1}"
+mkdir -p ${package_name}/opt/opsramp/tracing-proxy/bin/
+cp -r ../package_directories/* ${package_name}
+mv configure ${package_name}/opt/opsramp/tracing-proxy/bin/configure
+mv tracing-proxy ${package_name}/opt/opsramp/tracing-proxy/bin/tracing-proxy
 
-tar -czvf tracing-proxy-$1.tar.gz tracing-proxy-$1
+tar -czvf ${package_name}.tar.gz ${package_name}
 
-mv tracing-proxy-$1.tar.gz /root/rpmbuild/SOURCES/
+mv ${package_name}.tar.gz /root/rpmbuild/SOURCES/
 cp tracing-proxy.spec /root/rpmbuild/SPECS/tracing-proxy.spec
 
 rpmbuild -ba --clean /root/rpmbuild/SPECS/tracing-proxy.spec
@@ -37,4 +38,5 @@ rpmbuild -ba --clean /root/rpmbuild/SPECS/tracing-proxy.spec
 echo "***** rpm package can be found in /root/rpmbuild/RPMS/x86_64/<package-name> ****"
 
 # CleanUp
-rm -rf tracing-proxy-$1
+rm -rf ${package_name}
+rm -rf configure tracing-proxy
