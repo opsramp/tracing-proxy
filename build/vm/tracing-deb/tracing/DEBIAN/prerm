@@ -6,5 +6,5 @@ if [ -f /etc/systemd/system/tracing-proxy.service ]; then
 fi
 rm -rf /opt/opsramp/tracing-proxy
 systemctl daemon-reload
-systemctl reset-failed tracing-proxy.service
+systemctl reset-failed tracing-proxy.service > /dev/null 2>&1
 echo "Uninstalled Tracing Proxy Successfully"

@@ -50,14 +50,12 @@ func main() {
 	fileContent = strings.ReplaceAll(fileContent, "<SECRET>", *secret)
 	fileContent = strings.ReplaceAll(fileContent, "<TENANT_ID>", *tenant)
 
-	if err = os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 0666); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	if err = os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 600); err != nil {
+		log.Fatal(err)
 	}
 
 	if _, err := exec.Command("systemctl", "enable", "--now", "tracing-proxy").Output(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
 	fmt.Println("Tracing-Proxy Started Successfully")
