@@ -8,6 +8,3 @@ KillMode=process
 Restart=on-failure
 LimitNOFILE=infinity
 
-[Install]
-Alias=tracing-proxy tracing-proxy.service
-
