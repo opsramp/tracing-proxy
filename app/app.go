@@ -36,7 +36,10 @@ func (a *App) Start() error {
 	// and external sources
 	a.IncomingRouter.LnS("incoming")
 	a.PeerRouter.LnS("peer")
-
+	a.Metrics.RegisterWithDescriptionLabels("collector_info", "gauge", "Version Of Tracing-Proxy Running", []string{"version"})
+	a.Metrics.GaugeWithLabels("collector_info", map[string]string{
+		"version": a.Version,
+	}, 1)
 	return nil
 }
 
