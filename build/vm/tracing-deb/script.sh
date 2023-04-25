@@ -7,22 +7,41 @@ if [ "$architecture" = "x86_64" ]; then
         architecture='amd64'
 fi
 
-
 sed -i "/^Architecture/s/:.*$/: ${architecture}/g" tracing/DEBIAN/control
 
 # Updating the files
 mkdir -p tracing/opt/opsramp/tracing-proxy/bin
 mkdir -p tracing/opt/opsramp/tracing-proxy/conf
-cp ../config_complete.yaml tracing/opt/opsramp/tracing-proxy/conf/config_complete.yaml
-cp ../rules_complete.yaml tracing/opt/opsramp/tracing-proxy/conf/rules_complete.yaml
-go build -o ../../../cmd/tracing-proxy/main ../../../cmd/tracing-proxy/main.go
-cp ../../../cmd/tracing-proxy/main tracing/opt/opsramp/tracing-proxy/bin/tracing-proxy
-go build ../configure.go
+mkdir -p tracing/etc/systemd/system
+
+cp -r ../package_directories/* tracing/
+
+# Building a static binaries
+CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    go build -ldflags "-X main.BuildID=${Version}" \
+    -o tracing-proxy \
+    ../../../cmd/tracing-proxy
+
+CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    go build -ldflags "-X main.BuildID=${Version}" \
+    -o configure \
+    ../configure.go
+
+cp tracing-proxy tracing/opt/opsramp/tracing-proxy/bin/tracing-proxy
 cp configure tracing/opt/opsramp/tracing-proxy/bin/configure
 
 dpkg -b tracing
 
-
 # Rename the package with version and architecture
-packageName="tracing-proxy_"$architecture"-"$Version".deb"
-mv tracing.deb $packageName
+packageName="tracing-proxy_"${architecture}"-"${Version}".deb"
+mkdir -p ./output
+mv tracing.deb ./output/"${packageName}"
+
+# Cleanup
+rm -rf ./tracing/opt
+rm -rf ./tracing/etc
+rm -rf configure tracing-proxy
