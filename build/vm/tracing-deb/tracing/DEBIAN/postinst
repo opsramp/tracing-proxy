@@ -1,2 +1,9 @@
 mkdir -p /var/log/opsramp
 touch /var/log/opsramp/tracing-proxy.log
+chmod 644 /etc/systemd/system/tracing-proxy.service
+chmod 600 /opt/opsramp/tracing-proxy/conf
+chmod 600 /opt/opsramp/tracing-proxy/conf/config_complete.yaml
+chmod 600 /opt/opsramp/tracing-proxy/conf/rules_complete.yaml
+chmod 744 /opt/opsramp/tracing-proxy/bin
+chmod 744 /opt/opsramp/tracing-proxy/bin/configure
+chmod 744 /opt/opsramp/tracing-proxy/bin/tracing-proxy
