@@ -29,7 +29,7 @@ import (
 
 // set by travis.
 var BuildID string
-var version string
+var CollectorVersion string
 
 type Options struct {
 	ConfigFile     string `short:"c" long:"config" description:"Path to config file" default:"/etc/tracing-proxy/config.toml"`
@@ -48,13 +48,13 @@ func main() {
 	}
 
 	if BuildID == "" {
-		version = "dev"
+		CollectorVersion = "dev"
 	} else {
-		version = BuildID
+		CollectorVersion = BuildID
 	}
 
 	if opts.Version {
-		fmt.Println("Version: " + version)
+		fmt.Println("Version: " + CollectorVersion)
 		os.Exit(0)
 	}
 
@@ -71,7 +71,7 @@ func main() {
 	}
 
 	a := app.App{
-		Version: version,
+		Version: CollectorVersion,
 	}
 
 	c, err := config.NewConfig(opts.ConfigFile, opts.RulesFile, func(err error) {
@@ -135,7 +135,7 @@ func main() {
 	}
 	retryConfig := c.GetRetryConfig()
 
-	userAgentAddition := "tracing-proxy/" + version
+	userAgentAddition := "tracing-proxy/" + CollectorVersion
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
 		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
@@ -223,7 +223,7 @@ func main() {
 		&inject.Object{Value: metricsConfig, Name: "metrics"},
 		&inject.Object{Value: upstreamMetricsConfig, Name: "upstreamMetrics"},
 		&inject.Object{Value: peerMetricsConfig, Name: "peerMetrics"},
-		&inject.Object{Value: version, Name: "version"},
+		&inject.Object{Value: CollectorVersion, Name: "version"},
 		&inject.Object{Value: samplerFactory},
 		&inject.Object{Value: &a},
 	)
