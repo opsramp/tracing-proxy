@@ -2,7 +2,7 @@ FROM golang:alpine as builder
 
 RUN apk update && apk add --no-cache git bash ca-certificates && update-ca-certificates
 
-ARG BUILD_ID="1.0.0"
+ARG BUILD_ID="1.1.0"
 
 WORKDIR /app
 
