@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"github.com/opsramp/libtrace-go/proto/proxypb"
 	"github.com/opsramp/libtrace-go/transmission"
-	"google.golang.org/grpc/metadata"
 	"net/http"
-	"strings"
 	"time"
 
 	huskyotlp "github.com/opsramp/husky/otlp"
@@ -103,38 +101,13 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 	r.Logger.Debug().Logf("Received Trace data from peer")
 	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
-	var token, tenantId, datasetName string
 	apiHost, err := r.Config.GetOpsrampAPI()
 	if err != nil {
 		r.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
 		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get apihost", Status: "Failed"}, nil
 	}
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get request metadata", Status: "Failed"}, nil
-	} else {
-		authorization := md.Get("Authorization")
-		if len(authorization) == 0 {
-			return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get Authorization", Status: "Failed"}, nil
-		} else {
-			token = authorization[0]
-			recvdTenantId := md.Get("tenantId")
-			if len(recvdTenantId) == 0 {
-				tenantId = strings.TrimSpace(in.TenantId)
-				if tenantId == "" {
-					return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get TenantId", Status: "Failed"}, nil
-				}
-			} else {
-				tenantId = recvdTenantId[0]
-			}
-		}
-
-		if dataSets := md.Get("dataset"); len(dataSets) > 0 {
-			datasetName = dataSets[0]
-		} else {
-			return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get dataset", Status: "Failed"}, nil
-		}
-	}
+	dataset, _ := r.Config.GetDataset()
+	tenantId, _ := r.Config.GetTenantId()
 
 	var requestID types.RequestIDContextKey
 
@@ -181,12 +154,10 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 		data["endTime"] = item.Data.EndTime
 
 		event := &types.Event{
-			Context:  ctx,
-			APIHost:  apiHost,
-			APIToken: token,
-			//APIKey:      "token", //Hardcoded for time-being. This need to be cleaned
+			Context:     ctx,
+			APIHost:     apiHost,
 			APITenantId: tenantId,
-			Dataset:     datasetName,
+			Dataset:     dataset,
 			Timestamp:   timestamp,
 			Data:        data,
 		}
