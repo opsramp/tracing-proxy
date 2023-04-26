@@ -3,13 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"github.com/facebookgo/inject"
 	"github.com/facebookgo/startstop"
 	flag "github.com/jessevdk/go-flags"
@@ -25,6 +18,12 @@ import (
 	"github.com/opsramp/tracing-proxy/service/debug"
 	"github.com/opsramp/tracing-proxy/sharder"
 	"github.com/opsramp/tracing-proxy/transmit"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 // set by travis.
@@ -147,6 +146,7 @@ func main() {
 			BlockOnSend:           true,
 			EnableMsgpackEncoding: false,
 			Metrics:               upstreamMetricsConfig,
+			IsPeer:                false,
 			UseTls:                c.GetGlobalUseTLS(),
 			UseTlsInsecure:        c.GetGlobalUseTLSInsecureSkip(),
 			AuthTokenEndpoint:     authConfig.Endpoint,
@@ -180,6 +180,7 @@ func main() {
 			DisableCompression:    !c.GetCompressPeerCommunication(),
 			EnableMsgpackEncoding: false,
 			Metrics:               peerMetricsConfig,
+			IsPeer:                true,
 			AuthTokenEndpoint:     authConfig.Endpoint,
 			AuthTokenKey:          authConfig.Key,
 			AuthTokenSecret:       authConfig.Secret,
