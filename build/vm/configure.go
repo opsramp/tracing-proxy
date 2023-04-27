@@ -2,12 +2,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
+
+const ServiceName = "tracing-proxy.service"
 
 func main() {
 	configFile, err := os.ReadFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml")
@@ -54,9 +56,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if _, err := exec.Command("systemctl", "enable", "--now", "tracing-proxy").Output(); err != nil {
-		log.Fatal(err)
+	// Enable and start with fallback
+	if err := exec.Command("systemctl", "enable", "--now", ServiceName).Run(); err != nil {
+		_ = exec.Command("systemctl", "start", ServiceName).Run()
+		_ = exec.Command("systemctl", "enable", ServiceName).Run()
 	}
 
-	fmt.Println("Tracing-Proxy Started Successfully")
+	time.Sleep(5 * time.Second)
+
+	// Check if the services are enabled and started properly and attempt again
+	if output, err := exec.Command("systemctl", "is-enabled", ServiceName).Output(); err != nil || string(output) != "enabled" {
+		_ = exec.Command("systemctl", "enable", ServiceName).Run()
+	}
+	if output, err := exec.Command("systemctl", "is-active", ServiceName).Output(); err != nil || string(output) != "active" {
+		_ = exec.Command("systemctl", "start", ServiceName).Run()
+	} else {
+		log.Println("Tracing-Proxy Started Successfully")
+	}
 }
