@@ -8,3 +8,5 @@ KillMode=process
 Restart=on-failure
 LimitNOFILE=infinity
 
+[Install]
+WantedBy=multi-user.target
