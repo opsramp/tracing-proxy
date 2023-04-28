@@ -136,7 +136,7 @@ SampleRate: 1
 #  # sampler as part of the key. The number of spans is exact, so if there are
 #  # normally small variations in trace length you may want to leave this off. If
 #  # traces are consistent lengths and changes in trace length is a useful
-#  # indicator of traces you'd like to see in Honeycomb, set this to true.
+#  # indicator of traces you'd like to see in Opsramp, set this to true.
 #  UseTraceLength: true
 #
 #  # AddSampleRateKeyToTrace when this is set to true, the sampler will add a field
