@@ -25,7 +25,12 @@ spec:
           image: us-docker.pkg.dev/opsramp-registry/agent-images/trace-proxy
           imagePullPolicy: Always
           ports:
-            - containerPort: 9090
+            - name: http
+              containerPort: 8082
+              protocol: TCP
+            - name: grpc
+              containerPort: 9090
+              protocol: TCP
           resources:
             requests:
               memory: "2048Mi"
@@ -63,3 +68,8 @@ spec:
     - protocol: TCP
       port: 9090
       targetPort: 9090
+      name: grpc
+    - protocol: TCP
+      port: 8082
+      targetPort: 8082
+      name: http
