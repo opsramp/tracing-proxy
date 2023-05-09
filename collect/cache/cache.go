@@ -50,9 +50,9 @@ func NewInMemCache(
 
 	// buffer_overrun increments when the trace overwritten in the circular
 	// buffer has not yet been sent
-	metrics.Register("collect_cache_buffer_overrun", "counter")
-	metrics.Register("collect_cache_capacity", "gauge")
-	metrics.Register("collect_cache_entries", "histogram")
+	metrics.Register("collector_cache_buffer_overrun", "counter")
+	metrics.Register("collector_cache_capacity", "gauge")
+	metrics.Register("collector_cache_entries", "histogram")
 
 	if capacity == 0 {
 		capacity = DefaultInMemCacheCapacity
@@ -102,7 +102,7 @@ func (d *DefaultInMemCache) Set(trace *types.Trace) *types.Trace {
 		if !oldTrace.Sent {
 			// if it hasn't already been sent,
 			// record that we're overrunning the buffer
-			d.Metrics.Increment("collect_cache_buffer_overrun")
+			d.Metrics.Increment("collector_cache_buffer_overrun")
 			// and return the trace so it can be sent.
 			retTrace = oldTrace
 		}
@@ -131,8 +131,8 @@ func (d *DefaultInMemCache) GetAll() []*types.Trace {
 // TakeExpiredTraces should be called to decide which traces are past their expiration time;
 // It removes and returns them.
 func (d *DefaultInMemCache) TakeExpiredTraces(now time.Time) []*types.Trace {
-	d.Metrics.Gauge("collect_cache_capacity", float64(len(d.insertionOrder)))
-	d.Metrics.Histogram("collect_cache_entries", float64(len(d.cache)))
+	d.Metrics.Gauge("collector_cache_capacity", float64(len(d.insertionOrder)))
+	d.Metrics.Histogram("collector_cache_entries", float64(len(d.cache)))
 
 	var res []*types.Trace
 	for i, t := range d.insertionOrder {
@@ -148,8 +148,8 @@ func (d *DefaultInMemCache) TakeExpiredTraces(now time.Time) []*types.Trace {
 // RemoveTraces accepts a set of trace IDs and removes any matching ones from
 // the insertion list. This is used in the case of a cache overrun.
 func (d *DefaultInMemCache) RemoveTraces(toDelete map[string]struct{}) {
-	d.Metrics.Gauge("collect_cache_capacity", float64(len(d.insertionOrder)))
-	d.Metrics.Histogram("collect_cache_entries", float64(len(d.cache)))
+	d.Metrics.Gauge("collector_cache_capacity", float64(len(d.insertionOrder)))
+	d.Metrics.Histogram("collector_cache_entries", float64(len(d.cache)))
 
 	for i, t := range d.insertionOrder {
 		if t != nil {
