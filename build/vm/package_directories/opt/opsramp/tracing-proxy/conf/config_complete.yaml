@@ -81,7 +81,7 @@ AddHostMetadataToTrace: false
 
 # AddAdditionalMetadata adds all the specified key value pairs to the traces and metrics
 # the values must be a valid json key value pair like eg: {"key_1":"value_1", "key_2":"value_2"}
-AddAdditionalMetadata: { }
+AddAdditionalMetadata: { "app": "default" }
 
 # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
 # an API key with an environment name.
