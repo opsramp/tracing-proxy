@@ -59,7 +59,12 @@ func (d *DefaultTransmission) Start() error {
 	if d.Config.GetAddHostMetadataToTrace() {
 		if hostname, err := os.Hostname(); err == nil && hostname != "" {
 			// add hostname to spans
-			d.LibhClient.AddField("meta.tracing-proxy.local_hostname", hostname)
+			d.LibhClient.AddResourceField("meta.local_hostname", hostname)
+		}
+	}
+	for key, value := range d.Config.GetAddAdditionalMetadata() {
+		if !d.LibhClient.CheckResourceField(key) {
+			d.LibhClient.AddResourceField(key, value)
 		}
 	}
 

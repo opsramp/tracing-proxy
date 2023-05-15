@@ -59,6 +59,7 @@ type configContents struct {
 	PeerManagement            PeerManagementConfig           `validate:"required"`
 	InMemCollector            InMemoryCollectorCacheCapacity `validate:"required"`
 	AddHostMetadataToTrace    bool
+	AddAdditionalMetadata     map[string]string
 	AddRuleReasonToTrace      bool
 	EnvironmentCacheTTL       time.Duration
 	DatasetPrefix             string
@@ -187,6 +188,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("PeerBufferSize", libtrace.DefaultPendingWorkCapacity)
 	c.SetDefault("MaxAlloc", uint64(0))
 	c.SetDefault("AddHostMetadataToTrace", false)
+	c.SetDefault("AddAdditionalMetadata", map[string]string{})
 	c.SetDefault("AddRuleReasonToTrace", false)
 	c.SetDefault("EnvironmentCacheTTL", time.Hour)
 	c.SetDefault("GRPCServerParameters.MaxConnectionIdle", 1*time.Minute)
@@ -864,6 +866,13 @@ func (f *fileConfig) GetAddHostMetadataToTrace() bool {
 	defer f.mux.RUnlock()
 
 	return f.conf.AddHostMetadataToTrace
+}
+
+func (f *fileConfig) GetAddAdditionalMetadata() map[string]string {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.AddAdditionalMetadata
 }
 
 func (f *fileConfig) GetSendMetricsToOpsRamp() bool {
