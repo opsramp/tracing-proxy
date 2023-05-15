@@ -81,6 +81,8 @@ AddHostMetadataToTrace: false
 
 # AddAdditionalMetadata adds all the specified key value pairs to the traces and metrics
 # the values must be a valid json key value pair like eg: {"key_1":"value_1", "key_2":"value_2"}
+# max number of additional keys supported is 5, if the limit exceeds then we considered the first 5
+# based on sorted order of keys
 AddAdditionalMetadata: { "app": "default" }
 
 # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
@@ -247,39 +249,39 @@ PeerManagement:
   ###### Redis (Suitable for all types of deployments) ######
   ###########################################################
   # The type should always be redis when deployed to Kubernetes environments
-#  Type: "redis"
-#
-#  # RedisHost is used to connect to redis for peer cluster membership management.
-#  # Further, if the environment variable 'TRACING_PROXY_REDIS_HOST' is set it takes
-#  # precedence and this value is ignored.
-#  # Not eligible for live reload.
-#  # RedisHost will default to the name used for the release or name overrides depending on what is used,
-#  # but can be overriden to a specific value.
-#  RedisHost: 0.0.0.0:22122
-#
-#  # RedisUsername is the username used to connect to redis for peer cluster membership management.
-#  # If the environment variable 'TRACING_PROXY_REDIS_USERNAME' is set it takes
-#  # precedence and this value is ignored.
-#  # Not eligible for live reload.
-#  RedisUsername: ""
-#
-#  # RedisPassword is the password used to connect to redis for peer cluster membership management.
-#  # If the environment variable 'TRACING_PROXY_REDIS_PASSWORD' is set it takes
-#  # precedence and this value is ignored.
-#  # Not eligible for live reload.
-#  RedisPassword: ""
-#
-#  # RedisPrefix is a string used as a prefix for the keys in redis while storing
-#  # the peer membership. It might be useful to set this in any situation where
-#  # multiple trace-proxy clusters or multiple applications want to share a single
-#  # Redis instance. It may not be blank.
-#  RedisPrefix: "tracing-proxy"
-#
-#  # RedisDatabase is an integer from 0-15 indicating the database number to use
-#  # for the Redis instance storing the peer membership. It might be useful to set
-#  # this in any situation where multiple trace-proxy clusters or multiple
-#  # applications want to share a single Redis instance.
-#  RedisDatabase: 0
+  #  Type: "redis"
+  #
+  #  # RedisHost is used to connect to redis for peer cluster membership management.
+  #  # Further, if the environment variable 'TRACING_PROXY_REDIS_HOST' is set it takes
+  #  # precedence and this value is ignored.
+  #  # Not eligible for live reload.
+  #  # RedisHost will default to the name used for the release or name overrides depending on what is used,
+  #  # but can be overriden to a specific value.
+  #  RedisHost: 0.0.0.0:22122
+  #
+  #  # RedisUsername is the username used to connect to redis for peer cluster membership management.
+  #  # If the environment variable 'TRACING_PROXY_REDIS_USERNAME' is set it takes
+  #  # precedence and this value is ignored.
+  #  # Not eligible for live reload.
+  #  RedisUsername: ""
+  #
+  #  # RedisPassword is the password used to connect to redis for peer cluster membership management.
+  #  # If the environment variable 'TRACING_PROXY_REDIS_PASSWORD' is set it takes
+  #  # precedence and this value is ignored.
+  #  # Not eligible for live reload.
+  #  RedisPassword: ""
+  #
+  #  # RedisPrefix is a string used as a prefix for the keys in redis while storing
+  #  # the peer membership. It might be useful to set this in any situation where
+  #  # multiple trace-proxy clusters or multiple applications want to share a single
+  #  # Redis instance. It may not be blank.
+  #  RedisPrefix: "tracing-proxy"
+  #
+  #  # RedisDatabase is an integer from 0-15 indicating the database number to use
+  #  # for the Redis instance storing the peer membership. It might be useful to set
+  #  # this in any situation where multiple trace-proxy clusters or multiple
+  #  # applications want to share a single Redis instance.
+  #  RedisDatabase: 0
 
   # UseTLS enables TLS when connecting to redis for peer cluster membership management, and sets the MinVersion to 1.2.
   # Not eligible for live reload.
