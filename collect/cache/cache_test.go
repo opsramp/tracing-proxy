@@ -40,9 +40,9 @@ func TestBufferOverrun(t *testing.T) {
 
 	c.Set(traces[0])
 	c.Set(traces[1])
-	assert.Equal(t, 0, s.CounterIncrements["collect_cache_buffer_overrun"], "buffer should not yet have overrun")
+	assert.Equal(t, 0, s.CounterIncrements["collector_cache_buffer_overrun"], "buffer should not yet have overrun")
 	c.Set(traces[2])
-	assert.Equal(t, 1, s.CounterIncrements["collect_cache_buffer_overrun"], "buffer should have overrun")
+	assert.Equal(t, 1, s.CounterIncrements["collector_cache_buffer_overrun"], "buffer should have overrun")
 }
 
 func TestTakeExpiredTraces(t *testing.T) {
