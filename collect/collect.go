@@ -120,49 +120,49 @@ func (i *InMemCollector) Start() error {
 		"trace_operations_latency_ms",
 		"gauge",
 		"Trace latency wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_failed",
 		"counter",
 		"Number of Error events in spans wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_succeeded",
 		"counter",
 		"Number of Succeeded events in spans wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_total",
 		"counter",
 		"Total Number of events in spans wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_root_span",
 		"counter",
 		"Number of root spans in an operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_spans_count",
 		"counter",
 		"Number of spans in an operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_root_operation_latency_ms",
 		"gauge",
 		"Trace latency wrt each root trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_root_operations_failed",
 		"counter",
 		"Number of Error events in root spans wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 
 	sampleCacheConfig := i.Config.GetSampleCacheConfig()
@@ -631,6 +631,7 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 		labelToKeyMap := map[string]string{
 			"service_name": "service.name",
 			"operation":    "spanName",
+			"app":          "app",
 		}
 
 		labels := metrics.ExtractLabelsFromSpan(span, labelToKeyMap)
