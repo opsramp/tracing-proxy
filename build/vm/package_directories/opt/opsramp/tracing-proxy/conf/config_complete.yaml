@@ -83,6 +83,7 @@ AddHostMetadataToTrace: false
 # the values must be a valid json key value pair like eg: {"key_1":"value_1", "key_2":"value_2"}
 # max number of additional keys supported is 5, if the limit exceeds then we considered the first 5
 # based on sorted order of keys
+# "app" label is mandatory
 AddAdditionalMetadata: { "app": "default" }
 
 # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
