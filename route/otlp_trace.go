@@ -75,6 +75,11 @@ func processTraceRequest(
 		router.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
 		return err
 	}
+	datasetName, err = router.Config.GetDataset()
+	if err != nil {
+		router.Logger.Error().Logf("Unable to retrieve DataSet from config while processing OTLP batch")
+		return err
+	}
 
 	for _, batch := range batches {
 		for _, ev := range batch.Events {
@@ -84,7 +89,7 @@ func processTraceRequest(
 				APIToken:    token,
 				APITenantId: tenantID,
 				Dataset:     datasetName,
-				Environment: "",
+				Environment: datasetName,
 				SampleRate:  uint(ev.SampleRate),
 				Timestamp:   ev.Timestamp,
 				Data:        ev.Attributes,
