@@ -24,3 +24,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: "build/vm/tracing-deb/output/*"
+
+  generate-rpm:
+    name: Create RPM package
+    runs-on: ubuntu-latest
+    container:
+      image: centos:centos7
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+      - name: Generate the artifacts
+        uses: skx/github-action-build@master
+        with:
+          builder: build/vm/tracing-rpm/script.sh
+        env:
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+          IS_GITHUB_ACTION: true
+      - name: Upload the artifacts
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: "/root/rpmbuild/RPMS/x86_64/*"
