@@ -10,12 +10,14 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v3
       - name: Generate the artifacts
+        working-directory: build/vm/tracing-deb/
         uses: skx/github-action-build@master
         with:
           builder: build/vm/tracing-deb/script.sh
         env:
           VERSION_TAG: ${{ github.event.release.tag_name }}
       - name: Upload the artifacts
+        working-directory: build/vm/tracing-deb/
         uses: skx/github-action-publish-binaries@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
