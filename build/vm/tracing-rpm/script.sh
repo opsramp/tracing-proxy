@@ -6,7 +6,7 @@ rpmdev-setuptree
 BUILD_DIR="."
 
 if [ "$IS_GITHUB_ACTION" = "true" ]; then
-  BUILD_DIR="build/vm/tracing-deb"
+  BUILD_DIR="build/vm/tracing-rpm"
 fi
 
 Release=$(uname -m)
