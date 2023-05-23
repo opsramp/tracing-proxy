@@ -14,7 +14,8 @@ jobs:
           image: golang:buster
           options: -v ${{ github.workspace }}:/tracing-proxy --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
           run: |
-            cd tracing-proxy
+            ls ${{ github.workspace }}
+            cd /tracing-proxy
             /bin/bash build/vm/tracing-deb/script.sh
       - name: Upload the artifacts
         uses: skx/github-action-publish-binaries@master
@@ -37,8 +38,9 @@ jobs:
           image: rockylinux:8
           options: -v ${{ github.workspace }}:/tracing-proxy --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
           run: |
+            ls ${{ github.workspace }}
             yum install golang -y
-            cd tracing-proxy
+            cd /tracing-proxy
             /bin/bash build/vm/tracing-rpm/script.sh
       - name: Upload the artifacts
         uses: skx/github-action-publish-binaries@master
