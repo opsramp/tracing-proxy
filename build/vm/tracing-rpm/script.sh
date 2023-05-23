@@ -34,14 +34,14 @@ CGO_ENABLED=0 \
   $BUILD_DIR/../configure.go
 
 package_name="tracing-proxy-${Version}"
-mkdir -p $BUILD_DIR/${package_name}/opt/opsramp/tracing-proxy/bin/
-cp -r $BUILD_DIR/../package_directories/* $BUILD_DIR/${package_name}
-mv $BUILD_DIR/configure $BUILD_DIR/${package_name}/opt/opsramp/tracing-proxy/bin/configure
-mv $BUILD_DIR/tracing-proxy $BUILD_DIR/${package_name}/opt/opsramp/tracing-proxy/bin/tracing-proxy
+mkdir -p ${package_name}/opt/opsramp/tracing-proxy/bin/
+cp -r $BUILD_DIR/../package_directories/* ${package_name}
+mv $BUILD_DIR/configure ${package_name}/opt/opsramp/tracing-proxy/bin/configure
+mv $BUILD_DIR/tracing-proxy ${package_name}/opt/opsramp/tracing-proxy/bin/tracing-proxy
 
-tar -czvf $BUILD_DIR/${package_name}.tar.gz $BUILD_DIR/${package_name}
+tar -czvf ${package_name}.tar.gz ${package_name}
 
-mv $BUILD_DIR/${package_name}.tar.gz /root/rpmbuild/SOURCES/
+mv ${package_name}.tar.gz /root/rpmbuild/SOURCES/
 cp $BUILD_DIR/tracing-proxy.spec /root/rpmbuild/SPECS/tracing-proxy.spec
 
 rpmbuild -ba --clean /root/rpmbuild/SPECS/tracing-proxy.spec
@@ -49,5 +49,5 @@ rpmbuild -ba --clean /root/rpmbuild/SPECS/tracing-proxy.spec
 echo "***** rpm package can be found in /root/rpmbuild/RPMS/x86_64/<package-name> ****"
 
 # CleanUp
-rm -rf $BUILD_DIR/${package_name}
+rm -rf ${package_name}
 rm -rf $BUILD_DIR/configure $BUILD_DIR/tracing-proxy
