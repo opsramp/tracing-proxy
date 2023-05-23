@@ -33,7 +33,7 @@ CGO_ENABLED=0 \
   -o $BUILD_DIR/configure \
   $BUILD_DIR/../configure.go
 
-package_name="tracing-proxy-${1}"
+package_name="tracing-proxy-${Version}"
 mkdir -p $BUILD_DIR/${package_name}/opt/opsramp/tracing-proxy/bin/
 cp -r $BUILD_DIR/../package_directories/* $BUILD_DIR/${package_name}
 mv $BUILD_DIR/configure $BUILD_DIR/${package_name}/opt/opsramp/tracing-proxy/bin/configure
