@@ -1,7 +1,13 @@
+#!/bin/bash
+
 # $1 is a version of the package
 Version=$1
 if [[ -z "$Version" ]]; then
   Version=$VERSION_TAG
+fi
+
+if [ "$IS_GITHUB_ACTION" = "true" ]; then
+  cd build/vm/tracing-deb
 fi
 
 sed -i "/^Version/s/:.*$/: ${Version}/g" tracing/DEBIAN/control

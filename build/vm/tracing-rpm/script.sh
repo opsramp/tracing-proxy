@@ -1,5 +1,11 @@
+#!/bin/bash
+
 yum -y install rpmdevtools
 rpmdev-setuptree
+
+if [ "$IS_GITHUB_ACTION" = "true" ]; then
+  cd build/vm/tracing-deb
+fi
 
 Release=$(uname -m)
 sed -i "/^\%define release/s/^.*$/\%define release     ${Release}/g" tracing-proxy.spec
