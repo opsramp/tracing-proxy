@@ -1,50 +1,62 @@
+#!/bin/bash
+
 # $1 is a version of the package
 Version=$1
-sed -i "/^Version/s/:.*$/: ${Version}/g" tracing/DEBIAN/control
+if [[ -z "$Version" ]]; then
+  Version=$VERSION_TAG
+fi
+
+BUILD_DIR="."
+
+if [ "$IS_GITHUB_ACTION" = "true" ]; then
+  BUILD_DIR="build/vm/tracing-deb"
+fi
+
+sed -i "/^Version/s/:.*$/: ${Version}/g" $BUILD_DIR/tracing/DEBIAN/control
 
 architecture=$(uname -m)
 if [ "$architecture" = "x86_64" ]; then
   architecture='amd64'
 fi
 
-sed -i "/^Architecture/s/:.*$/: ${architecture}/g" tracing/DEBIAN/control
+sed -i "/^Architecture/s/:.*$/: ${architecture}/g" $BUILD_DIR/tracing/DEBIAN/control
 
 # remove old data
-rm -rf ./output
+rm -rf $BUILD_DIR/output
 
 # Updating the files
-mkdir -p tracing/opt/opsramp/tracing-proxy/bin
-mkdir -p tracing/opt/opsramp/tracing-proxy/conf
-mkdir -p tracing/etc/systemd/system
+mkdir -p $BUILD_DIR/tracing/opt/opsramp/tracing-proxy/bin
+mkdir -p $BUILD_DIR/tracing/opt/opsramp/tracing-proxy/conf
+mkdir -p $BUILD_DIR/tracing/etc/systemd/system
 
-cp -r ../package_directories/* tracing/
+cp -r $BUILD_DIR/../package_directories/* $BUILD_DIR/tracing/
 
 # Building a static binaries
 CGO_ENABLED=0 \
   GOOS=linux \
   GOARCH=amd64 \
   go build -ldflags "-X main.BuildID=${Version}" \
-  -o tracing-proxy \
-  ../../../cmd/tracing-proxy
+  -o $BUILD_DIR/tracing-proxy \
+  $BUILD_DIR/../../../cmd/tracing-proxy/main.go
 
 CGO_ENABLED=0 \
   GOOS=linux \
   GOARCH=amd64 \
   go build -ldflags "-X main.BuildID=${Version}" \
-  -o configure \
-  ../configure.go
+  -o $BUILD_DIR/configure \
+  $BUILD_DIR/../configure.go
 
-cp tracing-proxy tracing/opt/opsramp/tracing-proxy/bin/tracing-proxy
-cp configure tracing/opt/opsramp/tracing-proxy/bin/configure
+cp $BUILD_DIR/tracing-proxy $BUILD_DIR/tracing/opt/opsramp/tracing-proxy/bin/tracing-proxy
+cp $BUILD_DIR/configure $BUILD_DIR/tracing/opt/opsramp/tracing-proxy/bin/configure
 
-dpkg -b tracing
+dpkg -b $BUILD_DIR/tracing
 
 # Rename the package with version and architecture
 packageName="tracing-proxy_"${architecture}"-"${Version}".deb"
-mkdir -p ./output
-mv tracing.deb ./output/"${packageName}"
+mkdir -p $BUILD_DIR/output
+mv $BUILD_DIR/tracing.deb $BUILD_DIR/output/"${packageName}"
 
 # Cleanup
-rm -rf ./tracing/opt
-rm -rf ./tracing/etc
-rm -rf configure tracing-proxy
+rm -rf $BUILD_DIR/tracing/opt
+rm -rf $BUILD_DIR/tracing/etc
+rm -rf $BUILD_DIR/configure $BUILD_DIR/tracing-proxy
