@@ -6,19 +6,16 @@ jobs:
   generate-deb:
     name: Create debian package
     runs-on: ubuntu-latest
-    container:
-      image: ubuntu:16.04
-      options: "--entrypoint /bin/bash"
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
-      - name: Generate the artifacts
-        uses: skx/github-action-build@master
+      - uses: addnab/docker-run-action@v3
         with:
-          builder: build/vm/tracing-deb/script.sh
-        env:
-          VERSION_TAG: ${{ github.event.release.tag_name }}
-          IS_GITHUB_ACTION: true
+          image: golang:buster
+          options: -v ${{ github.workspace }}:/tracing-proxy --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
+          run: |
+            cd tracing-proxy
+            /bin/bash build/vm/tracing-deb/script.sh
       - name: Upload the artifacts
         uses: skx/github-action-publish-binaries@master
         env:
@@ -35,13 +32,14 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
-      - name: Generate the artifacts
-        uses: skx/github-action-build@master
+      - uses: addnab/docker-run-action@v3
         with:
-          builder: build/vm/tracing-rpm/script.sh
-        env:
-          VERSION_TAG: ${{ github.event.release.tag_name }}
-          IS_GITHUB_ACTION: true
+          image: rockylinux:8
+          options: -v ${{ github.workspace }}:/tracing-proxy --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
+          run: |
+            yum install golang -y
+            cd tracing-proxy
+            /bin/bash build/vm/tracing-rpm/script.sh
       - name: Upload the artifacts
         uses: skx/github-action-publish-binaries@master
         env:
