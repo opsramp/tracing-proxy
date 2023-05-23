@@ -32,15 +32,17 @@ jobs:
       - uses: addnab/docker-run-action@v3
         with:
           image: rockylinux:8
-          options: -v ${{ github.workspace }}:${{ github.workspace }} -v /root:/root --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
+          options: -v ${{ github.workspace }}:${{ github.workspace }} --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
           run: |
             curl -L -O https://go.dev/dl/go1.20.4.linux-amd64.tar.gz
             rm -rf /usr/local/go && tar -C /usr/local -xzf go1.20.4.linux-amd64.tar.gz
             cd ${{ github.workspace }}
             PATH=$PATH:/usr/local/go/bin /bin/bash build/vm/tracing-rpm/script.sh
+            mkdir -p ${{ github.workspace }}/output
+            cp -r /root/rpmbuild/RPMS/x86_64/* ${{ github.workspace }}/output
       - name: Upload the artifacts
         uses: skx/github-action-publish-binaries@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: "/root/rpmbuild/RPMS/x86_64/*"
+          args: "${{ github.workspace }}/output/*"
