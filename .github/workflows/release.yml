@@ -32,7 +32,7 @@ jobs:
       - uses: addnab/docker-run-action@v3
         with:
           image: rockylinux:8
-          options: -v ${{ github.workspace }}:${{ github.workspace }} --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
+          options: -v ${{ github.workspace }}:${{ github.workspace }} -v /root:/root --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
           run: |
             curl -L -O https://go.dev/dl/go1.20.4.linux-amd64.tar.gz
             rm -rf /usr/local/go && tar -C /usr/local -xzf go1.20.4.linux-amd64.tar.gz
