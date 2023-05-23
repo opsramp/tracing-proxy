@@ -164,6 +164,30 @@ func (i *InMemCollector) Start() error {
 		"Number of Error events in root spans wrt each trace operation",
 		[]string{"service_name", "operation", "app"},
 	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_span",
+		"counter",
+		"Number of root spans in an operation",
+		[]string{"service_name", "operation"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_spans_count",
+		"counter",
+		"Number of spans in an operation",
+		[]string{"service_name", "operation"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_operation_latency_ms",
+		"gauge",
+		"Trace latency wrt each root trace operation",
+		[]string{"service_name", "operation"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_operations_failed",
+		"counter",
+		"Number of Error events in root spans wrt each trace operation",
+		[]string{"service_name", "operation"},
+	)
 
 	sampleCacheConfig := i.Config.GetSampleCacheConfig()
 	switch sampleCacheConfig.Type {
