@@ -5,6 +5,9 @@ Release=$(uname -m)
 sed -i "/^\%define release/s/^.*$/\%define release     ${Release}/g" tracing-proxy.spec
 # $1 is a version of the package
 Version=$1
+if [[ -z "$Version" ]]; then
+  Version=$VERSION_TAG
+fi
 sed -i "/^\%define version/s/^.*$/\%define version     ${Version}/g" tracing-proxy.spec
 
 # Building a static binaries

@@ -1,23 +1,23 @@
-name: Create helm chart issue on release
 on:
   release:
-    types: [published]
-  workflow_dispatch:
+    types: [created]
+name: Handle Release
 jobs:
-  create_issue:
+  generate:
+    name: Create release-artifacts
     runs-on: ubuntu-latest
     steps:
-      - name: Create an issue
-        uses: actions-ecosystem/action-create-issue@v1
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+      - name: Generate the artifacts
+        uses: skx/github-action-build@master
         with:
-          github_token: ${{ secrets.GHPROJECTS_TOKEN }}
-          repo: honeycombio/helm-charts
-          title: Bump Refinery to Latest Version
-          body: |
-            ## Bump Refinery
-
-            Update Refinery to latest version
-
-          labels: |
-            type: dependencies
-            status: oncall
+          builder: build/vm/tracing-deb/script.sh
+        env:
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+      - name: Upload the artifacts
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: "build/vm/tracing-deb/output/*"

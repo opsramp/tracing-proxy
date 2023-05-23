@@ -1,5 +1,9 @@
 # $1 is a version of the package
 Version=$1
+if [[ -z "$Version" ]]; then
+  Version=$VERSION_TAG
+fi
+
 sed -i "/^Version/s/:.*$/: ${Version}/g" tracing/DEBIAN/control
 
 architecture=$(uname -m)
