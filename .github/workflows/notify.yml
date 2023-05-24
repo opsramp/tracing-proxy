@@ -15,7 +15,8 @@ jobs:
       - name: Google Chat Notification
         uses: nakamuraos/google-chat-notifications@v2.0.1
         with:
-          title: Build
+          title: ${{ github.event_name }}
+          subtitle: ${{ github.event.head_commit.message }}
           webhookUrl: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
           status: ${{ job.status }}
         if: always()
