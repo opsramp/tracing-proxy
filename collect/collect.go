@@ -18,6 +18,12 @@ import (
 	"time"
 )
 
+const (
+	resourceAttributesKey = "resourceAttributes"
+	spanAttributesKey     = "spanAttributes"
+	eventAttributesKey    = "eventAttributes"
+)
+
 var ErrWouldBlock = errors.New("not adding span, channel buffer is full")
 
 type Collector interface {
@@ -114,24 +120,72 @@ func (i *InMemCollector) Start() error {
 		"trace_operations_latency_ms",
 		"gauge",
 		"Trace latency wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_failed",
 		"counter",
 		"Number of Error events in spans wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_succeeded",
 		"counter",
 		"Number of Succeeded events in spans wrt each trace operation",
-		[]string{"service_name", "operation"},
+		[]string{"service_name", "operation", "app"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_total",
 		"counter",
 		"Total Number of events in spans wrt each trace operation",
+		[]string{"service_name", "operation", "app"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_span",
+		"counter",
+		"Number of root spans in an operation",
+		[]string{"service_name", "operation", "app"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_spans_count",
+		"counter",
+		"Number of spans in an operation",
+		[]string{"service_name", "operation", "app"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_operation_latency_ms",
+		"gauge",
+		"Trace latency wrt each root trace operation",
+		[]string{"service_name", "operation", "app"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_operations_failed",
+		"counter",
+		"Number of Error events in root spans wrt each trace operation",
+		[]string{"service_name", "operation", "app"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_span",
+		"counter",
+		"Number of root spans in an operation",
+		[]string{"service_name", "operation"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_spans_count",
+		"counter",
+		"Number of spans in an operation",
+		[]string{"service_name", "operation"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_operation_latency_ms",
+		"gauge",
+		"Trace latency wrt each root trace operation",
+		[]string{"service_name", "operation"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_root_operations_failed",
+		"counter",
+		"Number of Error events in root spans wrt each trace operation",
 		[]string{"service_name", "operation"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
@@ -625,6 +679,7 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 		labelToKeyMap := map[string]string{
 			"service_name": "service.name",
 			"operation":    "spanName",
+			"app":          "app",
 		}
 
 		labels := metrics.ExtractLabelsFromSpan(span, labelToKeyMap)
@@ -702,7 +757,7 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 	i.Logger.Debug().WithFields(logFields).Logf("Sending trace")
 	for _, sp := range trace.GetSpans() {
 		if i.Config.GetAddRuleReasonToTrace() {
-			sp.Data["meta.refinery.reason"] = reason
+			sp.Data["meta.reason"] = reason
 		}
 
 		// update the root span (if we have one, which we might not if the trace timed out)
@@ -715,9 +770,21 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 			field := i.Config.GetDryRunFieldName()
 			sp.Data[field] = shouldSend
 		}
-		if i.hostname != "" {
-			sp.Data["meta.refinery.local_hostname"] = i.hostname
+
+		resAttr, ok := sp.Data[resourceAttributesKey].(map[string]interface{})
+		if !ok {
+			resAttr = map[string]interface{}{}
 		}
+		for key, value := range i.Config.GetAddAdditionalMetadata() {
+			if _, ok := resAttr[key]; !ok {
+				resAttr[key] = value
+			}
+		}
+
+		if i.hostname != "" {
+			resAttr["meta.local_hostname"] = i.hostname
+		}
+		sp.Data[resourceAttributesKey] = resAttr
 		mergeTraceAndSpanSampleRates(sp, trace.SampleRate)
 		i.Transmission.EnqueueSpan(sp)
 	}

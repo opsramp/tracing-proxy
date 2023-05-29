@@ -1,0 +1,22 @@
+name: Notify
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  release:
+    types: [ published ]
+
+jobs:
+  notify:
+    name: Notify via Google Chat
+    runs-on: ubuntu-latest
+    steps:
+      - name: Google Chat Notification
+        uses: nakamuraos/google-chat-notifications@v2.0.1
+        with:
+          title: ${{ github.event_name }}
+          subtitle: ${{ github.event.head_commit.message }}
+          webhookUrl: ${{ secrets.GOOGLE_CHAT_WEBHOOK }}
+          status: ${{ job.status }}
+        if: always()

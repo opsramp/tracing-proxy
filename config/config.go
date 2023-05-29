@@ -145,6 +145,8 @@ type Config interface {
 
 	GetAddHostMetadataToTrace() bool
 
+	GetAddAdditionalMetadata() map[string]string
+
 	GetSendMetricsToOpsRamp() bool
 
 	// GetUseTLS returns true when TLS must be enabled to dial
