@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -353,8 +354,64 @@ func (p *OpsRampMetrics) Populate() {
 	}
 }
 
+func ConvertLabelsToMap(labels []prompb.Label) map[string]string {
+	labelMap := make(map[string]string)
+	for _, label := range labels {
+		labelMap[label.Name] = label.Value
+	}
+	return labelMap
+}
+
+func (p *OpsRampMetrics) calculateTraceOperationError(metricFamilySlice []*io_prometheus_client.MetricFamily) {
+	var labelMap map[string]string
+	uniqueLabelsMap := make(map[string][]prompb.Label)
+	uniqueFailedMap := make(map[string]float64)
+	uniqueSpansMap := make(map[string]float64)
+	for _, metricFamily := range metricFamilySlice {
+		if !p.re.MatchString(metricFamily.GetName()) {
+			continue
+		}
+		if metricFamily.GetName() == "trace_operations_failed" || metricFamily.GetName() == "trace_spans_count" {
+			for _, metric := range metricFamily.GetMetric() {
+				var labels []prompb.Label
+				for _, label := range metric.GetLabel() {
+					labels = append(labels, prompb.Label{
+						Name:  label.GetName(),
+						Value: label.GetValue(),
+					})
+				}
+				key := "trace_operations_failed&trace_spans_count&"
+				labelSlice := metric.GetLabel()
+				sort.Slice(labelSlice, func(i, j int) bool {
+					return labelSlice[i].GetName()+labelSlice[i].GetValue() > labelSlice[j].GetName()+labelSlice[i].GetValue()
+				})
+				for _, label := range labelSlice {
+					key += label.GetName() + label.GetValue()
+				}
+				if metricFamily.GetName() == "trace_operations_failed" {
+					uniqueFailedMap[key] = *metric.Counter.Value
+				} else {
+					uniqueSpansMap[key] = *metric.Counter.Value
+				}
+				uniqueLabelsMap[key] = labels
+			}
+		}
+	}
+	for key, _ := range uniqueLabelsMap {
+		labelMap = ConvertLabelsToMap(uniqueLabelsMap[key])
+		p.GaugeWithLabels("trace_operations_error", labelMap, uniqueFailedMap[key]/uniqueSpansMap[key])
+	}
+}
+
 func (p *OpsRampMetrics) Push() (int, error) {
 	metricFamilySlice, err := p.promRegistry.Gather()
+	if err != nil {
+		return -1, err
+	}
+
+	p.calculateTraceOperationError(metricFamilySlice)
+
+	metricFamilySlice, err = p.promRegistry.Gather()
 	if err != nil {
 		return -1, err
 	}
