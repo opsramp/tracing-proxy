@@ -634,10 +634,21 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 			continue
 		}
 
-		labelToKeyMap := map[string]string{
-			"service_name": "service.name",
-			"operation":    "spanName",
-			"app":          "app",
+		resAttr, ok := span.Data[resourceAttributesKey].(map[string]interface{})
+		if !ok {
+			resAttr = map[string]interface{}{}
+		}
+		for key, value := range i.Config.GetAddAdditionalMetadata() {
+			if _, ok := resAttr[key]; !ok {
+				resAttr[key] = value
+			}
+		}
+		span.Data[resourceAttributesKey] = resAttr
+
+		labelToKeyMap := map[string][]string{
+			"service_name": {"service_name", "service.name"},
+			"operation":    {"spanName"},
+			"app":          {"app"},
 		}
 
 		labels := metrics.ExtractLabelsFromSpan(span, labelToKeyMap)

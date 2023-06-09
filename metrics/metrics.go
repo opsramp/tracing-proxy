@@ -52,35 +52,36 @@ func ConvertNumeric(val interface{}) float64 {
 	}
 }
 
-func ExtractLabelsFromSpan(span *types.Span, labelToKeyMap map[string]string) map[string]string {
+func ExtractLabelsFromSpan(span *types.Span, labelToKeyMap map[string][]string) map[string]string {
 
 	labels := map[string]string{}
 
 	attributeMapKeys := []string{"spanAttributes", "resourceAttributes", "eventAttributes"}
 
-	for labelName, searchKey := range labelToKeyMap {
+	for labelName, searchKeys := range labelToKeyMap {
+		for _, searchKey := range searchKeys {
+			// check of the higher level first
+			searchValue, exists := span.Data[searchKey]
+			if exists && searchValue != nil {
+				labels[labelName] = searchValue.(string)
+				continue
+			}
 
-		// check of the higher level first
-		searchValue, exists := span.Data[searchKey]
-		if exists && searchValue != nil {
-			labels[labelName] = searchValue.(string)
-			continue
-		}
-
-		// check in the span, resource and event attributes when key is not found
-		for _, attributeKey := range attributeMapKeys {
-			if attribute, ok := span.Data[attributeKey]; ok && attribute != nil {
-				searchValue, exists = attribute.(map[string]interface{})[searchKey]
-				if exists && searchValue != nil {
-					labels[labelName] = searchValue.(string)
-					break
+			// check in the span, resource and event attributes when key is not found
+			for _, attributeKey := range attributeMapKeys {
+				if attribute, ok := span.Data[attributeKey]; ok && attribute != nil {
+					searchValue, exists = attribute.(map[string]interface{})[searchKey]
+					if exists && searchValue != nil {
+						labels[labelName] = searchValue.(string)
+						break
+					}
 				}
 			}
-		}
 
-		// if the key does not exist then set it to empty
-		if !exists {
-			labels[labelName] = ""
+			// if the key does not exist then set it to empty
+			if !exists {
+				labels[labelName] = ""
+			}
 		}
 	}
 
