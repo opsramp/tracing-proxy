@@ -578,10 +578,10 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
-github.com/opsramp/husky v0.0.0-20230607092333-7d335e45a6d7 h1:5DYQxOiNfPVn0Uu127402O+4Gz+TYq7p1XxC5PrKepw=
-github.com/opsramp/husky v0.0.0-20230607092333-7d335e45a6d7/go.mod h1:GzTlIB+x7FULGr/mPWJNWMBd+7mrGHzhB9sMdaIyRUw=
-github.com/opsramp/libtrace-go v0.0.0-20230607092128-33a542d473fc h1:9PWrSlAQaBTufgCZX6YqX5lRYmxux5SYs3JtliaPLCc=
-github.com/opsramp/libtrace-go v0.0.0-20230607092128-33a542d473fc/go.mod h1:XvyEnnTyL+klFisHWbLeBAihYq7b1QBF90iLCcns0cQ=
+github.com/opsramp/husky v0.0.0-20230609124403-2da97ba6e273 h1:T5FmJZ5McufpKgX4fqleen0PJtyDwpWFNJcvr5ff1xQ=
+github.com/opsramp/husky v0.0.0-20230609124403-2da97ba6e273/go.mod h1:GzTlIB+x7FULGr/mPWJNWMBd+7mrGHzhB9sMdaIyRUw=
+github.com/opsramp/libtrace-go v0.0.0-20230609124256-55d8d4e593ea h1:UtVFx3EkflrNlw467lBHu6qcaS6+NKg9PZZRvzjO9eo=
+github.com/opsramp/libtrace-go v0.0.0-20230609124256-55d8d4e593ea/go.mod h1:XvyEnnTyL+klFisHWbLeBAihYq7b1QBF90iLCcns0cQ=
 github.com/panmari/cuckoofilter v1.0.3 h1:MgTxXG2aP0YPWFyY1sKt1caWidUFREk9BaOnakDKZOU=
 github.com/panmari/cuckoofilter v1.0.3/go.mod h1:O7+ZOHxwlADJ1So2/ZsKBExDwILNPZsyt77zN0ZTBLg=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
