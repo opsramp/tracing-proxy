@@ -10,7 +10,7 @@ ListenAddr: 0.0.0.0:8082
 # GRPCListenAddr is the IP and port on which to listen for incoming events over
 # gRPC. Incoming traffic is expected to be unencrypted, so if using SSL put something like nginx in
 # front to do the TLS Termination.
-GRPCListenAddr: 0.0.0.0:4317
+GRPCListenAddr: 0.0.0.0:9090
 
 # PeerListenAddr is the IP and port on which to listen for traffic being
 # rerouted from a peer. Peer traffic is expected to be HTTP, so if using SSL
