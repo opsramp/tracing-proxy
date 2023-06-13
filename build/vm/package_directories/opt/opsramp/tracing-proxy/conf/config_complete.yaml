@@ -325,7 +325,7 @@ LogrusLogger:
 
 MetricsConfig:
   # Enable specifies whether the metrics are supposed to be collected and exported to OpsRamp
-  Enable: false
+  Enable: true
 
   # ListenAddr determines the interface and port on which Prometheus will
   # listen for requests for /metrics. Must be different from the main Trace Proxy
