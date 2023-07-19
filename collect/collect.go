@@ -634,17 +634,6 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 			continue
 		}
 
-		resAttr, ok := span.Data[resourceAttributesKey].(map[string]interface{})
-		if !ok {
-			resAttr = map[string]interface{}{}
-		}
-		for key, value := range i.Config.GetAddAdditionalMetadata() {
-			if _, ok := resAttr[key]; !ok {
-				resAttr[key] = value
-			}
-		}
-		span.Data[resourceAttributesKey] = resAttr
-
 		labelToKeyMap := map[string][]string{
 			"service_name": {"service_name", "service.name"},
 			"operation":    {"spanName"},
@@ -740,20 +729,9 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 			sp.Data[field] = shouldSend
 		}
 
-		resAttr, ok := sp.Data[resourceAttributesKey].(map[string]interface{})
-		if !ok {
-			resAttr = map[string]interface{}{}
-		}
-		for key, value := range i.Config.GetAddAdditionalMetadata() {
-			if _, ok := resAttr[key]; !ok {
-				resAttr[key] = value
-			}
-		}
-
 		if i.hostname != "" {
-			resAttr["meta.local_hostname"] = i.hostname
+			sp.Data["meta.local_hostname"] = i.hostname
 		}
-		sp.Data[resourceAttributesKey] = resAttr
 		mergeTraceAndSpanSampleRates(sp, trace.SampleRate)
 		i.Transmission.EnqueueSpan(sp)
 	}
