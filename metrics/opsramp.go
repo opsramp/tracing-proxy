@@ -34,9 +34,10 @@ const (
 )
 
 var (
-	muxer    *mux.Router
-	server   *http.Server
-	hostname string
+	muxer     *mux.Router
+	server    *http.Server
+	serverMut sync.Mutex
+	hostname  string
 )
 
 func init() {
@@ -104,13 +105,17 @@ func (p *OpsRampMetrics) Start() error {
 			p.Logger.Error().Logf("metrics server shutdown: %v", err)
 		}
 	}
+	serverMut.Lock()
 	server = &http.Server{
 		Addr:              metricsConfig.ListenAddr,
 		Handler:           muxer,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
-		server.ListenAndServe()
+		defer serverMut.Unlock()
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			p.Logger.Error().Logf("%v", err)
+		}
 	}()
 
 	if p.Config.GetSendMetricsToOpsRamp() {
