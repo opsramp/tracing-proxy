@@ -51,7 +51,14 @@ const (
 	traceIDLongLength      = 16
 	GRPCMessageSizeMax int = 5000000 // 5MB
 	defaultSampleRate      = 1
+
+	resourceAttributesKey = "resourceAttributes"
+	spanAttributesKey     = "spanAttributes"
+	eventAttributesKey    = "eventAttributes"
+	unknownService        = "unknown_service"
 )
+
+var possibleServiceNames = []string{"service_name", "service.name"}
 
 type Router struct {
 	Config               config.Config         `inject:""`
@@ -518,6 +525,28 @@ func (r *Router) processEvent(ev *types.Event, reqID interface{}) error {
 		WithString("api_host", ev.APIHost).
 		WithString("dataset", ev.Dataset).
 		WithString("environment", ev.Environment)
+
+	// adding additional attributes to resource attributes
+	resAttr, ok := ev.Data[resourceAttributesKey].(map[string]interface{})
+	if !ok {
+		resAttr = map[string]interface{}{}
+	}
+	for key, value := range r.Config.GetAddAdditionalMetadata() {
+		if _, ok := resAttr[key]; !ok {
+			resAttr[key] = value
+		}
+	}
+	isUnknownService := true
+	for _, key := range possibleServiceNames {
+		if _, ok := resAttr[key]; ok {
+			isUnknownService = false
+			break
+		}
+	}
+	if isUnknownService {
+		resAttr[possibleServiceNames[0]] = unknownService
+	}
+	ev.Data[resourceAttributesKey] = resAttr
 
 	// extract trace ID, route to self or peer, pass on to collector
 	// TODO make trace ID field configurable
