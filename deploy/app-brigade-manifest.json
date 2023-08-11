@@ -1,0 +1,38 @@
+{
+  "payload": [
+    {
+      "appid": "3e148737-ea6f-48e3-a62e-ae35cf135520",
+      "stages": [
+        {
+          "stagename": "deployment",
+          "payload": [
+            {
+              "filename": "tracing-proxy-ns.yml"
+            },
+            {
+              "filename": "tracing-proxy-svc.yml"
+            },
+            {
+              "filename": "tracing-proxy-config-cm.yml"
+            },
+            {
+              "filename": "tracing-proxy-rules-cm.yml"
+            },
+            {
+              "filename": "tracing-proxy-deployment.yml"
+            }
+          ]
+        }
+      ],
+      "Version": "${version}"
+    }
+  ],
+  "configmap": {
+    "name": "tracing-proxy",
+    "comment": "Please include configmap file paths in docker/Dockerfile as needed for tini",
+    "infra": [
+      "elasticache"
+    ]
+  },
+  "multi-region": "supported"
+}
