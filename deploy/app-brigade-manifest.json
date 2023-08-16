@@ -28,10 +28,13 @@
     }
   ],
   "configmap": {
-    "name": "tracing-proxy",
+    "name": "tracing-proxy-cm",
     "comment": "Please include configmap file paths in docker/Dockerfile as needed for tini",
     "infra": [
       "elasticache"
+    ],
+    "config": [
+      "opsramp-tracing-proxy-creds"
     ]
   },
   "multi-region": "supported"

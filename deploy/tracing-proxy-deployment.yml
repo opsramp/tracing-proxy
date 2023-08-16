@@ -20,12 +20,6 @@ spec:
         - name: opsramp-tracing-proxy
           image: us-docker.pkg.dev/opsramp-registry/agent-images/trace-proxy
           imagePullPolicy: Always
-          command:
-            - "/usr/bin/tracing-proxy"
-            - "-c"
-            - "/etc/tracing-proxy/config.yaml"
-            - "-r"
-            - "/etc/tracing-proxy/rules.yaml"
           ports:
             - name: http
               containerPort: 8082
@@ -54,6 +48,10 @@ spec:
               mountPath: /etc/tracing-proxy/config.yaml
               subPath: config.yaml
               readOnly: true
+            - name: elastic-cache
+              mountPath: /config/data
+            - name: creds
+              mountPath: /config/data
       volumes:
         - configMap:
             name: opsramp-tracing-proxy-rules
@@ -61,4 +59,10 @@ spec:
         - configMap:
             name: opsramp-tracing-proxy-config
           name: opsramp-tracing-config
+        - configMap:
+            name: tracing-proxy-cm
+          name: elastic-cache
+        - configMap:
+            name: opsramp-tracing-proxy-creds
+          name: creds
 
