@@ -13,12 +13,6 @@
               "filename": "tracing-proxy-svc.yml"
             },
             {
-              "filename": "tracing-proxy-config-cm.yml"
-            },
-            {
-              "filename": "tracing-proxy-rules-cm.yml"
-            },
-            {
               "filename": "tracing-proxy-deployment.yml"
             }
           ]
