@@ -1,4 +1,4 @@
-FROM golang:alpine as builder
+FROM --platform=$BUILDPLATFORM golang:alpine as builder
 
 RUN apk update && apk add --no-cache git bash ca-certificates && update-ca-certificates
 
@@ -20,13 +20,15 @@ RUN CGO_ENABLED=0 \
     -o tracing-proxy \
     ./cmd/tracing-proxy
 
-FROM alpine:3.17
+FROM --platform=$BUILDPLATFORM alpine:3.17
 
-RUN apk update && apk add --no-cache bash ca-certificates && update-ca-certificates
+RUN apk update && apk add --no-cache bash jq ca-certificates && update-ca-certificates
 
 COPY --from=builder /app/config_complete.yaml /etc/tracing-proxy/config.yaml
 COPY --from=builder /app/rules_complete.yaml /etc/tracing-proxy/rules.yaml
 
 COPY --from=builder /app/tracing-proxy /usr/bin/tracing-proxy
 
-CMD ["/usr/bin/tracing-proxy", "--config", "/etc/tracing-proxy/config.yaml", "--rules_config", "/etc/tracing-proxy/rules.yaml"]
+COPY --from=builder /app/start.sh /usr/bin/start.sh
+
+CMD ["/usr/bin/start.sh"]
