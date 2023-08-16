@@ -15,23 +15,27 @@ ELASTICACHE_PATH='/config/data/infra_elasticache.json'
 #    }
 #  }
 
-OPSRAMP_CREDS_PATH='/config/data/opsramp_creds.json'
+OPSRAMP_CREDS_PATH='/config/data/config_opsramp-tracing-proxy-creds.json'
 
 #  Sample Format for ${OPSRAMP_CREDS_PATH}
 #  {
-#    "traces_api": "***REMOVED***",
-#    "metrics_api": "***REMOVED***",
-#    "auth_api": "***REMOVED***",
-#    "key": "***REMOVED***",
-#    "secret": "***REMOVED***",
-#    "tenant_id": "***REMOVED***"
+#    "opsramp-tracing-proxy-creds": {
+#      "traces_api": "***REMOVED***",
+#      "metrics_api": "***REMOVED***",
+#      "auth_api": "***REMOVED***",
+#      "key": "***REMOVED***",
+#      "secret": "***REMOVED***",
+#      "tenant_id": "***REMOVED***"
+#    }
 #  }
 
 
 TRACE_PROXY_CONFIG='/etc/tracing-proxy/final_config.yaml'
+TRACE_PROXY_RULES='/etc/tracing-proxy/final_rules.yaml'
 
-# make copy of the config.yaml file
+# make copy of the config.yaml & rules.yaml to make sure it works if config maps are mounted
 cp /etc/tracing-proxy/config.yaml ${TRACE_PROXY_CONFIG}
+cp /etc/tracing-proxy/rules.yaml ${TRACE_PROXY_RULES}
 
 if [ -r ${ELASTICACHE_PATH} ]; then
   # check if the configuration is a object or array
@@ -53,12 +57,12 @@ fi
 
 if [ -r ${OPSRAMP_CREDS_PATH} ]; then
 
-  TRACES_API=$(jq <${OPSRAMP_CREDS_PATH} -r .traces_api)
-  METRICS_API=$(jq <${OPSRAMP_CREDS_PATH} -r .metrics_api)
-  AUTH_API=$(jq <${OPSRAMP_CREDS_PATH} -r .auth_api)
-  KEY=$(jq <${OPSRAMP_CREDS_PATH} -r .key)
-  SECRET=$(jq <${OPSRAMP_CREDS_PATH} -r .secret)
-  TENANT_ID=$(jq <${OPSRAMP_CREDS_PATH} -r .tenant_id)
+  TRACES_API=$(jq <${OPSRAMP_CREDS_PATH} -r .opsramp-tracing-proxy-creds.traces_api)
+  METRICS_API=$(jq <${OPSRAMP_CREDS_PATH} -r .opsramp-tracing-proxy-creds.metrics_api)
+  AUTH_API=$(jq <${OPSRAMP_CREDS_PATH} -r .opsramp-tracing-proxy-creds.auth_api)
+  KEY=$(jq <${OPSRAMP_CREDS_PATH} -r .opsramp-tracing-proxy-creds.key)
+  SECRET=$(jq <${OPSRAMP_CREDS_PATH} -r .opsramp-tracing-proxy-creds.secret)
+  TENANT_ID=$(jq <${OPSRAMP_CREDS_PATH} -r .opsramp-tracing-proxy-creds.tenant_id)
 
   sed -i "s/<OPSRAMP_TRACES_API>/${TRACES_API}/g" ${TRACE_PROXY_CONFIG}
   sed -i "s/<OPSRAMP_METRICS_API>/${METRICS_API}/g" ${TRACE_PROXY_CONFIG}
@@ -69,4 +73,4 @@ if [ -r ${OPSRAMP_CREDS_PATH} ]; then
 fi
 
 # start the application
-exec /usr/bin/tracing-proxy -c /etc/tracing-proxy/final_config.yaml -r /etc/tracing-proxy/rules.yaml
+exec /usr/bin/tracing-proxy -c /etc/tracing-proxy/final_config.yaml -r /etc/tracing-proxy/final_rules.yaml
