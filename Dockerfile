@@ -55,10 +55,10 @@ COPY --from=builder /usr/local/bin/tini /usr/local/bin/tini
 
 COPY --from=builder /app/start.sh /usr/bin/start.sh
 
-ENTRYPOINT ["tini", \
-            "-F", "/config/data/infra_elasticache.json", \
-            "-F", "/config/data/infra_clusterinfo.json", \
-            "-F", "/config/data/config_tracing-proxy.json", \
-            "--"]
+#ENTRYPOINT ["tini", \
+#            "-F", "/config/data/infra_elasticache.json", \
+#            "-F", "/config/data/infra_clusterinfo.json", \
+#            "-F", "/config/data/config_tracing-proxy.json", \
+#            "--"]
 
 CMD ["/usr/bin/start.sh"]
