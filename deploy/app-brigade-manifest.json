@@ -7,9 +7,6 @@
           "stagename": "deployment",
           "payload": [
             {
-              "filename": "tracing-proxy-ns.yml"
-            },
-            {
               "filename": "tracing-proxy-svc.yml"
             },
             {
@@ -25,11 +22,13 @@
     "name": "tracing-proxy-cm",
     "comment": "Please include configmap file paths in docker/Dockerfile as needed for tini",
     "infra": [
-      "elasticache"
+      "elasticache",
+      "clusterinfo"
     ],
     "config": [
-      "opsramp-tracing-proxy-creds"
+      "tracing-proxy"
     ]
   },
-  "multi-region": "supported"
+  "multi-region": "supported",
+  "namespace": "opsramp-tracing-proxy"
 }
