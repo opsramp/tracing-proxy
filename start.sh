@@ -115,9 +115,9 @@ if [ -r ${OPSRAMP_CREDS_PATH} ]; then
   SECRET=$(jq <${OPSRAMP_CREDS_PATH} -r '."tracing-proxy".secret')
   TENANT_ID=$(jq <${OPSRAMP_CREDS_PATH} -r '."tracing-proxy".tenant_id')
 
-  sed -i "s/<OPSRAMP_TRACES_API>/${TRACES_API}/g" ${TRACE_PROXY_CONFIG}
-  sed -i "s/<OPSRAMP_METRICS_API>/${METRICS_API}/g" ${TRACE_PROXY_CONFIG}
-  sed -i "s/<OPSRAMP_API>/${AUTH_API}/g" ${TRACE_PROXY_CONFIG}
+  sed -i "s*<OPSRAMP_TRACES_API>*${TRACES_API}*g" ${TRACE_PROXY_CONFIG}
+  sed -i "s*<OPSRAMP_METRICS_API>*${METRICS_API}*g" ${TRACE_PROXY_CONFIG}
+  sed -i "s*<OPSRAMP_API>*${AUTH_API}*g" ${TRACE_PROXY_CONFIG}
   sed -i "s/<KEY>/${KEY}/g" ${TRACE_PROXY_CONFIG}
   sed -i "s/<SECRET>/${SECRET}/g" ${TRACE_PROXY_CONFIG}
   sed -i "s/<TENANT_ID>/${TENANT_ID}/g" ${TRACE_PROXY_CONFIG}
