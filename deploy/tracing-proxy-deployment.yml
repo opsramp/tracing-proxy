@@ -3,11 +3,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: opsramp-tracing-proxy
-  namespace: opsramp-tracing-proxy
   labels:
     app: opsramp-tracing-proxy
+    appid: "${appid}"
+    version: "${version}"
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: opsramp-tracing-proxy
@@ -15,11 +16,28 @@ spec:
     metadata:
       labels:
         app: opsramp-tracing-proxy
+        name: opsramp-tracing-proxy
+        version: "${version}"
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: name
+                      operator: In
+                      values:
+                        - opsramp-tracing-proxy
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      imagePullSecrets:
+        - name: quay.io
+      restartPolicy: Always
       containers:
         - name: opsramp-tracing-proxy
-          image: us-docker.pkg.dev/opsramp-registry/agent-images/trace-proxy
-          imagePullPolicy: Always
+          image: ${docker_image}
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8082
