@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM golang:alpine as builder
 ARG TARGETOS
 ARG TARGETARCH
 
-RUN apk update && apk add --no-cache git bash ca-certificates curl && update-ca-certificates
+RUN apk update && apk add --no-cache git ca-certificates curl && update-ca-certificates
 
 #Setting up tini
 ENV TINI_URL_ARM="https://coreupdate.central.arubanetworks.com/packages/tini-arm64"
@@ -37,8 +37,8 @@ RUN go mod verify
 ADD . .
 
 RUN CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64 \
+    GOOS=${TARGETOS} \
+    GOARCH=${TARGETARCH} \
     go build -ldflags "-X main.BuildID=${BUILD_ID}" \
     -o tracing-proxy \
     ./cmd/tracing-proxy
