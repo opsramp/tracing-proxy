@@ -2,7 +2,6 @@ package transmit
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 
@@ -82,20 +81,6 @@ func (d *DefaultTransmission) Start() error {
 	processCtx, canceler := context.WithCancel(context.Background())
 	d.responseCanceler = canceler
 	go d.processResponses(processCtx, d.LibhClient.TxResponses())
-
-	// get proxy details
-	proxyConfig := d.Config.GetProxyConfig()
-
-	proxyUrl := ""
-	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
-		proxyUrl = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
-		if proxyConfig.Username != "" && proxyConfig.Password != "" {
-			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
-			d.Logger.Debug().Logf("Using Authentication for ProxyConfiguration Communication for Traces")
-		}
-		os.Setenv("HTTPS_PROXY", proxyUrl)
-		os.Setenv("HTTP_PROXY", proxyUrl)
-	}
 
 	// listen for config reloads
 	d.Config.RegisterReloadCallback(d.reloadTransmissionBuilder)

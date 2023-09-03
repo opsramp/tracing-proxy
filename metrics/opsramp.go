@@ -325,10 +325,11 @@ func (p *OpsRampMetrics) Populate() {
 
 	proxyURL := ""
 	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
+		p.Logger.Info().Logf("Proxy Configuration found, setting up proxy for Metrics")
 		proxyURL = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
 		if proxyConfig.Username != "" && proxyConfig.Password != "" {
 			proxyURL = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
-			p.Logger.Debug().Logf("Using Authentication for ProxyConfiguration Communication for Metrics")
+			p.Logger.Info().Logf("Using Authentication for ProxyConfiguration Communication for Metrics")
 		}
 	}
 
