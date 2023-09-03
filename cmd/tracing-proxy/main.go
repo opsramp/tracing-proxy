@@ -102,6 +102,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	// set proxy details
+	proxyConfig := c.GetProxyConfig()
+	proxyUrl := ""
+	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
+		logrusLogger.Info("Proxy Configuration found, setting up proxy for Traces")
+		proxyUrl = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
+		if proxyConfig.Username != "" && proxyConfig.Password != "" {
+			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
+			logrusLogger.Info("Using Authentication for ProxyConfiguration Communication for Traces")
+		}
+		os.Setenv("HTTPS_PROXY", proxyUrl)
+		os.Setenv("HTTP_PROXY", proxyUrl)
+	}
+
 	// upstreamTransport is the http transport used to send things on to OpsRamp
 	upstreamTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
