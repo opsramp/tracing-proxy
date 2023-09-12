@@ -150,6 +150,7 @@ func main() {
 
 	userAgentAddition := "tracing-proxy/" + CollectorVersion
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
+		Logger: logrusLogger,
 		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          c.GetBatchTimeout(),
@@ -176,6 +177,7 @@ func main() {
 				MaxInterval:         retryConfig.MaxInterval,
 				MaxElapsedTime:      retryConfig.MaxElapsedTime,
 			},
+			Logger: logrusLogger,
 		},
 	})
 	if err != nil {
@@ -184,6 +186,7 @@ func main() {
 	}
 
 	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
+		Logger: logrusLogger,
 		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          c.GetBatchTimeout(),
@@ -208,6 +211,7 @@ func main() {
 				MaxInterval:         retryConfig.MaxInterval,
 				MaxElapsedTime:      retryConfig.MaxElapsedTime,
 			},
+			Logger: logrusLogger,
 		},
 	})
 	if err != nil {
