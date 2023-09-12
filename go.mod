@@ -1,6 +1,6 @@
 module github.com/opsramp/tracing-proxy
 
-go 1.19
+go 1.21
 
 require (
 	github.com/dgryski/go-wyhash v0.0.0-20191203203029-c4841ae36371
@@ -17,8 +17,8 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.16.7
-	github.com/opsramp/husky v0.0.0-20230719151104-01eeb1b7e530
-	github.com/opsramp/libtrace-go v0.0.0-20230719150918-e2ba67c0f350
+	github.com/opsramp/husky v0.0.0-20230912033521-faf8b3bd52a6
+	github.com/opsramp/libtrace-go v0.0.0-20230912034011-7a4e29962ea3
 	github.com/panmari/cuckoofilter v1.0.3
 	github.com/pelletier/go-toml/v2 v2.0.5
 	github.com/pkg/errors v0.9.1
@@ -29,7 +29,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/viper v1.13.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.3
 	github.com/tidwall/gjson v1.14.3
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	google.golang.org/grpc v1.56.2
@@ -60,7 +60,7 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/spf13/afero v1.8.2 // indirect
+	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
