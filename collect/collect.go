@@ -170,6 +170,18 @@ func (i *InMemCollector) Start() error {
 		"Trace errors wrt each trace operation / trace_span_count",
 		[]string{"service_name", "operation", "app"},
 	)
+	i.Metrics.RegisterHistogram(
+		"trace_operations_latency",
+		[]string{"service_name", "operation", "app"},
+		"span latency in microseconds(µs) by service, operation and app",
+		[]float64{100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
+	)
+	i.Metrics.RegisterHistogram(
+		"trace_root_operation_latency",
+		[]string{"service_name", "operation", "app"},
+		"root span latency in microseconds(µs) by service, operation and app",
+		[]float64{100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
+	)
 
 	sampleCacheConfig := i.Config.GetSampleCacheConfig()
 	switch sampleCacheConfig.Type {
@@ -645,8 +657,25 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 		durationMsString, ok := span.Data["durationMs"]
 		if ok && durationMsString != nil {
 			i.Metrics.GaugeWithLabels("trace_operations_latency_ms", labels, metrics.ConvertNumeric(durationMsString))
+
+			// getting the latency from end and start time
+			st, _ := span.Data["startTime"]
+			et, _ := span.Data["endTime"]
+			i.Metrics.HistogramWithLabels(
+				"trace_operations_latency",
+				labels,
+				(metrics.ConvertNumeric(et)-metrics.ConvertNumeric(st))/float64(time.Millisecond),
+			)
 		}
 		if isRootSpan(span) {
+			st, _ := span.Data["startTime"]
+			et, _ := span.Data["endTime"]
+			i.Metrics.HistogramWithLabels(
+				"trace_root_operation_latency",
+				labels,
+				(metrics.ConvertNumeric(et)-metrics.ConvertNumeric(st))/float64(time.Millisecond),
+			)
+
 			i.Metrics.GaugeWithLabels("trace_root_operation_latency_ms", labels, metrics.ConvertNumeric(durationMsString))
 			i.Metrics.IncrementWithLabels("trace_root_span", labels)
 		}
