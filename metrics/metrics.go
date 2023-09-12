@@ -12,9 +12,13 @@ type Metrics interface {
 	Count(name string, n interface{})
 	Histogram(name string, obs interface{})
 	RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string)
+	RegisterGauge(name string, labels []string, desc string)
+	RegisterCounter(name string, labels []string, desc string)
+	RegisterHistogram(name string, labels []string, desc string, buckets []float64)
 
 	GaugeWithLabels(name string, labels map[string]string, value float64)
 	IncrementWithLabels(name string, labels map[string]string)
+	HistogramWithLabels(name string, labels map[string]string, obs interface{})
 }
 
 func GetMetricsImplementation(prefix string) Metrics {

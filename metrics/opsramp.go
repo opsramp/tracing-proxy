@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/golang/snappy"
 	"github.com/gorilla/mux"
+	"github.com/opsramp/tracing-proxy/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	io_prometheus_client "github.com/prometheus/client_model/go"
@@ -46,13 +47,32 @@ func init() {
 	hostname, _ = os.Hostname()
 }
 
+type metricType int
+
+const (
+	GAUGE metricType = iota
+	COUNTER
+	HISTOGRAM
+	SUMMARY
+)
+
+const labelValuesDelimiter = "#*#"
+
+type metricData struct {
+	Data        interface{}
+	Type        metricType
+	Labels      []string                           // always should be in sorted order
+	LabelValues utils.SyncedMap[string, time.Time] // key must be sorted in the same order as labels
+}
+
 type OpsRampMetrics struct {
 	Config config.Config `inject:""`
 	Logger logger.Logger `inject:""`
 	// metrics keeps a record of all the registered metrics so that we can increment
 	// them by name
-	metrics map[string]interface{}
-	lock    sync.RWMutex
+	metrics map[string]*metricData
+
+	lock sync.RWMutex
 
 	Client http.Client
 
@@ -75,7 +95,7 @@ func (p *OpsRampMetrics) Start() error {
 
 	metricsConfig := p.Config.GetMetricsConfig()
 
-	p.metrics = make(map[string]interface{})
+	p.metrics = make(map[string]*metricData)
 
 	// Create non-global registry.
 	p.promRegistry = prometheus.NewRegistry()
@@ -162,21 +182,32 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 		return
 	}
 
+	newMetric = &metricData{
+		Data:        nil,
+		LabelValues: utils.SyncedMap[string, time.Time]{},
+	}
+
 	switch metricType {
 	case "counter":
-		newMetric = promauto.With(p.promRegistry).NewCounter(prometheus.CounterOpts{
+		counterMet := promauto.With(p.promRegistry).NewCounter(prometheus.CounterOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
 		})
+
+		newMetric.Data = counterMet
+		newMetric.Type = COUNTER
 	case "gauge":
-		newMetric = promauto.With(p.promRegistry).NewGauge(prometheus.GaugeOpts{
+		gaugeMet := promauto.With(p.promRegistry).NewGauge(prometheus.GaugeOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
 		})
+
+		newMetric.Data = gaugeMet
+		newMetric.Type = GAUGE
 	case "histogram":
-		newMetric = promauto.With(p.promRegistry).NewHistogram(prometheus.HistogramOpts{
+		histogramMet := promauto.With(p.promRegistry).NewHistogram(prometheus.HistogramOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      name,
@@ -184,6 +215,9 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
 			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
 		})
+
+		newMetric.Data = histogramMet
+		newMetric.Type = HISTOGRAM
 	}
 
 	p.metrics[name] = newMetric
@@ -202,23 +236,38 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 		return
 	}
 
+	// sorting the labels in alphabetical order
+	sort.Strings(labels)
+
+	newMetric = &metricData{
+		Data:        nil,
+		Labels:      labels,
+		LabelValues: utils.SyncedMap[string, time.Time]{},
+	}
+
 	switch metricType {
 	case "counter":
-		newMetric = promauto.With(p.promRegistry).NewCounterVec(prometheus.CounterOpts{
+		counterMet := promauto.With(p.promRegistry).NewCounterVec(prometheus.CounterOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      desc,
 		}, labels)
+
+		newMetric.Type = COUNTER
+		newMetric.Data = counterMet
 	case "gauge":
-		newMetric = promauto.With(p.promRegistry).NewGaugeVec(
+		gaugeMet := promauto.With(p.promRegistry).NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name:      name,
 				Namespace: p.prefix,
 				Help:      desc,
 			},
 			labels)
+
+		newMetric.Type = GAUGE
+		newMetric.Data = gaugeMet
 	case "histogram":
-		newMetric = promauto.With(p.promRegistry).NewHistogramVec(prometheus.HistogramOpts{
+		histogramMet := promauto.With(p.promRegistry).NewHistogramVec(prometheus.HistogramOpts{
 			Name:      name,
 			Namespace: p.prefix,
 			Help:      desc,
@@ -226,7 +275,102 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 			// 16 buckets, first upper bound of 1, each following upper bound is 4x the previous
 			Buckets: prometheus.ExponentialBuckets(1, 4, 16),
 		}, labels)
+
+		newMetric.Type = HISTOGRAM
+		newMetric.Data = histogramMet
 	}
+
+	p.metrics[name] = newMetric
+}
+
+func (p *OpsRampMetrics) RegisterGauge(name string, labels []string, desc string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	newMetric, exists := p.metrics[name]
+	// don't attempt to add the metric again as this will cause a panic
+	if exists {
+		return
+	}
+
+	// sorting the labels in alphabetical order
+	sort.Strings(labels)
+
+	newMetric = &metricData{
+		Data:        nil,
+		Labels:      labels,
+		LabelValues: utils.SyncedMap[string, time.Time]{},
+	}
+
+	newMetric.Type = GAUGE
+	newMetric.Data = promauto.With(p.promRegistry).NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      desc,
+		},
+		labels)
+
+	p.metrics[name] = newMetric
+}
+
+func (p *OpsRampMetrics) RegisterCounter(name string, labels []string, desc string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	newMetric, exists := p.metrics[name]
+	// don't attempt to add the metric again as this will cause a panic
+	if exists {
+		return
+	}
+
+	// sorting the labels in alphabetical order
+	sort.Strings(labels)
+
+	newMetric = &metricData{
+		Data:        nil,
+		Labels:      labels,
+		LabelValues: utils.SyncedMap[string, time.Time]{},
+	}
+
+	newMetric.Type = COUNTER
+	newMetric.Data = promauto.With(p.promRegistry).NewCounterVec(
+		prometheus.CounterOpts{
+			Name:      name,
+			Namespace: p.prefix,
+			Help:      desc,
+		},
+		labels)
+
+	p.metrics[name] = newMetric
+}
+
+func (p *OpsRampMetrics) RegisterHistogram(name string, labels []string, desc string, buckets []float64) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	newMetric, exists := p.metrics[name]
+	// don't attempt to add the metric again as this will cause a panic
+	if exists {
+		return
+	}
+
+	// sorting the labels in alphabetical order
+	sort.Strings(labels)
+
+	newMetric = &metricData{
+		Data:        nil,
+		Labels:      labels,
+		LabelValues: utils.SyncedMap[string, time.Time]{},
+	}
+
+	newMetric.Type = HISTOGRAM
+	newMetric.Data = promauto.With(p.promRegistry).NewHistogramVec(prometheus.HistogramOpts{
+		Name:      name,
+		Namespace: p.prefix,
+		Help:      desc,
+		Buckets:   buckets,
+	}, labels)
 
 	p.metrics[name] = newMetric
 }
@@ -235,40 +379,58 @@ func (p *OpsRampMetrics) Increment(name string) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if counterInterface, ok := p.metrics[name]; ok {
-		if counter, ok := counterInterface.(prometheus.Counter); ok {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if counter, ok := metData.Data.(prometheus.Counter); ok {
 			counter.Inc()
 		}
+		metData.LabelValues.Set("", time.Now().UTC())
 	}
 }
 func (p *OpsRampMetrics) Count(name string, n interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if counterInterface, ok := p.metrics[name]; ok {
-		if counter, ok := counterInterface.(prometheus.Counter); ok {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if counter, ok := metData.Data.(prometheus.Counter); ok {
 			counter.Add(ConvertNumeric(n))
 		}
+		metData.LabelValues.Set("", time.Now().UTC())
 	}
 }
 func (p *OpsRampMetrics) Gauge(name string, val interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if gaugeInterface, ok := p.metrics[name]; ok {
-		if gauge, ok := gaugeInterface.(prometheus.Gauge); ok {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if gauge, ok := metData.Data.(prometheus.Gauge); ok {
 			gauge.Set(ConvertNumeric(val))
 		}
+		metData.LabelValues.Set("", time.Now().UTC())
 	}
 }
 func (p *OpsRampMetrics) Histogram(name string, obs interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if histInterface, ok := p.metrics[name]; ok {
-		if hist, ok := histInterface.(prometheus.Histogram); ok {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if hist, ok := metData.Data.(prometheus.Histogram); ok {
 			hist.Observe(ConvertNumeric(obs))
 		}
+		metData.LabelValues.Set("", time.Now().UTC())
+	}
+}
+
+func (p *OpsRampMetrics) HistogramWithLabels(name string, labels map[string]string, obs interface{}) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if histVec, ok := metData.Data.(*prometheus.HistogramVec); ok {
+			histVec.With(labels).Observe(ConvertNumeric(obs))
+		}
+		vals := getLabelValues(metData.Labels, labels)
+		key := strings.Join(vals, labelValuesDelimiter)
+		metData.LabelValues.Set(key, time.Now().UTC())
 	}
 }
 
@@ -276,10 +438,13 @@ func (p *OpsRampMetrics) GaugeWithLabels(name string, labels map[string]string, 
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if gaugeInterface, ok := p.metrics[name]; ok {
-		if gaugeVec, ok := gaugeInterface.(*prometheus.GaugeVec); ok {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if gaugeVec, ok := metData.Data.(*prometheus.GaugeVec); ok {
 			gaugeVec.With(labels).Set(value)
 		}
+		vals := getLabelValues(metData.Labels, labels)
+		key := strings.Join(vals, labelValuesDelimiter)
+		metData.LabelValues.Set(key, time.Now().UTC())
 	}
 }
 
@@ -287,10 +452,43 @@ func (p *OpsRampMetrics) IncrementWithLabels(name string, labels map[string]stri
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	if gaugeInterface, ok := p.metrics[name]; ok {
-		if gaugeVec, ok := gaugeInterface.(*prometheus.CounterVec); ok {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if gaugeVec, ok := metData.Data.(*prometheus.CounterVec); ok {
 			gaugeVec.With(labels).Inc()
 		}
+		vals := getLabelValues(metData.Labels, labels)
+		key := strings.Join(vals, labelValuesDelimiter)
+		metData.LabelValues.Set(key, time.Now().UTC())
+	}
+}
+
+func (p *OpsRampMetrics) gaugeDeleteLabelValues(name string, labelVals []string) {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if gaugeVec, ok := metData.Data.(*prometheus.GaugeVec); ok {
+			gaugeVec.DeleteLabelValues(labelVals...)
+		}
+		key := strings.Join(labelVals, labelValuesDelimiter)
+		metData.LabelValues.Delete(key)
+	}
+}
+
+func (p *OpsRampMetrics) counterDeleteLabelValues(name string, labelVals []string) {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if counterVec, ok := metData.Data.(*prometheus.CounterVec); ok {
+			counterVec.DeleteLabelValues(labelVals...)
+		}
+		key := strings.Join(labelVals, labelValuesDelimiter)
+		metData.LabelValues.Delete(key)
+	}
+}
+
+func (p *OpsRampMetrics) histogramDeleteLabelValues(name string, labelVals []string) {
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if histogramVec, ok := metData.Data.(*prometheus.HistogramVec); ok {
+			histogramVec.DeleteLabelValues(labelVals...)
+		}
+		key := strings.Join(labelVals, labelValuesDelimiter)
+		metData.LabelValues.Delete(key)
 	}
 }
 
@@ -410,6 +608,47 @@ func (p *OpsRampMetrics) calculateTraceOperationError(metricFamilySlice []*io_pr
 }
 
 func (p *OpsRampMetrics) Push() (int, error) {
+
+	metricsConfig := p.Config.GetMetricsConfig()
+
+	// setting up default values and removing metrics older than 5 minutes
+	p.lock.Lock()
+
+	for metricName, metData := range p.metrics {
+
+		for labelValStr, t := range metData.LabelValues.Copy() {
+
+			timeDiff := time.Now().UTC().Sub(t)
+			if timeDiff < time.Duration(metricsConfig.ReportingInterval)*time.Second*2 {
+				continue
+			}
+
+			labelVals := strings.Split(labelValStr, labelValuesDelimiter)
+			switch metData.Type {
+			case GAUGE:
+				if timeDiff > time.Duration(metricsConfig.ReportingInterval)*time.Second*2 {
+					if gaugeVec, ok := metData.Data.(*prometheus.GaugeVec); ok {
+						gaugeVec.WithLabelValues(labelVals...).Set(0)
+					}
+				}
+
+				if timeDiff > time.Minute*15 {
+					p.gaugeDeleteLabelValues(metricName, labelVals)
+				}
+			case COUNTER:
+				if timeDiff > time.Minute*15 {
+					p.counterDeleteLabelValues(metricName, labelVals)
+				}
+			case HISTOGRAM:
+				if timeDiff > time.Minute*15 {
+					p.histogramDeleteLabelValues(metricName, labelVals)
+				}
+			}
+		}
+	}
+
+	p.lock.Unlock()
+
 	metricFamilySlice, err := p.promRegistry.Gather()
 	if err != nil {
 		return -1, err
@@ -427,6 +666,7 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	var timeSeries []prompb.TimeSeries
 
 	for _, metricFamily := range metricFamilySlice {
+
 		if !p.re.MatchString(metricFamily.GetName()) {
 			continue
 		}
@@ -477,32 +717,36 @@ func (p *OpsRampMetrics) Push() (int, error) {
 				})
 			case io_prometheus_client.MetricType_HISTOGRAM:
 				// samples for all the buckets
-				for _, bucket := range metric.GetHistogram().GetBucket() {
+				buckets := metric.GetHistogram().GetBucket()
+				for index, _ := range buckets {
 					timeSeries = append(timeSeries, prompb.TimeSeries{
-						Labels: append(labels, []prompb.Label{
+						Labels: append([]prompb.Label{
 							{
 								Name:  model.MetricNameLabel,
-								Value: metricFamily.GetName(),
+								Value: fmt.Sprintf("%s_bucket", metricFamily.GetName()),
 							},
 							{
 								Name:  model.BucketLabel,
-								Value: fmt.Sprintf("%v", bucket.GetUpperBound()),
+								Value: fmt.Sprintf("%v", buckets[index].GetUpperBound()),
 							},
-						}...),
+						}, labels...),
 						Samples: []prompb.Sample{
 							{
-								Value:     float64(bucket.GetCumulativeCount()),
+								Value:     float64(buckets[index].GetCumulativeCount()),
 								Timestamp: presentTime,
 							},
 						},
 					})
 				}
+
 				// samples for count and sum
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, prompb.Label{
-						Name:  model.MetricNameLabel,
-						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
-					}),
+					Labels: append([]prompb.Label{
+						{
+							Name:  model.MetricNameLabel,
+							Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
+						},
+					}, labels...),
 					Samples: []prompb.Sample{
 						{
 							Value:     metric.GetHistogram().GetSampleSum(),
@@ -511,10 +755,12 @@ func (p *OpsRampMetrics) Push() (int, error) {
 					},
 				})
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, prompb.Label{
-						Name:  model.MetricNameLabel,
-						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
-					}),
+					Labels: append([]prompb.Label{
+						{
+							Name:  model.MetricNameLabel,
+							Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
+						},
+					}, labels...),
 					Samples: []prompb.Sample{
 						{
 							Value:     float64(metric.GetHistogram().GetSampleCount()),
@@ -526,7 +772,7 @@ func (p *OpsRampMetrics) Push() (int, error) {
 				// samples for all the quantiles
 				for _, quantile := range metric.GetSummary().GetQuantile() {
 					timeSeries = append(timeSeries, prompb.TimeSeries{
-						Labels: append(labels, []prompb.Label{
+						Labels: append([]prompb.Label{
 							{
 								Name:  model.MetricNameLabel,
 								Value: metricFamily.GetName(),
@@ -535,7 +781,7 @@ func (p *OpsRampMetrics) Push() (int, error) {
 								Name:  model.QuantileLabel,
 								Value: fmt.Sprintf("%v", quantile.GetQuantile()),
 							},
-						}...),
+						}, labels...),
 						Samples: []prompb.Sample{
 							{
 								Value:     quantile.GetValue(),
@@ -546,10 +792,12 @@ func (p *OpsRampMetrics) Push() (int, error) {
 				}
 				// samples for count and sum
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, prompb.Label{
-						Name:  model.MetricNameLabel,
-						Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
-					}),
+					Labels: append([]prompb.Label{
+						{
+							Name:  model.MetricNameLabel,
+							Value: fmt.Sprintf("%s_sum", metricFamily.GetName()),
+						},
+					}, labels...),
 					Samples: []prompb.Sample{
 						{
 							Value:     metric.GetSummary().GetSampleSum(),
@@ -558,10 +806,12 @@ func (p *OpsRampMetrics) Push() (int, error) {
 					},
 				})
 				timeSeries = append(timeSeries, prompb.TimeSeries{
-					Labels: append(labels, prompb.Label{
-						Name:  model.MetricNameLabel,
-						Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
-					}),
+					Labels: append([]prompb.Label{
+						{
+							Name:  model.MetricNameLabel,
+							Value: fmt.Sprintf("%s_count", metricFamily.GetName()),
+						},
+					}, labels...),
 					Samples: []prompb.Sample{
 						{
 							Value:     float64(metric.GetSummary().GetSampleCount()),
@@ -665,4 +915,13 @@ func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
 		}
 	}
 	return response, err
+}
+
+func getLabelValues(l []string, m map[string]string) []string {
+	var result []string
+	for _, key := range l {
+		val, _ := m[key]
+		result = append(result, val)
+	}
+	return result
 }
