@@ -49,6 +49,27 @@ spec:
             limits:
               memory: "8096Mi"
               cpu: "4"
+          env:
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: requests.cpu
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: requests.memory
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: limits.memory
           volumeMounts:
             - name: opsramp-tracing-rules
               mountPath: /etc/tracing-proxy/rules.yaml
