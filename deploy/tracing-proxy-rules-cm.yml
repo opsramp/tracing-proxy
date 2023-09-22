@@ -1,0 +1,35 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opsramp-tracing-proxy-rules
+  labels:
+    name: opsramp-tracing-proxy-rules
+  namespace: opsramp-tracing-proxy
+data:
+  rules.yaml: |-
+    ############################
+    ## Sampling Rules Config ##
+    ############################
+
+    # DryRun - If enabled, marks traces that would be dropped given current sampling rules,
+    # and sends all traces regardless
+    DryRun: false
+    
+    # DryRunFieldName - the key to add to use to add to event data when using DryRun mode above, defaults to trace_proxy_kept
+    DryRunFieldName: trace_proxy_kept
+    
+    Sampler: RulesBasedSampler
+    SampleRate: 1
+
+    ds:
+      Sampler: RulesBasedSampler
+      CheckNestedFields: true
+      rule:
+        - name: "Render error"
+          drop: true
+          condition:
+            - field: "http.method"
+              operator: "="
+              value: "GET"
+

@@ -47,6 +47,27 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          env:
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: {{ .Chart.Name }}
+                  resource: requests.cpu
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: {{ .Chart.Name }}
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: {{ .Chart.Name }}
+                  resource: requests.memory
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: {{ .Chart.Name }}
+                  resource: limits.memory
           volumeMounts:
             - name: {{ include "opsramp-tracing-proxy.fullname" . }}-rules
               mountPath: /etc/tracing-proxy/rules.yaml
