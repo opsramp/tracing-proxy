@@ -50,18 +50,46 @@ spec:
               protocol: TCP
             - containerPort: 8084
               name: grpc-peer
-          resources:
-            requests:
-              memory: "2048Mi"
-              cpu: "2"
-            limits:
-              memory: "8096Mi"
-              cpu: "4"
           volumeMounts:
             - name: tracing-configs
               mountPath: /config/data
+            - name: opsramp-tracing-rules
+              mountPath: /etc/tracing-proxy/rules.yaml
+              subPath: rules.yaml
+              readOnly: true
+            - name: opsramp-tracing-config
+              mountPath: /etc/tracing-proxy/config.yaml
+              subPath: config.yaml
+              readOnly: true
+          env:
+            - name: CONTAINER_CPU_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: requests.cpu
+            - name: CONTAINER_CPU_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: limits.cpu
+            - name: CONTAINER_MEM_REQUEST
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: requests.memory
+            - name: CONTAINER_MEM_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: opsramp-tracing-proxy
+                  resource: limits.memory
       volumes:
         - configMap:
             name: tracing-proxy-cm
           name: tracing-configs
+        - configMap:
+            name: opsramp-tracing-proxy-rules
+          name: opsramp-tracing-rules
+        - configMap:
+            name: opsramp-tracing-proxy-config
+          name: opsramp-tracing-config
 

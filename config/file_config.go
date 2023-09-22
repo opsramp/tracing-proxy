@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/opsramp/libtrace-go/transmission"
+	"github.com/opsramp/memory"
 	"io"
 	"net"
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -111,8 +113,8 @@ type InMemoryCollectorCacheCapacity struct {
 }
 
 type LogrusLoggerConfig struct {
-	LogFormatter string `validate:"required",toml:"LogFormatter"`
-	LogOutput    string `validate:"required,oneof= stdout stderr file",toml:"LogOutput"`
+	LogFormatter string `validate:"required" toml:"LogFormatter"`
+	LogOutput    string `validate:"required,oneof= stdout stderr file" toml:"LogOutput"`
 	File         struct {
 		FileName   string `toml:"FileName"`
 		MaxSize    int    `toml:"MaxSize"`
@@ -214,11 +216,35 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("MetricsConfig.ReportingInterval", 10)
 	c.SetDefault("MetricsConfig.MetricsList", []string{".*"})
 
-	c.SetConfigFile(config)
-	err := c.ReadInConfig()
+	// InMemoryCollector Defaults
+	//cpuRequests := os.Getenv("CONTAINER_CPU_REQUEST")
+	//cpuLimit := os.Getenv("CONTAINER_CPU_LIMIT")
+	memReq := os.Getenv("CONTAINER_MEM_REQUEST")
+	memLimit := os.Getenv("CONTAINER_MEM_LIMIT")
 
+	memoryRequests, err := strconv.Atoi(memReq)
+	if err != nil || memoryRequests == 0 {
+		memoryRequests, _ = strconv.Atoi(memLimit)
+	}
+	if memoryRequests != 0 {
+		memoryRequests = int(float64(memoryRequests) * 0.8)
+		c.SetDefault("InMemCollector.MaxAlloc", memoryRequests)
+	} else {
+		// If it is a normal bare metal machine
+		if totalMemory := memory.TotalMemory(); totalMemory != 0 {
+			memoryRequests = int(float64(totalMemory) * 0.8)
+			c.SetDefault("InMemCollector.MaxAlloc", memoryRequests)
+		}
+	}
+
+	c.SetConfigFile(config)
+	err = c.ReadInConfig()
 	if err != nil {
 		return nil, err
+	}
+
+	if c.GetInt("InMemCollector.MaxAlloc") <= 0 {
+		c.Set("InMemCollector.MaxAlloc", memoryRequests)
 	}
 
 	r := viper.New()
@@ -244,7 +270,6 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	}
 
 	err = fc.unmarshal()
-
 	if err != nil {
 		return nil, err
 	}
