@@ -757,15 +757,10 @@ func (f *fileConfig) GetInMemCollectorCacheCapacity() (InMemoryCollectorCacheCap
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
-	capacity := &InMemoryCollectorCacheCapacity{}
-	if sub := f.config.Sub("InMemCollector"); sub != nil {
-		err := sub.UnmarshalExact(capacity)
-		if err != nil {
-			return *capacity, err
-		}
-		return *capacity, nil
-	}
-	return *capacity, errors.New("No config found for inMemCollector")
+	return InMemoryCollectorCacheCapacity{
+		CacheCapacity: f.conf.InMemCollector.CacheCapacity,
+		MaxAlloc:      f.conf.InMemCollector.MaxAlloc,
+	}, nil
 }
 
 func (f *fileConfig) GetLogrusConfig() (*LogrusLoggerConfig, error) {
