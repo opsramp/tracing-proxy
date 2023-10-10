@@ -34,8 +34,15 @@ jobs:
           image: centos:6
           options: -v ${{ github.workspace }}:${{ github.workspace }} --env IS_GITHUB_ACTION=true --env VERSION_TAG=${{ github.event.release.tag_name }}
           run: |
+            # change the mirrors to vault mirros since CentOS-6 has reached EOL
+            sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+            sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+            
+            # manually download and install golang
             curl -L -O https://go.dev/dl/go1.21.1.linux-amd64.tar.gz
             rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.1.linux-amd64.tar.gz
+            
+            # setup env and build the rpm package
             cd ${{ github.workspace }}
             PATH=$PATH:/usr/local/go/bin /bin/bash build/vm/tracing-rpm/script.sh
             mkdir -p ${{ github.workspace }}/output
