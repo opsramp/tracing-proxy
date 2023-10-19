@@ -59,7 +59,7 @@ func main() {
 	if systemctl := exec.Command("systemctl", "--version").Run(); systemctl == nil { //checking os type here
 
 		//delete /etc/init.d/tracing-proxy file which is placed for centos7 lesser version
-		_ := exec.Command("rm", "-rf", "/etc/init.d/tracing-proxy")
+		_ = exec.Command("rm", "-rf", "/etc/init.d/tracing-proxy")
 		// Enable and start with fallback
 		if err := exec.Command("systemctl", "enable", "--now", ServiceName).Run(); err != nil {
 			_ = exec.Command("systemctl", "start", ServiceName).Run()
