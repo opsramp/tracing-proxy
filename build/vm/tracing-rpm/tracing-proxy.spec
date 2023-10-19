@@ -23,7 +23,7 @@ Tracing Proxy
 %__rm -rf %{buildroot}
 install -p -d -m 0755 %{buildroot}/opt/opsramp/tracing-proxy/bin
 install -p -d -m 0755 %{buildroot}/opt/opsramp/tracing-proxy/conf
-%if 0%{?centos} >= 7 || 0%{?rhel} < 7
+%if 0%{?centos} >= 7 || 0%{?rhel} >= 7
 install -p -d -m 0755 %{buildroot}/etc/systemd/system
 %endif
 %if 0%{?centos} < 7 || 0%{?rhel} < 7
