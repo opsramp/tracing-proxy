@@ -36,6 +36,7 @@ CGO_ENABLED=0 \
 package_name="tracing-proxy-${Version}"
 mkdir -p ${package_name}/opt/opsramp/tracing-proxy/bin/
 cp -r $BUILD_DIR/../package_directories/* ${package_name}
+rm -rf ${package_name}/etc/systemd
 mv $BUILD_DIR/configure ${package_name}/opt/opsramp/tracing-proxy/bin/configure
 mv $BUILD_DIR/tracing-proxy ${package_name}/opt/opsramp/tracing-proxy/bin/tracing-proxy
 
