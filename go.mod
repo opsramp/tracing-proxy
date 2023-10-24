@@ -17,7 +17,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.17.0
-	github.com/opsramp/husky v0.0.0-20231012065751-e118ac54e4ad
+	github.com/opsramp/husky v0.0.0-20231024164742-80ea018c27f4
 	github.com/opsramp/libtrace-go v0.0.0-20231012065650-aa91b1072c6a
 	github.com/opsramp/memory v0.0.0-20230922051903-fb43c78a30b6
 	github.com/panmari/cuckoofilter v1.0.3
