@@ -1,3 +1,4 @@
+rm -rf /etc/init.d/tracing-proxy
 mkdir -p /var/log/opsramp
 touch /var/log/opsramp/tracing-proxy.log
 chmod 644 /etc/systemd/system/tracing-proxy.service

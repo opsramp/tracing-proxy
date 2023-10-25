@@ -30,7 +30,6 @@ mkdir -p $BUILD_DIR/tracing/opt/opsramp/tracing-proxy/conf
 mkdir -p $BUILD_DIR/tracing/etc/systemd/system
 
 cp -r $BUILD_DIR/../package_directories/* $BUILD_DIR/tracing/
-rm -rf $BUILD_DIR/tracing/etc/init.d/tracing-proxy
 
 # Building a static binaries
 CGO_ENABLED=0 \
