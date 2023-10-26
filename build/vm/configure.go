@@ -69,9 +69,9 @@ func main() {
 			_ = exec.Command("systemctl", "enable", ServiceName).Run()
 		}
 	} else {
-		_ = exec.Command("mv", "/opt/opsramp/service_files/tracing-proxy", "/etc/init.d/tracing-proxy")
-		_ = exec.Command("chmod", "0644", "/etc/init.d/tracing-proxy")
-		_ = exec.Command("rm", "-rf", "/opt/opsramp/service_files")
+		_ = exec.Command("mv", "/opt/opsramp/service_files/tracing-proxy", "/etc/init.d/tracing-proxy").Run()
+		_ = exec.Command("chmod", "0755", "/etc/init.d/tracing-proxy").Run()
+		_ = exec.Command("rm", "-rf", "/opt/opsramp/service_files").Run()
 	}
 
 	time.Sleep(5 * time.Second)
@@ -90,8 +90,7 @@ func main() {
 	} else {
 		if err := exec.Command("service", ServiceName, "start").Run(); err != nil {
 			log.Fatal(err)
-		} else {
-			log.Println("Tracing-Proxy Started successfully")
 		}
+		log.Println("Tracing-Proxy Started successfully")
 	}
 }
