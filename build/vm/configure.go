@@ -56,11 +56,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if systemctl := exec.Command("systemctl", "--version").Run(); systemctl == nil { //checking os type here
+	systemctl := exec.Command("systemctl", "--version").Run()
+	if systemctl == nil { //checking os type here
 
-		_ = exec.Command("cp", "/opt/opsramp/service_files/tracing-proxy.service", "/etc/systemd/system/tracing-proxy.service")
-		_ = exec.Command("chmod", "0644", "/etc/systemd/system/tracing-proxy")
-		_ = exec.Command("rm", "-rf", "/opt/opsramp/service_files")
+		_ = exec.Command("cp", "/opt/opsramp/service_files/tracing-proxy.service", "/etc/systemd/system/tracing-proxy.service").Run()
+		_ = exec.Command("chmod", "0644", "/etc/systemd/system/tracing-proxy").Run()
+		_ = exec.Command("rm", "-rf", "/opt/opsramp/service_files").Run()
 
 		// Enable and start with fallback
 		if err := exec.Command("systemctl", "enable", "--now", ServiceName).Run(); err != nil {
@@ -75,7 +76,8 @@ func main() {
 
 	time.Sleep(5 * time.Second)
 
-	if systemctl := exec.Command("systemctl", "--version").Run(); systemctl == nil {
+	systemctl = exec.Command("systemctl", "--version").Run()
+	if systemctl == nil {
 		//Check if the services are enabled and started properly and attempt again
 		if output, err := exec.Command("systemctl", "is-enabled", ServiceName).Output(); err != nil || string(output) != "enabled" {
 			_ = exec.Command("service", ServiceName, "enable").Run()
