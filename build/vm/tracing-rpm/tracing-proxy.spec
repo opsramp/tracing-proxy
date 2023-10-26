@@ -40,6 +40,8 @@ install -m 0600 opt/opsramp/service_files/tracing-proxy.service %{buildroot}/opt
 /opt/opsramp/tracing-proxy/bin/
 /opt/opsramp/tracing-proxy/conf/
 /opt/opsramp/service_files
+%ghost
+/opt/opsramp/service_files
 
 %post -p /bin/bash
 mkdir -p /var/log/opsramp

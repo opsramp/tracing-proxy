@@ -56,9 +56,11 @@ const (
 	spanAttributesKey     = "spanAttributes"
 	eventAttributesKey    = "eventAttributes"
 	unknownService        = "unknown_service"
+	unknownInstance       = "unkown_instance"
 )
 
 var possibleServiceNames = []string{"service_name", "service.name"}
+var possibleInstanceNames = []string{"instance", "k8s.pod.name", "host.name"}
 
 type Router struct {
 	Config               config.Config         `inject:""`
@@ -527,9 +529,13 @@ func (r *Router) processEvent(ev *types.Event, reqID interface{}) error {
 		WithString("environment", ev.Environment)
 
 	// adding additional attributes to resource attributes
-	resAttr, ok := ev.Data[resourceAttributesKey].(map[string]interface{})
-	if !ok {
+	resAttr, resAttrOk := ev.Data[resourceAttributesKey].(map[string]interface{})
+	spanAttr, spanAttrOk := ev.Data[spanAttributesKey].(map[string]interface{})
+	if !resAttrOk {
 		resAttr = map[string]interface{}{}
+	}
+	if !spanAttrOk {
+		spanAttr = map[string]interface{}{}
 	}
 	for key, value := range r.Config.GetAddAdditionalMetadata() {
 		if _, ok := resAttr[key]; !ok {
@@ -538,13 +544,31 @@ func (r *Router) processEvent(ev *types.Event, reqID interface{}) error {
 	}
 	isUnknownService := true
 	for _, key := range possibleServiceNames {
-		if _, ok := resAttr[key]; ok {
+		if val, ok := resAttr[key]; ok {
 			isUnknownService = false
+			delete(resAttr, key)
+			resAttr["service_name"] = val
 			break
 		}
 	}
 	if isUnknownService {
-		resAttr[possibleServiceNames[0]] = unknownService
+		resAttr["service_name"] = unknownService
+	}
+	isUnknownInstance := true
+	for _, key := range possibleInstanceNames {
+		if val, ok := spanAttr[key]; ok {
+			isUnknownInstance = false
+			spanAttr["instance"] = val
+			break
+		}
+		if val, ok := resAttr[key]; ok {
+			isUnknownInstance = false
+			spanAttr["instance"] = val
+			break
+		}
+	}
+	if isUnknownInstance {
+		resAttr["instance"] = unknownInstance
 	}
 	ev.Data[resourceAttributesKey] = resAttr
 
