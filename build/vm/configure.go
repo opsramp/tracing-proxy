@@ -91,6 +91,7 @@ func main() {
 		if err := exec.Command("service", ServiceName, "start").Run(); err != nil {
 			log.Fatal(err)
 		}
+		_ = exec.Command("chkconfig", ServiceName, "on")
 		log.Println("Tracing-Proxy Started successfully")
 	}
 }
