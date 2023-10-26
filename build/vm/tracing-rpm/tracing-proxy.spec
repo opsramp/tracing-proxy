@@ -56,7 +56,7 @@ if [ -f /etc/systemd/system/tracing-proxy.service ]; then
     systemctl disable tracing-proxy
 fi
 if [ -f /etc/init.d/tracing-proxy ]; then
-    service stop tracing-proxy
+    service tracing-proxy stop
 fi
 
 
