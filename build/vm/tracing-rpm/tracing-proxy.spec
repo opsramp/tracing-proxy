@@ -51,13 +51,12 @@ echo "Uninstalling Tracing Proxy"
 mkdir -p /opt/opsramp/service_files
 touch /opt/opsramp/service_files/tracing-proxy.service
 touch /opt/opsramp/service_files/tracing-proxy
-
 if [ -f /etc/systemd/system/tracing-proxy.service ]; then
-    %__systemctl stop tracing-proxy
-    %__systemctl disable tracing-proxy
+    systemctl stop tracing-proxy
+    systemctl disable tracing-proxy
 fi
 if [ -f /etc/init.d/tracing-proxy ]; then
-    %__service stop tracing-proxy
+    service stop tracing-proxy
 fi
 
 
