@@ -53,17 +53,16 @@ if [ -f /etc/systemd/system/tracing-proxy.service ]; then
     %__systemctl disable tracing-proxy
 fi
 if [ -f /etc/init.d/tracing-proxy ]; then
-  %__rm -rf /etc/init.d/tracing-proxy > /dev/null 2>&1
-  %__service stop tracing-proxy
+    %__service stop tracing-proxy
 fi
 
 
 %postun -p /bin/bash
 %__rm -rf /opt/opsramp/tracing-proxy
 if [ -f /etc/systemd/system/tracing-proxy.service ]; then
-  %__rm -rf /etc/systemd/system/tracing-proxy.service > /dev/null 2>&1
   systemctl daemon-reload
   systemctl reset-failed tracing-proxy.service > /dev/null 2>&1
+  %__rm -rf /etc/systemd/system/tracing-proxy.service > /dev/null 2>&1
 fi
 if [ -f /etc/init.d/tracing-proxy ]; then
   %__rm -rf /etc/init.d/tracing-proxy > /dev/null 2>&1
