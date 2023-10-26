@@ -58,9 +58,9 @@ func main() {
 
 	if systemctl := exec.Command("systemctl", "--version").Run(); systemctl == nil { //checking os type here
 
-		_ := exec.Command("cp", "/opt/opsramp/service_files/tracing-proxy.service", "/etc/systemd/system/tracing-proxy.service")
-		_ := exec.Command("chmod", "0644", "/etc/systemd/system/tracing-proxy")
-		_ := exec.Command("rm", "-rf", "/opt/opsramp/service_files")
+		_ = exec.Command("cp", "/opt/opsramp/service_files/tracing-proxy.service", "/etc/systemd/system/tracing-proxy.service")
+		_ = exec.Command("chmod", "0644", "/etc/systemd/system/tracing-proxy")
+		_ = exec.Command("rm", "-rf", "/opt/opsramp/service_files")
 
 		// Enable and start with fallback
 		if err := exec.Command("systemctl", "enable", "--now", ServiceName).Run(); err != nil {
@@ -68,9 +68,9 @@ func main() {
 			_ = exec.Command("systemctl", "enable", ServiceName).Run()
 		}
 	} else {
-		_ := exec.Command("mv", "/opt/opsramp/service_files/tracing-proxy", "/etc/init.d/tracing-proxy")
-		_ := exec.Command("chmod", "0644", "/etc/init.d/tracing-proxy")
-		_ := exec.Command("rm", "-rf", "/opt/opsramp/service_files")
+		_ = exec.Command("mv", "/opt/opsramp/service_files/tracing-proxy", "/etc/init.d/tracing-proxy")
+		_ = exec.Command("chmod", "0644", "/etc/init.d/tracing-proxy")
+		_ = exec.Command("rm", "-rf", "/opt/opsramp/service_files")
 	}
 
 	time.Sleep(5 * time.Second)
