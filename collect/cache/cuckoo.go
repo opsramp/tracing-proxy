@@ -64,7 +64,7 @@ func (c *CuckooTraceChecker) Check(traceID string) bool {
 // Maintain should be called periodically; if the current filter is full, it replaces
 // it with the future filter and creates a new future filter.
 func (c *CuckooTraceChecker) Maintain() {
-	c.mut.RLock()
+	c.mut.RLock() // nolint:all
 	currentLoadFactor := c.current.LoadFactor()
 	c.met.Gauge(CurrentLoadFactor, currentLoadFactor)
 	if c.future != nil {

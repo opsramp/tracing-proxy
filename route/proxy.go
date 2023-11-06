@@ -16,7 +16,10 @@ func (r *Router) proxy(w http.ResponseWriter, req *http.Request) {
 	upstreamTarget, err := r.Config.GetOpsrampAPI()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		io.WriteString(w, `{"error":"upstream target unavailable"}`)
+		_, err := io.WriteString(w, `{"error":"upstream target unavailable"}`)
+		if err != nil {
+			r.Logger.Error().Logf("error: %v", err)
+		}
 		r.Logger.Error().Logf("error getting honeycomb API config: %s", err)
 		return
 	}
@@ -57,5 +60,7 @@ func (r *Router) proxy(w http.ResponseWriter, req *http.Request) {
 	// copy over status code
 	w.WriteHeader(resp.StatusCode)
 	// copy over body
-	io.Copy(w, resp.Body)
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		r.Logger.Error().Logf("copying body failed: %v", err)
+	}
 }

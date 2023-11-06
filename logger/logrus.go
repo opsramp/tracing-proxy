@@ -28,7 +28,9 @@ type LogrusEntry struct {
 
 func (l *LogrusLogger) Start() error {
 	l.logger.SetLevel(l.level)
-	l.logger.SetReportCaller(false) // using a hook to do the same, so avoiding additional processing here
+
+	// disabling report caller and using a hook to do the same, so avoiding additional processing here
+	l.logger.SetReportCaller(false) //nolint:all
 	l.logger.AddHook(&CallerHook{})
 
 	logrusConfig, err := l.Config.GetLogrusConfig()
@@ -52,7 +54,7 @@ func (l *LogrusLogger) Start() error {
 
 	switch logrusConfig.LogFormatter {
 	case "logfmt":
-		l.logger.SetFormatter(&logrus.TextFormatter{
+		l.logger.SetFormatter(&logrus.TextFormatter{ //nolint:all
 			DisableColors:          true,
 			ForceQuote:             true,
 			FullTimestamp:          true,

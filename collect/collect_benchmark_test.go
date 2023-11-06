@@ -19,7 +19,10 @@ import (
 
 func BenchmarkCollect(b *testing.B) {
 	transmission := &transmit.MockTransmission{}
-	transmission.Start()
+	err := transmission.Start()
+	if err != nil {
+		b.Error(err)
+	}
 	conf := &config.MockConfig{
 		GetSendDelayVal:    0,
 		GetTraceTimeoutVal: 60 * time.Second,
@@ -28,8 +31,14 @@ func BenchmarkCollect(b *testing.B) {
 	}
 
 	log := &logger.LogrusLogger{}
-	log.SetLevel("warn")
-	log.Start()
+	err = log.SetLevel("warn")
+	if err != nil {
+		b.Error(err)
+	}
+	err = log.Start()
+	if err != nil {
+		b.Error(err)
+	}
 
 	metric := &metrics.MockMetrics{}
 	metric.Start()
@@ -48,8 +57,8 @@ func BenchmarkCollect(b *testing.B) {
 		},
 		BlockOnAddSpan:   true,
 		cache:            cache.NewInMemCache(3, metric, log),
-		incoming:         make(chan *types.Span, 500),
-		fromPeer:         make(chan *types.Span, 500),
+		incoming:         make(chan *types.Span, 500), // nolint:all
+		fromPeer:         make(chan *types.Span, 500), // nolint:all
 		datasetSamplers:  make(map[string]sample.Sampler),
 		sampleTraceCache: stc,
 	}
@@ -78,7 +87,10 @@ func BenchmarkCollect(b *testing.B) {
 					Dataset: "aoeu",
 				},
 			}
-			coll.AddSpan(span)
+			err := coll.AddSpan(span)
+			if err != nil {
+				b.Error(err)
+			}
 		}
 		wait(b.N)
 	})
@@ -92,7 +104,10 @@ func BenchmarkCollect(b *testing.B) {
 					Dataset: "aoeu",
 				},
 			}
-			coll.AddSpanFromPeer(span)
+			err := coll.AddSpanFromPeer(span)
+			if err != nil {
+				b.Error(err)
+			}
 		}
 		wait(b.N)
 	})

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/snappy"
 	"github.com/gorilla/mux"
@@ -125,7 +126,7 @@ func (p *OpsRampMetrics) Start() error {
 			p.Logger.Error().Logf("metrics server shutdown: %v", err)
 		}
 	}
-	serverMut.Lock()
+	serverMut.Lock() // nolint:all // cant unlock with defer since that will release the lock once the goroutine spins up
 	server = &http.Server{
 		Addr:              metricsConfig.ListenAddr,
 		Handler:           muxer,
@@ -133,7 +134,7 @@ func (p *OpsRampMetrics) Start() error {
 	}
 	go func() {
 		defer serverMut.Unlock()
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			p.Logger.Error().Logf("%v", err)
 		}
 	}()
@@ -175,14 +176,14 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	newMetric, exists := p.metrics[name]
+	_, exists := p.metrics[name]
 
 	// don't attempt to add the metric again as this will cause a panic
 	if exists {
 		return
 	}
 
-	newMetric = &metricData{
+	newMetric := &metricData{
 		Data:        nil,
 		LabelValues: utils.SyncedMap[string, time.Time]{},
 	}
@@ -229,7 +230,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	newMetric, exists := p.metrics[name]
+	_, exists := p.metrics[name]
 
 	// don't attempt to add the metric again as this will cause a panic
 	if exists {
@@ -239,7 +240,7 @@ func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType s
 	// sorting the labels in alphabetical order
 	sort.Strings(labels)
 
-	newMetric = &metricData{
+	newMetric := &metricData{
 		Data:        nil,
 		Labels:      labels,
 		LabelValues: utils.SyncedMap[string, time.Time]{},
@@ -287,7 +288,7 @@ func (p *OpsRampMetrics) RegisterGauge(name string, labels []string, desc string
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	newMetric, exists := p.metrics[name]
+	_, exists := p.metrics[name]
 	// don't attempt to add the metric again as this will cause a panic
 	if exists {
 		return
@@ -296,7 +297,7 @@ func (p *OpsRampMetrics) RegisterGauge(name string, labels []string, desc string
 	// sorting the labels in alphabetical order
 	sort.Strings(labels)
 
-	newMetric = &metricData{
+	newMetric := &metricData{
 		Data:        nil,
 		Labels:      labels,
 		LabelValues: utils.SyncedMap[string, time.Time]{},
@@ -318,7 +319,7 @@ func (p *OpsRampMetrics) RegisterCounter(name string, labels []string, desc stri
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	newMetric, exists := p.metrics[name]
+	_, exists := p.metrics[name]
 	// don't attempt to add the metric again as this will cause a panic
 	if exists {
 		return
@@ -327,7 +328,7 @@ func (p *OpsRampMetrics) RegisterCounter(name string, labels []string, desc stri
 	// sorting the labels in alphabetical order
 	sort.Strings(labels)
 
-	newMetric = &metricData{
+	newMetric := &metricData{
 		Data:        nil,
 		Labels:      labels,
 		LabelValues: utils.SyncedMap[string, time.Time]{},
@@ -349,7 +350,7 @@ func (p *OpsRampMetrics) RegisterHistogram(name string, labels []string, desc st
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	newMetric, exists := p.metrics[name]
+	_, exists := p.metrics[name]
 	// don't attempt to add the metric again as this will cause a panic
 	if exists {
 		return
@@ -358,7 +359,7 @@ func (p *OpsRampMetrics) RegisterHistogram(name string, labels []string, desc st
 	// sorting the labels in alphabetical order
 	sort.Strings(labels)
 
-	newMetric = &metricData{
+	newMetric := &metricData{
 		Data:        nil,
 		Labels:      labels,
 		LabelValues: utils.SyncedMap[string, time.Time]{},
@@ -601,7 +602,7 @@ func (p *OpsRampMetrics) calculateTraceOperationError(metricFamilySlice []*io_pr
 			}
 		}
 	}
-	for key, _ := range uniqueLabelsMap {
+	for key := range uniqueLabelsMap {
 		labelMap = ConvertLabelsToMap(uniqueLabelsMap[key])
 		p.GaugeWithLabels("trace_operations_error", labelMap, uniqueFailedMap[key]/uniqueSpansMap[key])
 	}
@@ -612,7 +613,7 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	metricsConfig := p.Config.GetMetricsConfig()
 
 	// setting up default values and removing metrics older than 5 minutes
-	p.lock.Lock()
+	p.lock.Lock() // nolint: all // no linting here since we need to release the lock sooner than end of funtion
 
 	for metricName, metData := range p.metrics {
 
@@ -718,7 +719,7 @@ func (p *OpsRampMetrics) Push() (int, error) {
 			case io_prometheus_client.MetricType_HISTOGRAM:
 				// samples for all the buckets
 				buckets := metric.GetHistogram().GetBucket()
-				for index, _ := range buckets {
+				for index := range buckets {
 					timeSeries = append(timeSeries, prompb.TimeSeries{
 						Labels: append([]prompb.Label{
 							{
@@ -907,7 +908,10 @@ func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
 		return response, nil
 	}
 	if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
-		p.RenewOAuthToken()
+		err := p.RenewOAuthToken()
+		if err != nil {
+			return nil, err
+		}
 		request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.oAuthToken.AccessToken))
 		response, err = p.Client.Do(request)
 		if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
@@ -920,8 +924,7 @@ func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
 func getLabelValues(l []string, m map[string]string) []string {
 	var result []string
 	for _, key := range l {
-		val, _ := m[key]
-		result = append(result, val)
+		result = append(result, m[key])
 	}
 	return result
 }
