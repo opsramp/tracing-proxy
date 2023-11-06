@@ -170,12 +170,12 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 
 	c.SetDefault("ListenAddr", "0.0.0.0:8082")
 	c.SetDefault("PeerListenAddr", "0.0.0.0:8083")
-	c.SetDefault("CompressPeerCommunication", true)
+	c.SetDefault("CompressPeerCommunication", true) // nolint:all // setting default value
 	c.SetDefault("PeerManagement.Peers", []string{"http://127.0.0.1:8082"})
 	c.SetDefault("PeerManagement.Type", "file")
-	c.SetDefault("PeerManagement.UseTLS", false)
-	c.SetDefault("PeerManagement.UseTLSInsecure", false)
-	c.SetDefault("PeerManagement.UseIPV6Identifier", false)
+	c.SetDefault("PeerManagement.UseTLS", false)            // nolint:all // setting default value
+	c.SetDefault("PeerManagement.UseTLSInsecure", false)    // nolint:all // setting default value
+	c.SetDefault("PeerManagement.UseIPV6Identifier", false) // nolint:all // setting default value
 	c.SetDefault("OpsrampAPI", "")
 	c.SetDefault("Dataset", DefaultDataset)
 	c.SetDefault("PeerManagement.Timeout", 5*time.Second)
@@ -190,9 +190,9 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("UpstreamBufferSize", libtrace.DefaultPendingWorkCapacity)
 	c.SetDefault("PeerBufferSize", libtrace.DefaultPendingWorkCapacity)
 	c.SetDefault("MaxAlloc", uint64(0))
-	c.SetDefault("AddHostMetadataToTrace", false)
+	c.SetDefault("AddHostMetadataToTrace", false) // nolint:all // setting default value
 	c.SetDefault("AddAdditionalMetadata", map[string]string{"app": "default"})
-	c.SetDefault("AddRuleReasonToTrace", false)
+	c.SetDefault("AddRuleReasonToTrace", false) // nolint:all // setting default value
 	c.SetDefault("EnvironmentCacheTTL", time.Hour)
 	c.SetDefault("GRPCServerParameters.MaxConnectionIdle", 1*time.Minute)
 	c.SetDefault("GRPCServerParameters.MaxConnectionAge", time.Duration(0))
@@ -200,7 +200,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("GRPCServerParameters.Time", 10*time.Second)
 	c.SetDefault("GRPCServerParameters.Timeout", 2*time.Second)
 	c.SetDefault("AdditionalErrorFields", []string{"trace.span_id"})
-	c.SetDefault("AddSpanCountToRoot", false)
+	c.SetDefault("AddSpanCountToRoot", false) // nolint:all // setting default value
 	c.SetDefault("CacheOverrunStrategy", "resize")
 	c.SetDefault("SampleCache.Type", "legacy")
 	c.SetDefault("SampleCache.KeptSize", 10_000)
@@ -208,10 +208,10 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("SampleCache.SizeCheckInterval", 10*time.Second)
 
 	// AuthConfig Defaults
-	c.SetDefault("AuthConfiguration.SkipAuth", false)
+	c.SetDefault("AuthConfiguration.SkipAuth", false) // nolint:all // setting default value
 
 	// MetricsConfig Defaults
-	c.SetDefault("MetricsConfig.Enable", false)
+	c.SetDefault("MetricsConfig.Enable", false) // nolint:all // setting default value
 	c.SetDefault("MetricsConfig.ListenAddr", "0.0.0.0:2112")
 	c.SetDefault("MetricsConfig.ReportingInterval", 10)
 	c.SetDefault("MetricsConfig.MetricsList", []string{".*"})
@@ -251,7 +251,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 
 	r.SetDefault("Sampler", "DeterministicSampler")
 	r.SetDefault("SampleRate", 1)
-	r.SetDefault("DryRun", false)
+	r.SetDefault("DryRun", false) // nolint:all // setting default value
 	r.SetDefault("DryRunFieldName", "tracing-proxy_kept")
 
 	r.SetConfigFile(rules)
@@ -265,7 +265,7 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 		config:        c,
 		rules:         r,
 		conf:          &configContents{},
-		callbacks:     make([]func(), 0),
+		callbacks:     []func(){},
 		errorCallback: errorCallback,
 	}
 
@@ -299,6 +299,10 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	return fc, nil
 }
 
+func (f *fileConfig) IsTest() bool {
+	return false
+}
+
 func (f *fileConfig) onChange(in fsnotify.Event) {
 	v := validator.New()
 	err := v.Struct(f.conf)
@@ -319,7 +323,7 @@ func (f *fileConfig) onChange(in fsnotify.Event) {
 		return
 	}
 
-	f.unmarshal()
+	_ = f.unmarshal()
 
 	for _, c := range f.callbacks {
 		c()
@@ -673,7 +677,7 @@ func (f *fileConfig) GetAllSamplerRules() (map[string]interface{}, error) {
 		if parts[0] == "sampler" {
 			err := f.rules.Unmarshal(&samplers)
 			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal sampler rule: %w", err)
+				return nil, fmt.Errorf("unmarshal sampler rule: %w", err)
 			}
 			t := f.rules.GetString(key)
 			samplers["sampler"] = t
@@ -688,7 +692,7 @@ func (f *fileConfig) GetAllSamplerRules() (map[string]interface{}, error) {
 			if sub := f.rules.Sub(datasetName); sub != nil {
 				err := sub.Unmarshal(&m)
 				if err != nil {
-					return nil, fmt.Errorf("failed to unmarshal sampler rule for dataset %s: %w", datasetName, err)
+					return nil, fmt.Errorf("unmarshal sampler rule for dataset %s: %w", datasetName, err)
 				}
 			}
 			m["sampler"] = t

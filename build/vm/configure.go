@@ -52,7 +52,7 @@ func main() {
 	fileContent = strings.ReplaceAll(fileContent, "<SECRET>", *secret)
 	fileContent = strings.ReplaceAll(fileContent, "<TENANT_ID>", *tenant)
 
-	if err = os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 600); err != nil {
+	if err := os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 0600); err != nil {
 		log.Fatal(err)
 	}
 

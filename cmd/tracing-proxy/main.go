@@ -149,7 +149,7 @@ func main() {
 	retryConfig := c.GetRetryConfig()
 
 	userAgentAddition := "tracing-proxy/" + CollectorVersion
-	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{
+	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{ // nolint:all
 		Logger: logrusLogger,
 		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
@@ -185,7 +185,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{
+	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{ // nolint:all
 		Logger: logrusLogger,
 		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
@@ -264,7 +264,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	defer startstop.Stop(g.Objects(), logrusLogger)
+	defer func(objects []*inject.Object, log startstop.Logger) {
+		err := startstop.Stop(objects, log)
+		if err != nil {
+			fmt.Printf("failed to stop injected depencies. error: %+v\n", err)
+		}
+	}(g.Objects(), logrusLogger)
 	if err := startstop.Start(g.Objects(), logrusLogger); err != nil {
 		fmt.Printf("failed to start injected dependencies. error: %+v\n", err)
 		os.Exit(1)

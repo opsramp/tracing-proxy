@@ -12,7 +12,7 @@ type MockTransmission struct {
 }
 
 func (m *MockTransmission) Start() error {
-	m.Events = make([]*types.Event, 0)
+	m.Events = []*types.Event{}
 	return nil
 }
 

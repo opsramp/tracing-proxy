@@ -27,6 +27,7 @@ require (
 	github.com/prometheus/client_model v0.4.0
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v0.47.0
+	github.com/quasilyte/go-ruleguard/dsl v0.3.22
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.16.0

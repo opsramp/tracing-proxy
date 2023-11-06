@@ -14,8 +14,8 @@ import (
 func TestDynamicAddSampleRateKeyToTrace(t *testing.T) {
 	const spanCount = 5
 
-	metrics := metrics.MockMetrics{}
-	metrics.Start()
+	var mockMetrics metrics.MockMetrics
+	mockMetrics.Start()
 
 	sampler := &DynamicSampler{
 		Config: &config.DynamicSamplerConfig{
@@ -24,7 +24,7 @@ func TestDynamicAddSampleRateKeyToTrace(t *testing.T) {
 			AddSampleRateKeyToTraceField: "meta.key",
 		},
 		Logger:  &logger.NullLogger{},
-		Metrics: &metrics,
+		Metrics: &mockMetrics,
 	}
 
 	trace := &types.Trace{}
@@ -37,8 +37,10 @@ func TestDynamicAddSampleRateKeyToTrace(t *testing.T) {
 			},
 		})
 	}
-	sampler.Start()
-	sampler.GetSampleRate(trace)
+	if err := sampler.Start(); err != nil {
+		t.Error(err)
+	}
+	sampler.GetSampleRate(trace) // nolint:all
 
 	spans := trace.GetSpans()
 	assert.Len(t, spans, spanCount, "should have the same number of spans as input")

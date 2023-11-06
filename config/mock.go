@@ -88,6 +88,114 @@ type MockConfig struct {
 	Mux sync.RWMutex
 }
 
+func (m *MockConfig) IsTest() bool {
+	return true
+}
+
+func (m *MockConfig) GetGRPCPeerListenAddr() (string, error) {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.GetPeerListenAddrVal, m.GetGRPCListenAddrErr
+}
+
+func (m *MockConfig) GetRedisPrefix() string {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.RedisIdentifier
+}
+
+func (m *MockConfig) GetRedisDatabase() int {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return 0
+}
+
+func (m *MockConfig) GetLogrusConfig() (*LogrusLoggerConfig, error) {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return &LogrusLoggerConfig{LogFormatter: "json", LogOutput: "stdout"}, nil
+}
+
+func (m *MockConfig) GetMetricsConfig() MetricsConfig {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return MetricsConfig{
+		Enable:            false,
+		ListenAddr:        "",
+		OpsRampAPI:        "",
+		ReportingInterval: 0,
+		MetricsList:       nil,
+	}
+}
+
+func (m *MockConfig) GetAddAdditionalMetadata() map[string]string {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return map[string]string{}
+}
+
+func (m *MockConfig) GetSendMetricsToOpsRamp() bool {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return false
+}
+
+func (m *MockConfig) GetGlobalUseTLS() bool {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.GetUseTLSVal
+}
+
+func (m *MockConfig) GetGlobalUseTLSInsecureSkip() bool {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.GetUseTLSInsecureVal
+}
+
+func (m *MockConfig) GetProxyConfig() ProxyConfiguration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return ProxyConfiguration{}
+}
+
+func (m *MockConfig) GetAuthConfig() AuthConfiguration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return AuthConfiguration{}
+}
+
+func (m *MockConfig) GetRetryConfig() *RetryConfiguration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return &RetryConfiguration{}
+}
+
+func (m *MockConfig) GetTenantId() (string, error) {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return "", nil
+}
+
+func (m *MockConfig) GetDataset() (string, error) {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
+
+	return m.DatasetPrefix, nil
+}
+
 func (m *MockConfig) ReloadConfig() {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
@@ -99,8 +207,8 @@ func (m *MockConfig) ReloadConfig() {
 
 func (m *MockConfig) RegisterReloadCallback(callback func()) {
 	m.Mux.Lock()
+	defer m.Mux.Unlock()
 	m.Callbacks = append(m.Callbacks, callback)
-	m.Mux.Unlock()
 }
 
 func (m *MockConfig) GetAPIKeys() ([]string, error) {
@@ -376,100 +484,100 @@ func (m *MockConfig) GetAddRuleReasonToTrace() bool {
 	return m.AddRuleReasonToTrace
 }
 
-func (f *MockConfig) GetEnvironmentCacheTTL() time.Duration {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetEnvironmentCacheTTL() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.EnvironmentCacheTTL
+	return m.EnvironmentCacheTTL
 }
 
-func (f *MockConfig) GetDatasetPrefix() string {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetDatasetPrefix() string {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.DatasetPrefix
+	return m.DatasetPrefix
 }
 
-func (f *MockConfig) GetQueryAuthToken() string {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetQueryAuthToken() string {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.QueryAuthToken
+	return m.QueryAuthToken
 }
 
-func (f *MockConfig) GetGRPCMaxConnectionIdle() time.Duration {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetGRPCMaxConnectionIdle() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.GRPCMaxConnectionIdle
+	return m.GRPCMaxConnectionIdle
 }
 
-func (f *MockConfig) GetGRPCMaxConnectionAge() time.Duration {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetGRPCMaxConnectionAge() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.GRPCMaxConnectionAge
+	return m.GRPCMaxConnectionAge
 }
 
-func (f *MockConfig) GetGRPCMaxConnectionAgeGrace() time.Duration {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetGRPCMaxConnectionAgeGrace() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.GRPCMaxConnectionAgeGrace
+	return m.GRPCMaxConnectionAgeGrace
 }
 
-func (f *MockConfig) GetGRPCTime() time.Duration {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetGRPCTime() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.GRPCTime
+	return m.GRPCTime
 }
 
-func (f *MockConfig) GetGRPCTimeout() time.Duration {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetGRPCTimeout() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.GRPCTimeout
+	return m.GRPCTimeout
 }
 
-func (f *MockConfig) GetPeerTimeout() time.Duration {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetPeerTimeout() time.Duration {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.PeerTimeout
+	return m.PeerTimeout
 }
 
-func (f *MockConfig) GetAdditionalErrorFields() []string {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetAdditionalErrorFields() []string {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.AdditionalErrorFields
+	return m.AdditionalErrorFields
 }
 
-func (f *MockConfig) GetAddSpanCountToRoot() bool {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetAddSpanCountToRoot() bool {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.AddSpanCountToRoot
+	return m.AddSpanCountToRoot
 }
 
-func (f *MockConfig) GetCacheOverrunStrategy() string {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetCacheOverrunStrategy() string {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.CacheOverrunStrategy
+	return m.CacheOverrunStrategy
 }
 
-func (f *MockConfig) GetSampleCacheConfig() SampleCacheConfig {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetSampleCacheConfig() SampleCacheConfig {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.SampleCache
+	return m.SampleCache
 }
 
-func (f *MockConfig) GetConfigMetadata() []ConfigMetadata {
-	f.Mux.RLock()
-	defer f.Mux.RUnlock()
+func (m *MockConfig) GetConfigMetadata() []ConfigMetadata {
+	m.Mux.RLock()
+	defer m.Mux.RUnlock()
 
-	return f.CfgMetadata
+	return m.CfgMetadata
 }

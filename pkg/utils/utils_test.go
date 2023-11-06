@@ -2,7 +2,6 @@ package utils
 
 import (
 	"reflect"
-	"sync"
 	"testing"
 )
 
@@ -15,7 +14,6 @@ func TestSyncedMap_Clear(t *testing.T) {
 		{
 			name: "clear",
 			m: SyncedMap[string, string]{
-				mu: sync.Mutex{},
 				m: map[string]string{
 					"key1": "value1",
 					"key2": "value2",
@@ -47,7 +45,6 @@ func TestSyncedMap_Delete(t *testing.T) {
 		{
 			name: "delete key 'test'",
 			m: SyncedMap[string, string]{
-				mu: sync.Mutex{},
 				m: map[string]string{
 					"key1": "value1",
 					"key2": "value2",
@@ -63,7 +60,6 @@ func TestSyncedMap_Delete(t *testing.T) {
 		{
 			name: "delete key 'test'",
 			m: SyncedMap[string, string]{
-				mu: sync.Mutex{},
 				m: map[string]string{
 					"key1": "value1",
 					"key2": "value2",
