@@ -3,17 +3,27 @@ package utils
 import "sync"
 
 type SyncedMap[K comparable, V any] struct {
-	mu sync.Mutex
+	mu *sync.Mutex
 	m  map[K]V
 }
 
+func (m *SyncedMap[K, V]) init() {
+	if m.mu == nil {
+		m.mu = &sync.Mutex{}
+	}
+}
+
 func (m *SyncedMap[K, V]) Get(key K) V {
+	m.init()
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.m[key]
 }
 
 func (m *SyncedMap[K, V]) Set(key K, value V) {
+	m.init()
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -25,18 +35,24 @@ func (m *SyncedMap[K, V]) Set(key K, value V) {
 }
 
 func (m *SyncedMap[K, V]) Delete(key K) {
+	m.init()
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.m, key)
 }
 
 func (m *SyncedMap[K, V]) Clear() {
+	m.init()
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.m = make(map[K]V)
 }
 
 func (m *SyncedMap[K, V]) Copy() map[K]V {
+	m.init()
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

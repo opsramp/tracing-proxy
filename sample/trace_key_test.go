@@ -17,7 +17,7 @@ func TestKeyGeneration(t *testing.T) {
 
 	trace := &types.Trace{}
 
-	trace.AddSpan(&types.Span{
+	trace.AddSpan(&types.Span{ // nolint:all
 		Event: types.Event{
 			Data: map[string]interface{}{
 				"http.status_code": 200,
@@ -65,7 +65,7 @@ func TestKeyGeneration(t *testing.T) {
 		},
 	})
 
-	trace.AddSpan(&types.Span{
+	trace.AddSpan(&types.Span{ // nolint: all
 		Event: types.Event{
 			Data: map[string]interface{}{
 				"important_field": true,

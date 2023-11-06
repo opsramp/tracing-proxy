@@ -47,7 +47,10 @@ func TestGetSampleRate(t *testing.T) {
 		{&types.Trace{TraceID: "wvu654"}, false},
 		{&types.Trace{TraceID: "tsr321"}, false},
 	}
-	ds.Start()
+	err := ds.Start()
+	if err != nil {
+		t.Error(err)
+	}
 
 	for i, tst := range tsts {
 		rate, keep, reason := ds.GetSampleRate(tst.trace)

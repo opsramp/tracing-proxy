@@ -31,7 +31,7 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := processTraceRequest(req.Context(), r, result.Batches, ri.Dataset, ri.ApiToken, ri.ApiTenantId); err != nil {
+	if err := processTraceRequest(req.Context(), r, result.Batches, ri.ApiToken, ri.ApiTenantId); err != nil {
 		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 	}
 }
@@ -53,27 +53,21 @@ func (r *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServ
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 
-	if err := processTraceRequest(ctx, r, result.Batches, ri.Dataset, ri.ApiToken, ri.ApiTenantId); err != nil {
+	if err := processTraceRequest(ctx, r, result.Batches, ri.ApiToken, ri.ApiTenantId); err != nil {
 		return nil, huskyotlp.AsGRPCError(err)
 	}
 
 	return &collectortrace.ExportTraceServiceResponse{}, nil
 }
 
-func processTraceRequest(
-	ctx context.Context,
-	router *Router,
-	batches []huskyotlp.Batch,
-	datasetName string,
-	token string,
-	tenantID string) error {
+func processTraceRequest(ctx context.Context, router *Router, batches []huskyotlp.Batch, token string, tenantID string) error {
 	var requestID types.RequestIDContextKey
 	apiHost, err := router.Config.GetOpsrampAPI()
 	if err != nil {
 		router.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
 		return err
 	}
-	datasetName, err = router.Config.GetDataset()
+	datasetName, err := router.Config.GetDataset()
 	if err != nil {
 		router.Logger.Error().Logf("Unable to retrieve DataSet from config while processing OTLP batch")
 		return err
@@ -92,7 +86,7 @@ func processTraceRequest(
 				Timestamp:   ev.Timestamp,
 				Data:        ev.Attributes,
 			}
-			if err = router.processEvent(event, requestID); err != nil {
+			if err := router.processEvent(event, requestID); err != nil {
 				router.Logger.Error().Logf("Error processing event: " + err.Error())
 			}
 		}
@@ -166,7 +160,7 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 			Timestamp:   timestamp,
 			Data:        data,
 		}
-		if err = r.processEvent(event, requestID); err != nil {
+		if err := r.processEvent(event, requestID); err != nil {
 			r.Logger.Error().Logf("Error processing event: " + err.Error())
 		}
 	}

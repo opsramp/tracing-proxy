@@ -11,11 +11,6 @@ import (
 	"github.com/opsramp/tracing-proxy/types"
 )
 
-// for generating request IDs
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 func (r *Router) queryTokenChecker(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		requiredToken := r.Config.GetQueryAuthToken()

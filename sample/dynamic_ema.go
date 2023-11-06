@@ -23,7 +23,6 @@ type EMADynamicSampler struct {
 	burstMultiple       float64
 	burstDetectionDelay uint
 	maxKeys             int
-	configName          string
 
 	key *traceKey
 
@@ -52,7 +51,10 @@ func (d *EMADynamicSampler) Start() error {
 		BurstMultiple:       d.burstMultiple,
 		MaxKeys:             d.maxKeys,
 	}
-	d.dynsampler.Start()
+	err := d.dynsampler.Start()
+	if err != nil {
+		d.Logger.Error().Logf("failed to start dynsample_ema: %v", err)
+	}
 
 	// Register statistics this package will produce
 	d.Metrics.Register("dynsampler_num_dropped", "counter")
