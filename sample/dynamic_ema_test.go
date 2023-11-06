@@ -14,7 +14,7 @@ import (
 func TestDynamicEMAAddSampleRateKeyToTrace(t *testing.T) {
 	const spanCount = 5
 
-	metrics := metrics.MockMetrics{}
+	var metrics metrics.MockMetrics
 	metrics.Start()
 
 	sampler := &EMADynamicSampler{
@@ -29,7 +29,7 @@ func TestDynamicEMAAddSampleRateKeyToTrace(t *testing.T) {
 
 	trace := &types.Trace{}
 	for i := 0; i < spanCount; i++ {
-		trace.AddSpan(&types.Span{
+		trace.AddSpan(&types.Span{ // nolint:all // test case
 			Event: types.Event{
 				Data: map[string]interface{}{
 					"http.status_code": 200,
@@ -40,14 +40,17 @@ func TestDynamicEMAAddSampleRateKeyToTrace(t *testing.T) {
 			},
 		})
 	}
-	sampler.Start()
+	err := sampler.Start()
+	if err != nil {
+		t.Error(err)
+	}
 	sampler.GetSampleRate(trace)
 
 	spans := trace.GetSpans()
 
 	assert.Len(t, spans, spanCount, "should have the same number of spans as input")
 	for _, span := range spans {
-		assert.Equal(t, span.Event.Data, map[string]interface{}{
+		assert.Equal(t, span.Event.Data, map[string]interface{}{ // nolint:all // test case
 			"http.status_code": 200,
 			"app.team.id":      float64(4),
 			"important_field":  true,

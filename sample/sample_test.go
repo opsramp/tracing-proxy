@@ -33,44 +33,44 @@ func TestDatasetPrefix(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	configFile, err := os.CreateTemp(tmpDir, "*.toml")
+	configFile, err := os.CreateTemp(tmpDir, "*.yaml")
 	assert.NoError(t, err)
 
 	_, err = configFile.Write([]byte(`
-	DatasetPrefix = "dataset"
-
-	[InMemCollector]
-		CacheCapacity=1000
-
-	[HoneycombMetrics]
-		MetricsHoneycombAPI="http://honeycomb.io"
-		MetricsAPIKey="1234"
-		MetricsDataset="testDatasetName"
-		MetricsReportingInterval=3
-
-	[HoneycombLogger]
-		LoggerHoneycombAPI="http://honeycomb.io"
-		LoggerAPIKey="1234"
-		LoggerDataset="loggerDataset"
-	`))
+DatasetPrefix: "dataset"
+ListenAddr: 0.0.0.0:8080
+GRPCListenAddr: 0.0.0.0:9090
+PeerListenAddr: 0.0.0.0:8083
+GRPCPeerListenAddr: 0.0.0.0:8084
+OpsrampAPI: "https://portal.opsramp.net"
+Dataset: "ds"
+UseTls: false
+UseTlsInsecure: true
+AuthConfiguration: 
+  Endpoint: "https://portal.opsramp.net"
+  Key: "12345678900987654321"
+  Secret: "123456789009876543211234567890098765432112345678900987654321"
+  TenantId: "12345678900987654321-12345678900987654321-12345678900987654321"
+InMemCollector:
+  CacheCapacity: 1000
+`))
 	assert.NoError(t, err)
 	configFile.Close()
 
-	rulesFile, err := os.CreateTemp(tmpDir, "*.toml")
+	rulesFile, err := os.CreateTemp(tmpDir, "*.yaml")
 	assert.NoError(t, err)
 
 	_, err = rulesFile.Write([]byte(`
-	Sampler = "DeterministicSampler"
-	SampleRate = 1
-
-	[production]
-		Sampler = "DeterministicSampler"
-		SampleRate = 10
-
-	[dataset.production]
-		Sampler = "DeterministicSampler"
-		SampleRate = 20
-	`))
+Sampler: DeterministicSampler
+SampleRate: 1
+production:
+  Sampler: DeterministicSampler
+  SampleRate: 10
+dataset_1:
+  production:
+    Sampler: DeterministicSampler
+    SampleRate: 20
+`))
 	assert.NoError(t, err)
 	rulesFile.Close()
 
@@ -85,22 +85,29 @@ func TestDatasetPrefix(t *testing.T) {
 		Config: &config.DeterministicSamplerConfig{SampleRate: 1},
 		Logger: &logger.NullLogger{},
 	}
-	defaultSampler.Start()
+	err = defaultSampler.Start()
+	if err != nil {
+		t.Error(err)
+	}
 
 	envSampler := &DeterministicSampler{
 		Config: &config.DeterministicSamplerConfig{SampleRate: 10},
 		Logger: &logger.NullLogger{},
 	}
-	envSampler.Start()
+	if err := envSampler.Start(); err != nil {
+		t.Error(err)
+	}
 
 	datasetSampler := &DeterministicSampler{
 		Config: &config.DeterministicSamplerConfig{SampleRate: 20},
 		Logger: &logger.NullLogger{},
 	}
-	datasetSampler.Start()
+	if err := datasetSampler.Start(); err != nil {
+		t.Error(err)
+	}
 
-	assert.Equal(t, defaultSampler, factory.GetSamplerImplementationForKey("unknown", false))
-	assert.Equal(t, defaultSampler, factory.GetSamplerImplementationForKey("unknown", true))
-	assert.Equal(t, envSampler, factory.GetSamplerImplementationForKey("production", false))
-	assert.Equal(t, datasetSampler, factory.GetSamplerImplementationForKey("production", true))
+	assert.Equal(t, defaultSampler, factory.GetSamplerImplementationForKey("unknown", false))              // nolint:all // test case
+	assert.Equal(t, defaultSampler, factory.GetSamplerImplementationForKey("unknown", true))               // nolint:all // test case
+	assert.Equal(t, envSampler, factory.GetSamplerImplementationForKey("production", false))               // nolint:all // test case
+	assert.Equal(t, datasetSampler, factory.GetSamplerImplementationForKey("dataset_1.production", false)) // nolint:all // test case
 }

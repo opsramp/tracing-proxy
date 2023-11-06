@@ -27,7 +27,7 @@ func newFilePeers(c config.Config) Peers {
 	p := &filePeers{
 		c:         c,
 		peers:     make([]string, 1),
-		callbacks: make([]func(), 0),
+		callbacks: []func(){},
 	}
 
 	go p.watchFilePeers()
@@ -75,7 +75,7 @@ func (p *filePeers) RegisterUpdatedPeersCallback(callback func()) {
 
 func getPeerMembers(originalPeerlist []string) []string {
 	var workingPeers []string
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
 	for _, peer := range originalPeerlist {
 		wg.Add(1)
 		go func(goPeer string) {

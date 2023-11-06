@@ -14,8 +14,8 @@ import (
 func TestTotalThroughputAddSampleRateKeyToTrace(t *testing.T) {
 	const spanCount = 5
 
-	metrics := metrics.MockMetrics{}
-	metrics.Start()
+	var mockMetrics metrics.MockMetrics
+	mockMetrics.Start()
 
 	sampler := &TotalThroughputSampler{
 		Config: &config.TotalThroughputSamplerConfig{
@@ -24,7 +24,7 @@ func TestTotalThroughputAddSampleRateKeyToTrace(t *testing.T) {
 			AddSampleRateKeyToTraceField: "meta.key",
 		},
 		Logger:  &logger.NullLogger{},
-		Metrics: &metrics,
+		Metrics: &mockMetrics,
 	}
 
 	trace := &types.Trace{}
@@ -37,7 +37,10 @@ func TestTotalThroughputAddSampleRateKeyToTrace(t *testing.T) {
 			},
 		})
 	}
-	sampler.Start()
+	err := sampler.Start()
+	if err != nil {
+		t.Error(err)
+	}
 	sampler.GetSampleRate(trace)
 
 	spans := trace.GetSpans()

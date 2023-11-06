@@ -18,12 +18,6 @@ import (
 	"time"
 )
 
-const (
-	resourceAttributesKey = "resourceAttributes"
-	spanAttributesKey     = "spanAttributes"
-	eventAttributesKey    = "eventAttributes"
-)
-
 var ErrWouldBlock = errors.New("not adding span, channel buffer is full")
 
 type Collector interface {
@@ -254,9 +248,12 @@ func (i *InMemCollector) reloadConfigs() {
 			i.Logger.Debug().Logf("skipping reloading the in-memory cache on config reload because it hasn't changed capacity")
 		}
 
-		i.sampleTraceCache.Resize(i.Config.GetSampleCacheConfig())
+		err := i.sampleTraceCache.Resize(i.Config.GetSampleCacheConfig())
+		if err != nil {
+			i.Logger.Error().WithField("cache", i.cache).Logf(err.Error())
+		}
 	} else {
-		i.Logger.Error().WithField("cache", i.cache.(*cache.DefaultInMemCache)).Logf("skipping reloading the cache on config reload because it's not an in-memory cache")
+		i.Logger.Error().WithField("cache", i.cache).Logf("skipping reloading the cache on config reload because it's not an in-memory cache")
 	}
 
 	// clear out any samplers that we have previously created
@@ -659,21 +656,17 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 			i.Metrics.GaugeWithLabels("trace_operations_latency_ms", labels, metrics.ConvertNumeric(durationMsString))
 
 			// getting the latency from end and start time
-			st, _ := span.Data["startTime"]
-			et, _ := span.Data["endTime"]
 			i.Metrics.HistogramWithLabels(
 				"trace_operations_latency",
 				labels,
-				(metrics.ConvertNumeric(et)-metrics.ConvertNumeric(st))/float64(time.Millisecond),
+				(metrics.ConvertNumeric(span.Data["endTime"])-metrics.ConvertNumeric(span.Data["startTime"]))/float64(time.Millisecond),
 			)
 		}
 		if isRootSpan(span) {
-			st, _ := span.Data["startTime"]
-			et, _ := span.Data["endTime"]
 			i.Metrics.HistogramWithLabels(
 				"trace_root_operation_latency",
 				labels,
-				(metrics.ConvertNumeric(et)-metrics.ConvertNumeric(st))/float64(time.Millisecond),
+				(metrics.ConvertNumeric(span.Data["endTime"])-metrics.ConvertNumeric(span.Data["startTime"]))/float64(time.Millisecond),
 			)
 
 			i.Metrics.GaugeWithLabels("trace_root_operation_latency_ms", labels, metrics.ConvertNumeric(durationMsString))

@@ -71,5 +71,7 @@ func (r *Router) handlerReturnWithError(w http.ResponseWriter, he handlerError, 
 
 	jsonErrMsg := []byte(`{"source":"tracing-proxy","error":"` + errmsg + `"}`)
 
-	w.Write(jsonErrMsg)
+	if _, err := w.Write(jsonErrMsg); err != nil {
+		r.Logger.Error().Logf("failed to write: %v", err)
+	}
 }

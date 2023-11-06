@@ -43,7 +43,10 @@ func (d *TotalThroughputSampler) Start() error {
 		GoalThroughputPerSec: int(d.goalThroughputPerSec),
 		ClearFrequencySec:    int(d.clearFrequencySec),
 	}
-	d.dynsampler.Start()
+	err := d.dynsampler.Start()
+	if err != nil {
+		d.Logger.Error().Logf("failed to start dynsampler: %v", err)
+	}
 
 	// Register statistics this package will produce
 	d.Metrics.Register("dynsampler_num_dropped", "counter")

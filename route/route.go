@@ -244,7 +244,12 @@ func (r *Router) LnS(incomingOrPeer string) {
 		r.grpcServer = grpc.NewServer(serverOpts...)
 		collectortrace.RegisterTraceServiceServer(r.grpcServer, r)
 		grpc_health_v1.RegisterHealthServer(r.grpcServer, r)
-		go r.grpcServer.Serve(l)
+		go func() {
+			err := r.grpcServer.Serve(l)
+			if err != nil {
+				r.Logger.Error().Logf("failed to start grpc server: %v", err)
+			}
+		}()
 	}
 
 	if len(grpcPeerAddr) > 0 {
@@ -265,7 +270,12 @@ func (r *Router) LnS(incomingOrPeer string) {
 		}
 		r.grpcServer = grpc.NewServer(serverOpts...)
 		proxypb.RegisterTraceProxyServiceServer(r.grpcServer, r)
-		go r.grpcServer.Serve(l)
+		go func() {
+			err := r.grpcServer.Serve(l)
+			if err != nil {
+				r.Logger.Error().Logf("failed to start grpc server: %v", err)
+			}
+		}()
 	}
 
 	r.doneWG.Add(1)
@@ -296,7 +306,10 @@ func (r *Router) Stop() error {
 
 func (r *Router) alive(w http.ResponseWriter, req *http.Request) {
 	r.iopLogger.Debug().Logf("answered /x/alive check")
-	w.Write([]byte(`{"source":"tracing-proxy","alive":"yes"}`))
+	_, err := w.Write([]byte(`{"source":"tracing-proxy","alive":"yes"}`))
+	if err != nil {
+		r.iopLogger.Error().WithString("function", "alive").Logf("write failed: %v", err)
+	}
 }
 
 func (r *Router) panic(w http.ResponseWriter, req *http.Request) {
@@ -304,13 +317,19 @@ func (r *Router) panic(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) version(w http.ResponseWriter, req *http.Request) {
-	w.Write([]byte(fmt.Sprintf(`{"source":"tracing-proxy","version":"%s"}`, r.versionStr)))
+	_, err := w.Write([]byte(fmt.Sprintf(`{"source":"tracing-proxy","version":"%s"}`, r.versionStr)))
+	if err != nil {
+		r.iopLogger.Error().WithString("function", "version").Logf("write failed: %v", err)
+	}
 }
 
 func (r *Router) debugTrace(w http.ResponseWriter, req *http.Request) {
 	traceID := mux.Vars(req)["traceID"]
 	shard := r.Sharder.WhichShard(traceID)
-	w.Write([]byte(fmt.Sprintf(`{"traceID":"%s","node":"%s"}`, traceID, shard.GetAddress())))
+	_, err := w.Write([]byte(fmt.Sprintf(`{"traceID":"%s","node":"%s"}`, traceID, shard.GetAddress())))
+	if err != nil {
+		r.iopLogger.Error().WithString("function", "debugTrace").Logf("write failed: %v", err)
+	}
 }
 
 func (r *Router) getSamplerRules(w http.ResponseWriter, req *http.Request) {
@@ -318,7 +337,10 @@ func (r *Router) getSamplerRules(w http.ResponseWriter, req *http.Request) {
 	dataset := mux.Vars(req)["dataset"]
 	cfg, name, err := r.Config.GetSamplerConfigForDataset(dataset)
 	if err != nil {
-		w.Write([]byte(fmt.Sprintf("got error %v trying to fetch config for dataset %s\n", err, dataset)))
+		_, err := w.Write([]byte(fmt.Sprintf("got error %v trying to fetch config for dataset %s\n", err, dataset)))
+		if err != nil {
+			r.iopLogger.Error().WithString("function", "getSamplerRules").Logf("write failed: %v", err)
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -329,7 +351,10 @@ func (r *Router) getAllSamplerRules(w http.ResponseWriter, req *http.Request) {
 	format := strings.ToLower(mux.Vars(req)["format"])
 	cfgs, err := r.Config.GetAllSamplerRules()
 	if err != nil {
-		w.Write([]byte(fmt.Sprintf("got error %v trying to fetch configs", err)))
+		_, err := w.Write([]byte(fmt.Sprintf("got error %v trying to fetch configs", err)))
+		if err != nil {
+			r.iopLogger.Error().WithString("function", "getAllSamplerRules").Logf("write failed: %v", err)
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -348,31 +373,45 @@ func (r *Router) marshalToFormat(w http.ResponseWriter, obj interface{}, format 
 	case "json":
 		body, err = json.Marshal(obj)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("got error %v trying to marshal to json\n", err)))
+			_, err := w.Write([]byte(fmt.Sprintf("got error %v trying to marshal to json\n", err)))
+			if err != nil {
+				r.iopLogger.Error().WithString("function", "marshalToFormat").Logf("write failed: %v", err)
+			}
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	case "toml":
 		body, err = toml.Marshal(obj)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("got error %v trying to marshal to toml\n", err)))
+			_, err := w.Write([]byte(fmt.Sprintf("got error %v trying to marshal to toml\n", err)))
+			if err != nil {
+				r.iopLogger.Error().WithString("function", "marshalToFormat").Logf("write failed: %v", err)
+			}
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	case "yaml":
 		body, err = yaml.Marshal(obj)
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("got error %v trying to marshal to toml\n", err)))
+			_, err2 := w.Write([]byte(fmt.Sprintf("got error %v trying to marshal to toml\n", err)))
+			if err2 != nil {
+				r.iopLogger.Error().WithString("function", "marshalToFormat").Logf("write failed: %v", err)
+			}
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	default:
-		w.Write([]byte(fmt.Sprintf("invalid format '%s' when marshaling\n", format)))
+		_, err := w.Write([]byte(fmt.Sprintf("invalid format '%s' when marshaling\n", format)))
+		if err != nil {
+			r.iopLogger.Error().WithString("function", "marshalToFormat").Logf("write failed: %v", err)
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/"+format)
-	w.Write(body)
+	if _, err := w.Write(body); err != nil {
+		r.iopLogger.Error().WithString("function", "marshalToFormat").Logf("write failed: %v", err)
+	}
 }
 
 // event is handler for /1/event/
@@ -465,7 +504,7 @@ func (r *Router) batch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	batchedEvents := make([]batchedEvent, 0)
+	var batchedEvents []batchedEvent
 	err = unmarshal(req, bytes.NewReader(reqBod), &batchedEvents)
 	if err != nil {
 		debugLog.WithField("error", err.Error()).WithField("request.url", req.URL).WithField("json_body", string(reqBod)).Logf("error parsing json")
@@ -516,7 +555,9 @@ func (r *Router) batch(w http.ResponseWriter, req *http.Request) {
 		r.handlerReturnWithError(w, ErrJSONBuildFailed, err)
 		return
 	}
-	w.Write(response)
+	if _, err := w.Write(response); err != nil {
+		r.handlerReturnWithError(w, ErrJSONBuildFailed, err)
+	}
 }
 
 func (r *Router) processEvent(ev *types.Event, reqID interface{}) error {
@@ -552,9 +593,13 @@ func (r *Router) processEvent(ev *types.Event, reqID interface{}) error {
 	// TODO make trace ID field configurable
 	var traceID string
 	if trID, ok := ev.Data["traceTraceID"]; ok {
-		traceID = trID.(string)
+		if val, ok := trID.(string); ok {
+			traceID = val
+		}
 	} else if trID, ok := ev.Data["traceId"]; ok {
-		traceID = trID.(string)
+		if val, ok := trID.(string); ok {
+			traceID = val
+		}
 	}
 	if traceID == "" {
 		// not part of a trace. send along upstream
@@ -622,7 +667,10 @@ func (r *Router) getMaybeCompressedBody(req *http.Request) (io.Reader, error) {
 	case "zstd":
 		zReader := <-r.zstdDecoders
 		defer func(zReader *zstd.Decoder) {
-			zReader.Reset(nil)
+			err := zReader.Reset(nil)
+			if err != nil {
+				r.iopLogger.Debug().Logf("error: %v", err)
+			}
 			r.zstdDecoders <- zReader
 		}(zReader)
 
@@ -730,10 +778,10 @@ func getEventTime(etHeader string) time.Time {
 func makeDecoders(num int) (chan *zstd.Decoder, error) {
 	zstdDecoders := make(chan *zstd.Decoder, num)
 	for i := 0; i < num; i++ {
-		zReader, err := zstd.NewReader(
+		zReader, err := zstd.NewReader( // nolint:all
 			nil,
 			zstd.WithDecoderConcurrency(1),
-			zstd.WithDecoderLowmem(true),
+			zstd.WithDecoderLowmem(true), // nolint:all
 			zstd.WithDecoderMaxMemory(8*1024*1024),
 		)
 		if err != nil {
@@ -748,7 +796,7 @@ func unmarshal(r *http.Request, data io.Reader, v interface{}) error {
 	switch r.Header.Get("Content-Type") {
 	case "application/x-msgpack", "application/msgpack":
 		dec := msgpack.NewDecoder(data)
-		dec.UseLooseInterfaceDecoding(true)
+		dec.UseLooseInterfaceDecoding(true) // nolint:all
 
 		return dec.Decode(v)
 	default:
@@ -879,7 +927,7 @@ func (r *Router) lookupEnvironment(apiKey string) (string, error) {
 		return "", fmt.Errorf("received %d response for AuthInfo request from Honeycomb API", resp.StatusCode)
 	}
 
-	authinfo := AuthInfo{}
+	var authinfo AuthInfo
 	if err := json.NewDecoder(resp.Body).Decode(&authinfo); err != nil {
 		return "", fmt.Errorf("failed to JSON decode of AuthInfo response from Honeycomb API")
 	}

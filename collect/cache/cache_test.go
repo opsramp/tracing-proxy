@@ -48,7 +48,7 @@ func TestBufferOverrun(t *testing.T) {
 func TestTakeExpiredTraces(t *testing.T) {
 	s := &metrics.MockMetrics{}
 	s.Start()
-	c := NewInMemCache(10, s, logger.GetLoggerImplementation())
+	c := NewInMemCache(10, s, &logger.NullLogger{})
 
 	now := time.Now()
 	traces := []*types.Trace{
@@ -79,7 +79,7 @@ func TestTakeExpiredTraces(t *testing.T) {
 func TestRemoveSentTraces(t *testing.T) {
 	s := &metrics.MockMetrics{}
 	s.Start()
-	c := NewInMemCache(10, s, logger.GetLoggerImplementation())
+	c := NewInMemCache(10, s, &logger.NullLogger{})
 
 	now := time.Now()
 	traces := []*types.Trace{
