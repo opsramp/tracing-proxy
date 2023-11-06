@@ -10,6 +10,7 @@ import "time"
 // other config elements.
 
 type Config interface {
+	IsTest() bool
 	// RegisterReloadCallback takes a name and a function that will be called
 	// when the configuration is reloaded. This will happen infrequently. If
 	// consumers of configuration set config values on startup, they should

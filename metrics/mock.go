@@ -13,6 +13,43 @@ type MockMetrics struct {
 	lock sync.Mutex
 }
 
+func (m *MockMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	m.Registrations[name] = metricType
+}
+
+func (m *MockMetrics) RegisterGauge(name string, labels []string, desc string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MockMetrics) RegisterCounter(name string, labels []string, desc string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MockMetrics) RegisterHistogram(name string, labels []string, desc string, buckets []float64) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MockMetrics) GaugeWithLabels(name string, labels map[string]string, value float64) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MockMetrics) IncrementWithLabels(name string, labels map[string]string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MockMetrics) HistogramWithLabels(name string, labels map[string]string, obs interface{}) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // Start initializes all metrics or resets all metrics to zero
 func (m *MockMetrics) Start() {
 	m.Registrations = make(map[string]string)
@@ -51,7 +88,7 @@ func (m *MockMetrics) Histogram(name string, val interface{}) {
 
 	_, ok := m.Histograms[name]
 	if !ok {
-		m.Histograms[name] = make([]float64, 0)
+		m.Histograms[name] = []float64{}
 	}
 	m.Histograms[name] = append(m.Histograms[name], ConvertNumeric(val))
 }

@@ -1,9 +1,17 @@
 package logger
 
+import "github.com/sirupsen/logrus"
+
 var nullEntry = &NullLoggerEntry{}
 
-type NullLogger struct{}
+type NullLogger struct {
+	Logger
+}
 
+func (n *NullLogger) Init() *logrus.Logger  { return logrus.New() }
+func (n *NullLogger) Fatal() Entry          { return nullEntry }
+func (n *NullLogger) Panic() Entry          { return nullEntry }
+func (n *NullLogger) Warn() Entry           { return nullEntry }
 func (n *NullLogger) Debug() Entry          { return nullEntry }
 func (n *NullLogger) Info() Entry           { return nullEntry }
 func (n *NullLogger) Error() Entry          { return nullEntry }

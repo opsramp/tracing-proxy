@@ -82,10 +82,6 @@ func (rm *RedisMembership) Register(ctx context.Context, memberName string, time
 	defer conn.Close()
 	_, err = conn.Do("SET", key, "present", "EX", timeoutSec)
 	if err != nil {
-		logrus.WithField("name", memberName).
-			WithField("timeoutSec", timeoutSec).
-			WithField("err", err).
-			Error("registration failed")
 		return err
 	}
 	return nil
@@ -104,9 +100,6 @@ func (rm *RedisMembership) Unregister(ctx context.Context, memberName string) er
 	defer conn.Close()
 	_, err = conn.Do("DEL", key)
 	if err != nil {
-		logrus.WithField("name", memberName).
-			WithField("err", err).
-			Error("unregistration failed")
 		return err
 	}
 	return nil
@@ -121,7 +114,7 @@ func (rm *RedisMembership) GetMembers(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	// get the list of members multiple times
-	allMembers := make([]string, 0)
+	var allMembers []string
 	for i := 0; i < rm.RepeatCount; i++ {
 		mems, err := rm.getMembersOnce(ctx)
 		if err != nil {
@@ -153,7 +146,7 @@ func (rm *RedisMembership) getMembersOnce(ctx context.Context) ([]string, error)
 	}
 	defer conn.Close()
 	keysChan, errChan := rm.scan(conn, keyPrefix, "10", redisScanTimeout)
-	memberList := make([]string, 0)
+	var memberList []string
 	for key := range keysChan {
 		name := strings.Split(key, "•")[2]
 		memberList = append(memberList, name)
