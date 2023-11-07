@@ -28,6 +28,8 @@ rm -rf $BUILD_DIR/output
 mkdir -p $BUILD_DIR/tracing/opt/opsramp/tracing-proxy/bin
 mkdir -p $BUILD_DIR/tracing/opt/opsramp/tracing-proxy/conf
 mkdir -p $BUILD_DIR/tracing/etc/systemd/system
+mkdir -p $BUILD_DIR/tracing/etc/init.d
+mkdir -p  $BUILD_DIR/tracing/opt/opsramp/service_files
 
 cp -r $BUILD_DIR/../package_directories/* $BUILD_DIR/tracing/
 
