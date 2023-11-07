@@ -1,13 +1,13 @@
 # SPEC file for creating tracing-proxy RPM
 
 %define name        tracing-proxy
-%define release     
+%define release
 %define version     1.1.0
 
-Summary:        Tracing Proxy 
+Summary:        Tracing Proxy
 License:        OpsRamp
 Name:           %{name}
-Version:        %{version} 
+Version:        %{version}
 Source0:        %{name}-%{version}.tar.gz
 Release:        %{release}
 Provides:       tracing-proxy
@@ -23,12 +23,15 @@ Tracing Proxy
 %__rm -rf %{buildroot}
 install -p -d -m 0755 %{buildroot}/opt/opsramp/tracing-proxy/bin
 install -p -d -m 0755 %{buildroot}/opt/opsramp/tracing-proxy/conf
+install -p -d -m 0755 %{buildroot}/opt/opsramp/service_files
 install -p -d -m 0755 %{buildroot}/etc/systemd/system
+install -p -d -m 0755 %{buildroot}/etc/init.d
 install -m 0744 opt/opsramp/tracing-proxy/bin/tracing-proxy %{buildroot}/opt/opsramp/tracing-proxy/bin/
 install -m 0744 opt/opsramp/tracing-proxy/bin/configure %{buildroot}/opt/opsramp/tracing-proxy/bin
 install -m 0600 opt/opsramp/tracing-proxy/conf/config_complete.yaml %{buildroot}/opt/opsramp/tracing-proxy/conf/
 install -m 0600 opt/opsramp/tracing-proxy/conf/rules_complete.yaml %{buildroot}/opt/opsramp/tracing-proxy/conf/
-install -m 0644 etc/systemd/system/tracing-proxy.service %{buildroot}/etc/systemd/system
+install -m 0600 opt/opsramp/service_files/tracing-proxy %{buildroot}/opt/opsramp/service_files/tracing-proxy
+install -m 0600 opt/opsramp/service_files/tracing-proxy.service %{buildroot}/opt/opsramp/service_files/tracing-proxy.service
 
 %clean
 %__rm -rf %{buildroot}
@@ -36,25 +39,35 @@ install -m 0644 etc/systemd/system/tracing-proxy.service %{buildroot}/etc/system
 %files
 /opt/opsramp/tracing-proxy/bin/
 /opt/opsramp/tracing-proxy/conf/
-/etc/systemd/system/tracing-proxy.service
-
+/opt/opsramp/service_files
 
 %post -p /bin/bash
 mkdir -p /var/log/opsramp
 touch /var/log/opsramp/tracing-proxy.log
-systemctl start tracing-proxy
 
 
 %preun -p /bin/bash
 echo "Uninstalling Tracing Proxy"
-systemctl stop tracing-proxy
-systemctl disable tracing-proxy
+mkdir -p /opt/opsramp/service_files
+touch /opt/opsramp/service_files/tracing-proxy.service
+touch /opt/opsramp/service_files/tracing-proxy
+if [ -f /etc/systemd/system/tracing-proxy.service ]; then
+    systemctl stop tracing-proxy
+    systemctl disable tracing-proxy
+fi
+if [ -f /etc/init.d/tracing-proxy ]; then
+    service tracing-proxy stop
+fi
+
 
 %postun -p /bin/bash
 %__rm -rf /opt/opsramp/tracing-proxy
 if [ -f /etc/systemd/system/tracing-proxy.service ]; then
+  systemctl daemon-reload
+  systemctl reset-failed tracing-proxy.service > /dev/null 2>&1
   %__rm -rf /etc/systemd/system/tracing-proxy.service > /dev/null 2>&1
 fi
-systemctl daemon-reload
-systemctl reset-failed tracing-proxy.service > /dev/null 2>&1
+if [ -f /etc/init.d/tracing-proxy ]; then
+  %__rm -rf /etc/init.d/tracing-proxy > /dev/null 2>&1
+fi
 echo "Uninstalled Tracing Proxy Successfully"
