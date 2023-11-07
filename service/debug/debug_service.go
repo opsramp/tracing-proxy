@@ -156,7 +156,10 @@ func (s *DebugService) expvarHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.WithError(err).Warn("error encoding expvars")
 	}
-	w.Write(b)
+	_, err = w.Write(b)
+	if err != nil {
+		logrus.WithError(err).Warn("error writing")
+	}
 }
 
 func memstats() interface{} {

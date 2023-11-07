@@ -62,18 +62,16 @@ func ExtractLabelsFromSpan(span *types.Span, labelToKeyMap map[string][]string) 
 
 	attributeMapKeys := []string{"spanAttributes", "resourceAttributes", "eventAttributes"}
 
-	//if _, ok := labelToKeyMap["k8s.pod.name"]; !ok {
-	//	labelToKeyMap["k8s.pod.name"] = "unknown_pod"
-	//}
-
 	for labelName, searchKeys := range labelToKeyMap {
 		var searchKeyExists bool
 		for _, searchKey := range searchKeys {
 			// check of the higher level first
 			searchValue, exists := span.Data[searchKey]
 			if exists && searchValue != nil {
-				labels[labelName] = searchValue.(string)
-				searchKeyExists = true
+				if val, ok := searchValue.(string); ok {
+					labels[labelName] = val
+					searchKeyExists = true
+				}
 				break
 			}
 
@@ -82,8 +80,10 @@ func ExtractLabelsFromSpan(span *types.Span, labelToKeyMap map[string][]string) 
 				if attribute, ok := span.Data[attributeKey]; ok && attribute != nil {
 					searchValue, exists = attribute.(map[string]interface{})[searchKey]
 					if exists && searchValue != nil {
-						labels[labelName] = searchValue.(string)
-						searchKeyExists = true
+						if val, ok := searchValue.(string); ok {
+							labels[labelName] = val
+							searchKeyExists = true
+						}
 						break
 					}
 				}

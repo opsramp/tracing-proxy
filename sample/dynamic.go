@@ -18,7 +18,6 @@ type DynamicSampler struct {
 
 	sampleRate        int64
 	clearFrequencySec int64
-	configName        string
 
 	key *traceKey
 
@@ -40,7 +39,10 @@ func (d *DynamicSampler) Start() error {
 		GoalSampleRate:    int(d.sampleRate),
 		ClearFrequencySec: int(d.clearFrequencySec),
 	}
-	d.dynsampler.Start()
+	err := d.dynsampler.Start()
+	if err != nil {
+		d.Logger.Error().Logf("failed to start dynsmaple: %v", err)
+	}
 
 	// Register stastics this package will produce
 	d.Metrics.Register("dynsampler_num_dropped", "counter")

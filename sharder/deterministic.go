@@ -87,7 +87,7 @@ func (d *DetShard) String() string {
 // GetHashesFor generates a number of hashShards for a given DetShard by repeatedly hashing the
 // seed with itself. The intent is to generate a repeatable pseudo-random sequence.
 func (d *DetShard) GetHashesFor(index int, n int, seed uint64) []hashShard {
-	hashes := make([]hashShard, 0)
+	var hashes []hashShard
 	addr := d.GetAddress()
 	for i := 0; i < n; i++ {
 		hashes = append(hashes, hashShard{
@@ -130,7 +130,7 @@ func (d *DeterministicSharder) Start() error {
 	// reassign nearly every trace to a new shard.
 	strat, err := d.Config.GetPeerManagementStrategy()
 	if err != nil {
-		return errors.Wrap(err, "failed to get peer management strategy")
+		return fmt.Errorf("getting peer management strategy: %w", err)
 	}
 	switch strat {
 	case "legacy", "":
@@ -151,15 +151,13 @@ func (d *DeterministicSharder) Start() error {
 		}
 
 		// get my listen address for peer traffic for the Port number
-		//listenAddr, err := d.Config.GetPeerListenAddr() //Temporarily removed http peer listen addr, only grpc listener
 		listenAddr, err := d.Config.GetGRPCPeerListenAddr()
-
 		if err != nil {
-			return errors.Wrap(err, "failed to get listen addr config")
+			return fmt.Errorf("getting lister address config: %w", err)
 		}
 		_, localPort, err := net.SplitHostPort(listenAddr)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse listen addr into host:port")
+			return errors.Wrap(err, "parse listen addr into host:port")
 		}
 		d.Logger.Debug().Logf("picked up local peer port of %s", localPort)
 
@@ -177,14 +175,14 @@ func (d *DeterministicSharder) Start() error {
 		if len(localIPs) == 0 {
 			localAddrs, err := net.InterfaceAddrs()
 			if err != nil {
-				return errors.Wrap(err, "failed to get local interface list to initialize sharder")
+				return fmt.Errorf("get local interface list to initialize sharder: %w", err)
 			}
 			localIPs = make([]string, len(localAddrs))
 			for i, addr := range localAddrs {
 				addrStr := addr.String()
 				ip, _, err := net.ParseCIDR(addrStr)
 				if err != nil {
-					return errors.Wrap(err, fmt.Sprintf("failed to parse CIDR for local IP %s", addrStr))
+					return errors.Wrap(err, fmt.Sprintf("parse CIDR for local IP %s", addrStr))
 				}
 				localIPs[i] = ip.String()
 			}
@@ -243,7 +241,7 @@ func (d *DeterministicSharder) loadPeerList() error {
 	// get my peers
 	peerList, err := d.Peers.GetPeers()
 	if err != nil {
-		return errors.Wrap(err, "failed to get peer list config")
+		return fmt.Errorf("getting peer list config: %w", err)
 	}
 
 	if len(peerList) == 0 {
@@ -290,7 +288,7 @@ func (d *DeterministicSharder) loadPeerList() error {
 	const partitionCount = 50
 	// now build the hash list;
 	// We make a list of hash value and an index to a peer.
-	hashes := make([]hashShard, 0)
+	var hashes []hashShard
 	partitionsPerPeer := partitionCount/len(peerList) + 1
 	for ix := range newPeers {
 		hashes = append(hashes, newPeers[ix].GetHashesFor(ix, partitionsPerPeer, peerSeed)...)
@@ -301,7 +299,7 @@ func (d *DeterministicSharder) loadPeerList() error {
 	})
 
 	// if the peer list changed, load the new list
-	d.peerLock.RLock()
+	d.peerLock.RLock() // nolint:all
 	if !SortableShardList(d.peers).Equals(newPeers) {
 		d.Logger.Info().Logf("Peer list has changed. New peer list: %+v", newPeers)
 		d.peerLock.RUnlock()

@@ -97,14 +97,16 @@ func newRedisPeers(ctx context.Context, c config.Config, done chan struct{}) (Pe
 		},
 		peers:      make([]string, 1),
 		c:          c,
-		callbacks:  make([]func(), 0),
+		callbacks:  []func(){},
 		publicAddr: address,
 	}
 
 	// register myself once
-	for !transmission.DefaultAvailability.Status() {
-		logrus.Info("peer is not available yet")
-		time.Sleep(5 * time.Second)
+	if !c.IsTest() {
+		for !transmission.DefaultAvailability.Status() {
+			logrus.Info("peer is not available yet")
+			time.Sleep(5 * time.Second)
+		}
 	}
 	err = peers.store.Register(ctx, address, peerEntryTimeout)
 	if err != nil {
@@ -150,14 +152,24 @@ func (p *redisPeers) registerSelf(done chan struct{}) {
 				continue
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), p.c.GetPeerTimeout())
-			// every interval, insert a timeout record. we ignore the error
-			// here since Register() logs the error for us.
-			p.store.Register(ctx, p.publicAddr, peerEntryTimeout)
+
+			err := p.store.Register(ctx, p.publicAddr, peerEntryTimeout)
+			if err != nil {
+				logrus.WithField("name", p.publicAddr).
+					WithField("timeoutSec", peerEntryTimeout).
+					WithField("err", err).
+					Error("registration failed")
+			}
 			cancel()
 		case <-done:
 			// unregister ourselves
 			ctx, cancel := context.WithTimeout(context.Background(), p.c.GetPeerTimeout())
-			p.store.Unregister(ctx, p.publicAddr)
+			err := p.store.Unregister(ctx, p.publicAddr)
+			if err != nil {
+				logrus.WithField("name", p.publicAddr).
+					WithField("err", err).
+					Error("unregister failed")
+			}
 			cancel()
 			return
 		}
@@ -181,8 +193,8 @@ func (p *redisPeers) updatePeerListOnce() {
 	sort.Strings(currentPeers)
 	// update peer list and trigger callbacks saying the peer list has changed
 	p.peerLock.Lock()
+	defer p.peerLock.Unlock()
 	p.peers = currentPeers
-	p.peerLock.Unlock()
 }
 
 func (p *redisPeers) watchPeers(done chan struct{}) {
@@ -259,7 +271,7 @@ func buildOptions(c config.Config) []redis.DialOption {
 
 		options = append(options,
 			redis.DialTLSConfig(tlsConfig),
-			redis.DialUseTLS(true))
+			redis.DialUseTLS(useTLS))
 	}
 
 	return options
@@ -267,7 +279,6 @@ func buildOptions(c config.Config) []redis.DialOption {
 
 func publicAddr(c config.Config) (string, error) {
 	// compute the public version of my peer listen address
-	//listenAddr, _ := c.GetPeerListenAddr() //Temporarily removed http peer listen addr, only grpc listener
 	listenAddr, _ := c.GetGRPCPeerListenAddr()
 	_, port, err := net.SplitHostPort(listenAddr)
 
