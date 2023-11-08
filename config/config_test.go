@@ -136,7 +136,7 @@ MetricsConfig:
 }
 
 func TestReadDefaults(t *testing.T) {
-	c, err := NewConfig("../config_complete.yaml", "../rules_complete.yaml", func(err error) {})
+	c, err := NewConfig("../config_unit_tests.yaml", "../rules_unit_tests.yaml", func(err error) {})
 
 	if err != nil {
 		t.Error(err)
@@ -187,7 +187,7 @@ func TestReadDefaults(t *testing.T) {
 }
 
 func TestReadRulesConfig(t *testing.T) {
-	c, err := NewConfig("../config_complete.yaml", "../rules_complete.yaml", func(err error) {})
+	c, err := NewConfig("../config_unit_tests.yaml", "../rules_unit_tests.yaml", func(err error) {})
 
 	if err != nil {
 		t.Error(err)
