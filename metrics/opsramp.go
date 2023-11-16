@@ -637,11 +637,11 @@ func (p *OpsRampMetrics) Push() (int, error) {
 					p.gaugeDeleteLabelValues(metricName, labelVals)
 				}
 			case COUNTER:
-				if timeDiff > time.Minute*15 {
+				if timeDiff > time.Hour*24 {
 					p.counterDeleteLabelValues(metricName, labelVals)
 				}
 			case HISTOGRAM:
-				if timeDiff > time.Minute*15 {
+				if timeDiff > time.Hour*24 {
 					p.histogramDeleteLabelValues(metricName, labelVals)
 				}
 			}

@@ -114,65 +114,65 @@ func (i *InMemCollector) Start() error {
 		"trace_operations_latency_ms",
 		"gauge",
 		"Trace latency wrt each trace operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_failed",
 		"counter",
 		"Number of Error events in spans wrt each trace operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_succeeded",
 		"counter",
 		"Number of Succeeded events in spans wrt each trace operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_total",
 		"counter",
 		"Total Number of events in spans wrt each trace operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_root_span",
 		"counter",
 		"Number of root spans in an operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_spans_count",
 		"counter",
 		"Number of spans in an operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_root_operation_latency_ms",
 		"gauge",
 		"Trace latency wrt each root trace operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_root_operations_failed",
 		"counter",
 		"Number of Error events in root spans wrt each trace operation",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_error",
 		"gauge",
 		"Trace errors wrt each trace operation / trace_span_count",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterHistogram(
 		"trace_operations_latency",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 		"span latency in microseconds(µs) by service, operation and app",
 		[]float64{100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
 	)
 	i.Metrics.RegisterHistogram(
 		"trace_root_operation_latency",
-		[]string{"service_name", "operation", "app", "instance"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 		"root span latency in microseconds(µs) by service, operation and app",
 		[]float64{100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
 	)
@@ -644,10 +644,14 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 		}
 
 		labelToKeyMap := map[string][]string{
-			"service_name": {"service_name"}, // service.name is removed from []string because not needed as we are changing in processEvent function of route.go file
-			"operation":    {"spanName"},
-			"app":          {"app"},
-			"instance":     {"instance"},
+			"service_name":             {"service_name"}, // service.name is removed from []string because not needed as we are changing in processEvent function of route.go file
+			"operation":                {"spanName"},
+			"app":                      {"app"},
+			"instance":                 {"instance"},
+			"transaction_type":         {"transaction.type"},
+			"transaction_category":     {"transaction.category"},
+			"transaction_sub_category": {"transaction.sub_category"},
+			"language":                 {"telemetry.sdk.language"},
 		}
 
 		labels := metrics.ExtractLabelsFromSpan(span, labelToKeyMap)
