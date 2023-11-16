@@ -2,10 +2,11 @@
 
 Trace Proxy classifies spans by adding two attributes
 
-| attribute            | description                                                                                                                                                                                                                                                      | possible values                 |
-|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| transaction.type     | usually classifies the span as web (all the REST API, RPC calls from various frameworks, Load Balancers, Web Servers etc) or non-web transactions (like internal schedule jobs, cleanup jobs etc)                                                                | - web<br/> - non-web            |
-| transaction.category | classifying the spans based on the source they originate from, if the span comes from a database then its classified based on which database it originated from based on db.system, if it comes from a rpc system then we classify based on rpc.system and so on | - mysql<br/> - kafka<br/> - ... |
+| attribute                | description                                                                                                                                                                                                                                          | possible values                   |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
+| transaction.type         | usually classifies the span as web (all the REST API, RPC calls from various frameworks, Load Balancers, Web Servers etc) or non-web transactions (like internal schedule jobs, cleanup jobs etc)                                                    | - web<br/> - non-web              |
+| transaction.category     | classifying the spans based on the source they originate from, if the span comes from a database then its classified as Database, if it comes from a rpc system then we classify as RPC System and so on                                             | - HTTP<br/> - Database<br/> - ... |
+| transaction.sub_category | further classifying the spans based on attributes, if the span comes from a database then its classified based on which database it originated from based on db.system, if it comes from a rpc system then we classify based on rpc.system and so on | - mysql<br/> - kafka<br/> - ...   |                                                                                                                                                                                                                                                                |                                 |
 
 # transaction.type
 
@@ -13,10 +14,22 @@ This label classifies the span as web or non-web transaction
 > **Note:**
 > By default all the spans are classified as "non-web"
 
-- **web:** spans which originate from a HTTP or RPC call are usually classified as web (internally we check for spans
+- **web:** spans which originate from an HTTP or RPC call are usually classified as web (internally we check for spans
   with attributes starting with "http.", ".rpc" or "user_agent.")
 
 # transaction.category
+
+- HTTP
+- Database
+- Messaging queues
+- RPC Systems
+- Object Store
+- Exceptions
+- FAAS (Function as a service)
+- Feature Flag
+- Programming Language
+
+# transaction.sub_category
 
 The Priority order of classification is as follows
 
