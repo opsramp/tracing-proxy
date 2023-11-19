@@ -209,8 +209,8 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
-github.com/opsramp/husky v0.0.0-20231108075602-278c3da52ad8 h1:6VmgsOGSVPBSJIOlbUMUTl66K9PlrX6oyT/Ldx0mOTQ=
-github.com/opsramp/husky v0.0.0-20231108075602-278c3da52ad8/go.mod h1:vhMTsEbFiBE987UUozabgHObDB043gLMpj9bd4gViOg=
+github.com/opsramp/husky v0.0.0-20231119072055-2de4230fa16d h1:Ys+4WDikzloMtm+CuM8cfYG0CzRolfJfpioFQOXbtIg=
+github.com/opsramp/husky v0.0.0-20231119072055-2de4230fa16d/go.mod h1:vhMTsEbFiBE987UUozabgHObDB043gLMpj9bd4gViOg=
 github.com/opsramp/libtrace-go v0.0.0-20231012065650-aa91b1072c6a h1:fO0W86R/b/MihyY+5Ijdy4+olf8nBTTFiBWn6InM0O4=
 github.com/opsramp/libtrace-go v0.0.0-20231012065650-aa91b1072c6a/go.mod h1:27EL9SMRA0G9iaqq2ceCtLGNzXOJ2JFjJ/xVBwfcjMY=
 github.com/opsramp/memory v0.0.0-20230922051903-fb43c78a30b6 h1:8n6I6RZ+EVc5EmjEmYfvPVTVABUmOsZZ8Y/nHYn8H70=
