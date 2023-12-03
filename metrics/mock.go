@@ -50,6 +50,11 @@ func (m *MockMetrics) HistogramWithLabels(name string, labels map[string]string,
 	panic("implement me")
 }
 
+func (m *MockMetrics) AddWithLabels(name string, labels map[string]string, value float64) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // Start initializes all metrics or resets all metrics to zero
 func (m *MockMetrics) Start() {
 	m.Registrations = make(map[string]string)
