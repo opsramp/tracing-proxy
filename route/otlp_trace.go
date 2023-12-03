@@ -9,14 +9,15 @@ import (
 	"net/http"
 	"time"
 
-	huskyotlp "github.com/opsramp/husky/otlp"
+	"github.com/opsramp/tracing-proxy/pkg/convert"
 	"github.com/opsramp/tracing-proxy/types"
 
-	collectortrace "github.com/opsramp/husky/proto/otlp/collector/trace/v1"
+	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 )
 
+// postOTLP - processes requests from HTTP1.1
 func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
-	ri := huskyotlp.GetRequestInfoFromHttpHeaders(req.Header)
+	ri := convert.GetRequestInfoFromHttpHeaders(req.Header)
 
 	if ri.ApiTenantId == "" {
 		ri.ApiTenantId, _ = r.Config.GetTenantId()
@@ -25,7 +26,7 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 		ri.Dataset, _ = r.Config.GetDataset()
 	}
 
-	result, err := huskyotlp.TranslateTraceRequestFromReader(req.Body, ri)
+	result, err := convert.TranslateTraceRequestFromReader(req.Body, ri)
 	if err != nil {
 		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 		return
@@ -36,8 +37,9 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (r *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServiceRequest) (*collectortrace.ExportTraceServiceResponse, error) {
-	ri := huskyotlp.GetRequestInfoFromGrpcMetadata(ctx)
+// Export - processes requests from GRPC
+func (r *Router) Export(ctx context.Context, req *coltracepb.ExportTraceServiceRequest) (*coltracepb.ExportTraceServiceResponse, error) {
+	ri := convert.GetRequestInfoFromGrpcMetadata(ctx)
 
 	if ri.ApiTenantId == "" {
 		ri.ApiTenantId, _ = r.Config.GetTenantId()
@@ -48,19 +50,20 @@ func (r *Router) Export(ctx context.Context, req *collectortrace.ExportTraceServ
 
 	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
-	result, err := huskyotlp.TranslateTraceRequest(req, ri)
+	result, err := convert.TranslateTraceRequest(req, ri)
 	if err != nil {
-		return nil, huskyotlp.AsGRPCError(err)
+		return nil, convert.AsGRPCError(err)
 	}
 
 	if err := processTraceRequest(ctx, r, result.Batches, ri.ApiToken, ri.ApiTenantId); err != nil {
-		return nil, huskyotlp.AsGRPCError(err)
+		return nil, convert.AsGRPCError(err)
 	}
 
-	return &collectortrace.ExportTraceServiceResponse{}, nil
+	return &coltracepb.ExportTraceServiceResponse{}, nil
 }
 
-func processTraceRequest(ctx context.Context, router *Router, batches []huskyotlp.Batch, token string, tenantID string) error {
+// processTraceRequest - process requests from peers
+func processTraceRequest(ctx context.Context, router *Router, batches []convert.Batch, token string, tenantID string) error {
 	var requestID types.RequestIDContextKey
 	apiHost, err := router.Config.GetOpsrampAPI()
 	if err != nil {

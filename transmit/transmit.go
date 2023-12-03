@@ -106,13 +106,12 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 		Logf("transmit sending event")
 	libhEv := d.builder.NewEvent()
 	libhEv.APIHost = ev.APIHost
-	//libhEv.WriteKey = ev.APIKey
 	libhEv.Dataset = ev.Dataset
 	libhEv.SampleRate = ev.SampleRate
 	libhEv.Timestamp = ev.Timestamp
 	libhEv.APIToken = ev.APIToken
 	libhEv.APITenantId = ev.APITenantId
-	// metadata is used to make error logs more helpful when processing libhoney responses
+	// metadata is used to make error logs more helpful when processing responses
 	metadata := map[string]any{
 		"api_host":    ev.APIHost,
 		"dataset":     ev.Dataset,

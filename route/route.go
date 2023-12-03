@@ -39,7 +39,7 @@ import (
 	"github.com/opsramp/tracing-proxy/transmit"
 	"github.com/opsramp/tracing-proxy/types"
 
-	collectortrace "github.com/opsramp/husky/proto/otlp/collector/trace/v1"
+	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 )
 
 const (
@@ -91,7 +91,7 @@ type Router struct {
 	doneWG     sync.WaitGroup
 
 	// used to identify Router as a OTLP TraceServer
-	collectortrace.UnimplementedTraceServiceServer
+	coltracepb.UnimplementedTraceServiceServer
 	proxypb.TraceProxyServiceServer
 	environmentCache *environmentCache
 }
@@ -244,7 +244,7 @@ func (r *Router) LnS(incomingOrPeer string) {
 			}),
 		}
 		r.grpcServer = grpc.NewServer(serverOpts...)
-		collectortrace.RegisterTraceServiceServer(r.grpcServer, r)
+		coltracepb.RegisterTraceServiceServer(r.grpcServer, r)
 		grpc_health_v1.RegisterHealthServer(r.grpcServer, r)
 		go func() {
 			err := r.grpcServer.Serve(l)
