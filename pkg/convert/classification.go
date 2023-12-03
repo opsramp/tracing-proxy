@@ -97,7 +97,7 @@ func DetermineClassification(args ...[]*commonpb.KeyValue) map[string]string {
 	}
 
 	// set sdk lang
-	if val, ok := attributes["telemetry.sdk.language"]; ok {
+	if val, ok := attributes["telemetry.sdk.language"]; ok && val != "" {
 		language = val
 	}
 

@@ -449,13 +449,27 @@ func (p *OpsRampMetrics) GaugeWithLabels(name string, labels map[string]string, 
 	}
 }
 
+func (p *OpsRampMetrics) AddWithLabels(name string, labels map[string]string, value float64) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
+		if counterVec, ok := metData.Data.(*prometheus.CounterVec); ok {
+			counterVec.With(labels).Add(value)
+		}
+		vals := getLabelValues(metData.Labels, labels)
+		key := strings.Join(vals, labelValuesDelimiter)
+		metData.LabelValues.Set(key, time.Now().UTC())
+	}
+}
+
 func (p *OpsRampMetrics) IncrementWithLabels(name string, labels map[string]string) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
 	if metData, ok := p.metrics[name]; ok && metData.Data != nil {
-		if gaugeVec, ok := metData.Data.(*prometheus.CounterVec); ok {
-			gaugeVec.With(labels).Inc()
+		if counterVec, ok := metData.Data.(*prometheus.CounterVec); ok {
+			counterVec.With(labels).Inc()
 		}
 		vals := getLabelValues(metData.Labels, labels)
 		key := strings.Join(vals, labelValuesDelimiter)
