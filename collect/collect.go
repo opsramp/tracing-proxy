@@ -651,7 +651,7 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 			"transaction_type":         {"transaction.type"},
 			"transaction_category":     {"transaction.category"},
 			"transaction_sub_category": {"transaction.sub_category"},
-			"language":                 {"telemetry.sdk.language"},
+			"language":                 {"language"},
 		}
 
 		labels := metrics.ExtractLabelsFromSpan(span, labelToKeyMap)
@@ -683,12 +683,14 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 		errorStatus, ok := span.Data["error"]
 		if ok && errorStatus != nil && errorStatus.(bool) {
 			i.Metrics.IncrementWithLabels("trace_operations_failed", labels)
+			i.Metrics.AddWithLabels("trace_operations_succeeded", labels, 0)
 			i.Metrics.IncrementWithLabels("trace_operations_total", labels)
 			if isRootSpan(span) {
 				i.Metrics.IncrementWithLabels("trace_root_operations_failed", labels)
 			}
 		} else {
 			i.Metrics.IncrementWithLabels("trace_operations_succeeded", labels)
+			i.Metrics.AddWithLabels("trace_operations_failed", labels, 0)
 			i.Metrics.IncrementWithLabels("trace_operations_total", labels)
 		}
 	}

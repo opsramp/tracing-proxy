@@ -19,4 +19,5 @@ func (n *NullMetrics) RegisterHistogram(name string, labels []string, desc strin
 }
 func (n *NullMetrics) GaugeWithLabels(name string, labels map[string]string, value float64)       {}
 func (n *NullMetrics) IncrementWithLabels(name string, labels map[string]string)                  {}
+func (n *NullMetrics) AddWithLabels(name string, labels map[string]string, value float64)         {}
 func (n *NullMetrics) HistogramWithLabels(name string, labels map[string]string, obs interface{}) {}
