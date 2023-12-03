@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	husky "github.com/opsramp/husky/otlp"
+	"github.com/opsramp/tracing-proxy/pkg/convert"
 )
 
 type handlerError struct {
@@ -35,7 +35,7 @@ var (
 	ErrUpstreamUnavailable = handlerError{nil, "upstream target unavailable", http.StatusServiceUnavailable, true, true}
 	ErrReqToEvent          = handlerError{nil, "failed to parse event", http.StatusBadRequest, false, true}
 	ErrBatchToEvent        = handlerError{nil, "failed to parse event within batch", http.StatusBadRequest, false, true}
-	ErrInvalidContentType  = handlerError{nil, husky.ErrInvalidContentType.Message, husky.ErrInvalidContentType.HTTPStatusCode, false, true}
+	ErrInvalidContentType  = handlerError{nil, convert.ErrInvalidContentType.Message, convert.ErrInvalidContentType.HTTPStatusCode, false, true}
 )
 
 func (r *Router) handlerReturnWithError(w http.ResponseWriter, he handlerError, err error) {
