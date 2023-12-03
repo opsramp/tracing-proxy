@@ -18,6 +18,7 @@ type Metrics interface {
 
 	GaugeWithLabels(name string, labels map[string]string, value float64)
 	IncrementWithLabels(name string, labels map[string]string)
+	AddWithLabels(name string, labels map[string]string, value float64)
 	HistogramWithLabels(name string, labels map[string]string, obs interface{})
 }
 
