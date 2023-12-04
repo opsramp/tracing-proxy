@@ -51,16 +51,7 @@ const (
 	traceIDLongLength      = 16
 	GRPCMessageSizeMax int = 5000000 // 5MB
 	defaultSampleRate      = 1
-
-	resourceAttributesKey = "resourceAttributes"
-	spanAttributesKey     = "spanAttributes"
-	eventAttributesKey    = "eventAttributes"
-	unknownService        = "unknown_service"
-	unknownInstance       = "unkown_instance"
 )
-
-var possibleServiceNames = []string{"service_name", "service.name"}
-var possibleInstanceNames = []string{"instance", "k8s.pod.name", "host.name"}
 
 type Router struct {
 	Config               config.Config         `inject:""`
@@ -568,50 +559,6 @@ func (r *Router) processEvent(ev *types.Event, reqID interface{}) error {
 		WithString("api_host", ev.APIHost).
 		WithString("dataset", ev.Dataset).
 		WithString("environment", ev.Environment)
-
-	// adding additional attributes to resource attributes
-	resAttr, resAttrOk := ev.Data[resourceAttributesKey].(map[string]interface{})
-	spanAttr, spanAttrOk := ev.Data[spanAttributesKey].(map[string]interface{})
-	if !resAttrOk {
-		resAttr = map[string]interface{}{}
-	}
-	if !spanAttrOk {
-		spanAttr = map[string]interface{}{}
-	}
-	for key, value := range r.Config.GetAddAdditionalMetadata() {
-		if _, ok := resAttr[key]; !ok {
-			resAttr[key] = value
-		}
-	}
-	isUnknownService := true
-	for _, key := range possibleServiceNames {
-		if val, ok := resAttr[key]; ok {
-			isUnknownService = false
-			delete(resAttr, key)
-			resAttr["service_name"] = val
-			break
-		}
-	}
-	if isUnknownService {
-		resAttr["service_name"] = unknownService
-	}
-	isUnknownInstance := true
-	for _, key := range possibleInstanceNames {
-		if val, ok := spanAttr[key]; ok {
-			isUnknownInstance = false
-			spanAttr["instance"] = val
-			break
-		}
-		if val, ok := resAttr[key]; ok {
-			isUnknownInstance = false
-			spanAttr["instance"] = val
-			break
-		}
-	}
-	if isUnknownInstance {
-		resAttr["instance"] = unknownInstance
-	}
-	ev.Data[resourceAttributesKey] = resAttr
 
 	// extract trace ID, route to self or peer, pass on to collector
 	// TODO make trace ID field configurable

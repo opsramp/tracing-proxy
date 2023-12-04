@@ -26,7 +26,7 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 		ri.Dataset, _ = r.Config.GetDataset()
 	}
 
-	result, err := convert.TranslateTraceRequestFromReader(req.Body, ri)
+	result, err := convert.TranslateTraceRequestFromReader(req.Body, ri, r.Config.GetAddAdditionalMetadata())
 	if err != nil {
 		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 		return
@@ -50,7 +50,7 @@ func (r *Router) Export(ctx context.Context, req *coltracepb.ExportTraceServiceR
 
 	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
-	result, err := convert.TranslateTraceRequest(req, ri)
+	result, err := convert.TranslateTraceRequest(req, ri, r.Config.GetAddAdditionalMetadata())
 	if err != nil {
 		return nil, convert.AsGRPCError(err)
 	}
