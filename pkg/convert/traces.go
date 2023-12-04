@@ -168,8 +168,8 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				eventAttrs["resourceAttributes"] = traceAttributes["resourceAttributes"]
 
 				// normalizing instance name
-				stillUnknownInstance := true
 				if isUnknownInstance {
+					stillUnknownInstance := true
 					for _, key := range possibleInstanceNames {
 						if val, ok := traceAttributes["spanAttributes"][key]; ok {
 							traceAttributes["spanAttributes"]["instance"] = val
@@ -177,9 +177,9 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 							break
 						}
 					}
-				}
-				if stillUnknownInstance {
-					traceAttributes["spanAttributes"]["instance"] = _unknown
+					if stillUnknownInstance {
+						traceAttributes["spanAttributes"]["instance"] = _unknown
+					}
 				}
 
 				//Copy span attributes
