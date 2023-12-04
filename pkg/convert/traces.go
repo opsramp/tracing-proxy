@@ -19,6 +19,9 @@ const (
 	defaultSampleRate  = int32(1)
 )
 
+var possibleServiceNames = []string{"service_name", "service.name"}
+var possibleInstanceNames = []string{"instance", "k8s.pod.name", "host.name"}
+
 // TranslateTraceRequestResult represents an OTLP trace request translated into Opsramp-friendly structure
 // RequestSize is total byte size of the entire OTLP request
 // Batches represent events grouped by their target dataset
@@ -29,17 +32,17 @@ type TranslateTraceRequestResult struct {
 
 // TranslateTraceRequestFromReader translates an OTLP/HTTP request into Honeycomb-friendly structure
 // RequestInfo is the parsed information from the HTTP headers
-func TranslateTraceRequestFromReader(body io.ReadCloser, ri RequestInfo) (*TranslateOTLPRequestResult, error) {
+func TranslateTraceRequestFromReader(body io.ReadCloser, ri RequestInfo, additionalAttr map[string]string) (*TranslateOTLPRequestResult, error) {
 	request := &coltracepb.ExportTraceServiceRequest{}
 	if err := parseOtlpRequestBody(body, ri.ContentType, ri.ContentEncoding, request); err != nil {
 		return nil, fmt.Errorf("%s: %s", ErrFailedParseBody, err)
 	}
-	return TranslateTraceRequest(request, ri)
+	return TranslateTraceRequest(request, ri, additionalAttr)
 }
 
 // TranslateTraceRequest translates an OTLP/gRPC request into OpsRamp-friendly structure
 // RequestInfo is the parsed information from the gRPC metadata
-func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri RequestInfo) (*TranslateOTLPRequestResult, error) {
+func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri RequestInfo, additionalResAttr map[string]string) (*TranslateOTLPRequestResult, error) {
 	var batches []Batch
 
 	for _, resourceSpan := range request.ResourceSpans {
@@ -48,6 +51,10 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 		dataset := getDataset(ri, resourceAttrs)
 		traceAttributes := make(map[string]map[string]interface{})
 		traceAttributes["resourceAttributes"] = make(map[string]interface{})
+		// filling all the additional attributes here
+		for k, v := range additionalResAttr {
+			traceAttributes["resourceAttributes"][k] = v
+		}
 
 		// trying to classify the spans based on resource attributes
 		_classificationAttributes := map[string]string{}
@@ -55,6 +62,29 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 		if resourceSpan.Resource != nil {
 			addAttributesToMap(traceAttributes["resourceAttributes"], resourceSpan.Resource.Attributes)
 			_classificationAttributes = DetermineClassification(resourceSpan.GetResource().GetAttributes())
+		}
+
+		// normalizing service_name of trace
+		isUnknownService := true
+		for _, key := range possibleServiceNames {
+			if val, ok := traceAttributes["resourceAttributes"][key]; ok {
+				isUnknownService = false
+				delete(traceAttributes["resourceAttributes"], key)
+				traceAttributes["resourceAttributes"]["service_name"] = val
+				break
+			}
+		}
+		if isUnknownService {
+			traceAttributes["resourceAttributes"]["service_name"] = _unknown
+		}
+		// normalizing instance name
+		isUnknownInstance := true
+		for _, key := range possibleInstanceNames {
+			if val, ok := traceAttributes["resourceAttributes"][key]; ok {
+				isUnknownInstance = false
+				traceAttributes["resourceAttributes"]["instance"] = val
+				break
+			}
 		}
 
 		for _, librarySpan := range resourceSpan.ScopeSpans {
@@ -136,6 +166,21 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 
 				//Copy resource attributes
 				eventAttrs["resourceAttributes"] = traceAttributes["resourceAttributes"]
+
+				// normalizing instance name
+				stillUnknownInstance := true
+				if isUnknownInstance {
+					for _, key := range possibleInstanceNames {
+						if val, ok := traceAttributes["spanAttributes"][key]; ok {
+							traceAttributes["spanAttributes"]["instance"] = val
+							stillUnknownInstance = false
+							break
+						}
+					}
+				}
+				if stillUnknownInstance {
+					traceAttributes["spanAttributes"]["instance"] = _unknown
+				}
 
 				//Copy span attributes
 				eventAttrs["spanAttributes"] = traceAttributes["spanAttributes"]
