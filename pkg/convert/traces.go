@@ -114,8 +114,33 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				spanID := hex.EncodeToString(span.SpanId)
 
 				spanKind := getSpanKind(span.Kind)
-				statusCode, isError := getSpanStatusCode(span.Status)
 
+				var spanStatusCode int64
+				var isError bool
+
+				for key, attributeValue := range span.Attributes {
+					if attributeValue.GetKey() == "http.status_code" {
+						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						if spanStatusCode != 200 {
+							isError = true
+							break
+						}
+					} else if attributeValue.GetKey() == "rpc.grpc.status_code" {
+						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						if spanStatusCode != 0 {
+							isError = true
+							break
+						}
+					}
+				}
+
+				if !isError {
+					spanStatusCode = int64(tracepb.Status_STATUS_CODE_UNSET)
+				}
+
+				if isError {
+					traceAttributes["spanAttributes"]["error"] = isError
+				}
 				eventAttrs := map[string]interface{}{
 					"traceTraceID":     traceID,
 					"traceSpanID":      spanID,
@@ -135,9 +160,6 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				}
 
 				eventAttrs["error"] = isError
-				if isError {
-					traceAttributes["resourceAttributes"]["error"] = isError
-				}
 
 				if span.Status != nil && len(span.Status.Message) > 0 {
 					eventAttrs["statusMessage"] = span.Status.Message
