@@ -150,7 +150,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					"durationMs":       float64(span.EndTimeUnixNano-span.StartTimeUnixNano) / float64(time.Millisecond),
 					"startTime":        int64(span.StartTimeUnixNano),
 					"endTime":          int64(span.EndTimeUnixNano),
-					"statusCode":       statusCode,
+					"statusCode":       spanStatusCode,
 					"spanNumLinks":     len(span.Links),
 					"spanNumEvents":    len(span.Events),
 					"meta.signal_type": "trace",
