@@ -162,7 +162,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					eventAttrs["error"] = isError
 				}
 
-				fmt.Println("The span error status is set based on the value of statusCode: ", spanStatusCode, " Error status was: ", isError)
+				fmt.Println("The span error status is set based on the value of statusCode: ", spanStatusCode, " Error status was: ", isError, "for spanId: ", spanID)
 
 				if span.Status != nil && len(span.Status.Message) > 0 {
 					eventAttrs["statusMessage"] = span.Status.Message
