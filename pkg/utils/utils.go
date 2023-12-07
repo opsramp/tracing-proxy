@@ -1,6 +1,10 @@
 package utils
 
-import "sync"
+import (
+	"fmt"
+	"maps"
+	"sync"
+)
 
 type SyncedMap[K comparable, V any] struct {
 	mu *sync.Mutex
@@ -57,8 +61,19 @@ func (m *SyncedMap[K, V]) Copy() map[K]V {
 	defer m.mu.Unlock()
 
 	c := make(map[K]V, len(m.m))
-	for key, value := range m.m {
-		c[key] = value
-	}
+	maps.Copy(c, m.m)
 	return c
+}
+
+func GetStringValue(val interface{}) string {
+	switch v := val.(type) {
+	case int, int8, int16, int32, int64, float64, float32:
+		return fmt.Sprintf("%v", v)
+	case string:
+		return v
+	case nil:
+		return ""
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
