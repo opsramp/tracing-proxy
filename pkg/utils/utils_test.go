@@ -162,3 +162,57 @@ func TestSyncedMap_Set(t *testing.T) {
 		})
 	}
 }
+
+func TestGetStringValue(t *testing.T) {
+	type args struct {
+		val interface{}
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "int",
+			args: args{
+				val: 0,
+			},
+			want: "0",
+		},
+		{
+			name: "float",
+			args: args{
+				val: 0.1,
+			},
+			want: "0.1",
+		},
+		{
+			name: "string",
+			args: args{
+				val: "10",
+			},
+			want: "10",
+		},
+		{
+			name: "array",
+			args: args{
+				val: []int{1, 2, 3},
+			},
+			want: "[1 2 3]",
+		},
+		{
+			name: "empty",
+			args: args{
+				val: nil,
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetStringValue(tt.args.val); got != tt.want {
+				t.Errorf("GetStringValue() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
