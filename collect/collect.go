@@ -7,10 +7,12 @@ import (
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/pkg/utils"
 	"github.com/opsramp/tracing-proxy/sample"
 	"github.com/opsramp/tracing-proxy/transmit"
 	"github.com/opsramp/tracing-proxy/types"
 	"github.com/sirupsen/logrus"
+	"maps"
 	"os"
 	"runtime"
 	"sort"
@@ -175,6 +177,18 @@ func (i *InMemCollector) Start() error {
 		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 		"root span latency in microseconds(µs) by service, operation and app",
 		[]float64{100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_response_http_status",
+		"counter",
+		"total count of request based on HTTP status code",
+		[]string{"method", "status_code", "service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
+	)
+	i.Metrics.RegisterWithDescriptionLabels(
+		"trace_response_grpc_status",
+		"counter",
+		"total count of request based on GRPC status code",
+		[]string{"status_code", "service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 
 	sampleCacheConfig := i.Config.GetSampleCacheConfig()
@@ -655,7 +669,46 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 		}
 
 		labels := metrics.ExtractLabelsFromSpan(span, labelToKeyMap)
-		i.Logger.Debug().Logf("========= labels:       ", labels, " 	===>   ", span.Data["instance"])
+
+		// setting http and grpc response status code metrics
+		if labels["transaction_type"] == "web" {
+			if sa, ok := span.Data["spanAttributes"].(map[string]interface{}); ok {
+				// http requests
+				httpMethod := utils.GetStringValue(sa["http.request.method"])
+				httpStatusCode := utils.GetStringValue(sa["http.response.status_code"])
+				if httpMethod == "" {
+					httpMethod = utils.GetStringValue(sa["http.method"])
+					if httpMethod == "" {
+						httpMethod = "unknown"
+					}
+				}
+				if httpStatusCode == "" {
+					httpStatusCode = utils.GetStringValue(sa["http.status_code"])
+					if httpStatusCode == "" {
+						httpStatusCode = "unknown"
+					}
+				}
+				if httpMethod != "unknown" || httpStatusCode != "unknown" {
+					httpLabels := map[string]string{}
+					maps.Copy(httpLabels, labels)
+					httpLabels["method"] = httpMethod
+					httpLabels["status_code"] = httpStatusCode
+					i.Metrics.AddWithLabels("trace_response_http_status", httpLabels, 1)
+				}
+
+				// grpc requests
+				grpcStatusCode := utils.GetStringValue(sa["rpc.grpc.status_code"])
+				if grpcStatusCode == "" {
+					grpcStatusCode = "unknown"
+				}
+				if grpcStatusCode != "unknown" {
+					grpcLabels := map[string]string{}
+					maps.Copy(grpcLabels, labels)
+					grpcLabels["status_code"] = grpcStatusCode
+					i.Metrics.AddWithLabels("trace_response_grpc_status", grpcLabels, 1)
+				}
+			}
+		}
 
 		durationMsString, ok := span.Data["durationMs"]
 		if ok && durationMsString != nil {
