@@ -295,19 +295,6 @@ func shouldTrimTraceId(traceID []byte) bool {
 	return true
 }
 
-// getSpanStatusCode returns the integer value of the span's status code and
-// a bool for whether to consider the status an error.
-//
-// The type conversion from proto enum value to an integer is done here because
-// the events we produce from OTLP spans have no knowledge of or interest in
-// the OTLP types generated from enums in the proto definitions.
-func getSpanStatusCode(status *tracepb.Status) (int, bool) {
-	if status == nil {
-		return int(tracepb.Status_STATUS_CODE_UNSET), false
-	}
-	return int(status.Code), status.Code == tracepb.Status_STATUS_CODE_ERROR
-}
-
 func getSampleRate(attrs map[string]interface{}) int32 {
 	sampleRateKey := getSampleRateKey(attrs)
 	if sampleRateKey == "" {
