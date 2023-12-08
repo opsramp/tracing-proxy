@@ -31,6 +31,12 @@ REPO-LOCATION can be found [location](https://cloud.google.com/artifact-registry
 $ helm push opsramp-tracing-proxy-0.1.0.tgz oci://LOCATION-docker.pkg.dev/PROJECT/REPOSITORY
 ```
 
+**example**
+```shell
+# perform from a linux box
+helm push opsramp-tracing-proxy-17.0.0.tgz oci://us-docker.pkg.dev/opsramp-registry/agent-images/opsramp-tracing-proxy
+```
+
 Replace the following values:
 
 **LOCATION** is the regional or
