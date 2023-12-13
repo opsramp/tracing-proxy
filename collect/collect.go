@@ -30,8 +30,19 @@ type Collector interface {
 	AddSpanFromPeer(*types.Span) error
 }
 
+var Threshold float64
+
 func GetCollectorImplementation(c config.Config) Collector {
 	var collector Collector
+
+	// Get aThreshold value and set it to default by 100 and re-assign it with quarter value for bucket
+	Threshold = c.GetThreshold()
+	if Threshold < 1 {
+		Threshold = 100
+	} else {
+		Threshold = Threshold / 4
+	}
+
 	collectorType, err := c.GetCollectorType()
 	if err != nil {
 		fmt.Printf("unable to get collector type from config: %v\n", err)
@@ -90,6 +101,13 @@ func (i *InMemCollector) Start() error {
 		return err
 	}
 	i.cache = cache.NewInMemCache(imcConfig.CacheCapacity, i.Metrics, i.Logger)
+
+	// threshold bucket ranges
+	var thresholdBuckets = []float64{0, Threshold}
+	for i := 2; i <= 16; i++ {
+		thresholdBuckets = append(thresholdBuckets, Threshold*float64(i))
+	}
+	thresholdBuckets = append(thresholdBuckets, 64*Threshold)
 
 	// listen for config reloads
 	i.Config.RegisterReloadCallback(i.sendReloadSignal)
@@ -172,6 +190,14 @@ func (i *InMemCollector) Start() error {
 		"span latency in microseconds(µs) by service, operation and app",
 		[]float64{100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
 	)
+
+	i.Metrics.RegisterHistogram(
+		"trace_apdex_latency",
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language", "apdex_threshold"},
+		"span latency in milliseconds by service, operation and app",
+		thresholdBuckets,
+	)
+
 	i.Metrics.RegisterHistogram(
 		"trace_root_operation_latency",
 		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
@@ -720,7 +746,18 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 				labels,
 				(metrics.ConvertNumeric(span.Data["endTime"])-metrics.ConvertNumeric(span.Data["startTime"]))/float64(time.Millisecond),
 			)
+
+			apdexLabels := map[string]string{}
+			maps.Copy(apdexLabels, labels)
+			apdexLabels["apdex_threshold"] = fmt.Sprintf("%v", 4*Threshold)
+
+			i.Metrics.HistogramWithLabels(
+				"trace_apdex_latency",
+				apdexLabels,
+				(metrics.ConvertNumeric(span.Data["endTime"])-metrics.ConvertNumeric(span.Data["startTime"]))/float64(time.Millisecond),
+			)
 		}
+
 		if isRootSpan(span) {
 			i.Metrics.HistogramWithLabels(
 				"trace_root_operation_latency",
