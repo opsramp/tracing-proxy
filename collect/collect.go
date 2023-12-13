@@ -37,7 +37,7 @@ func GetCollectorImplementation(c config.Config) Collector {
 
 	// Get aThreshold value and set it to default by 100 and re-assign it with quarter value for bucket
 	Threshold = c.GetThreshold()
-	if Threshold < 1 {
+	if Threshold < 0 {
 		Threshold = 100
 	} else {
 		Threshold = Threshold / 4
@@ -103,11 +103,11 @@ func (i *InMemCollector) Start() error {
 	i.cache = cache.NewInMemCache(imcConfig.CacheCapacity, i.Metrics, i.Logger)
 
 	// threshold bucket ranges
-	var thresholdBuckets = []float64{0, Threshold}
+	var thresholdBuckets = []float64{Threshold}
 	for i := 2; i <= 16; i++ {
 		thresholdBuckets = append(thresholdBuckets, Threshold*float64(i))
 	}
-	thresholdBuckets = append(thresholdBuckets, 64*Threshold)
+	thresholdBuckets = append(thresholdBuckets, 32*Threshold, 64*Threshold)
 
 	// listen for config reloads
 	i.Config.RegisterReloadCallback(i.sendReloadSignal)
