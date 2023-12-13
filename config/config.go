@@ -95,6 +95,9 @@ type Config interface {
 	// GetMaxBatchSize is the number of events to be included in the batch for sending
 	GetMaxBatchSize() uint
 
+	// GetThreshold is used to caliculate the apdex score
+	GetThreshold() float64
+
 	// GetOtherConfig attempts to fill the passed in struct with the contents of
 	// a subsection of the config.   This is used by optional configurations to
 	// allow different implementations of necessary interfaces configure
