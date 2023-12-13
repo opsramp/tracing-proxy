@@ -86,6 +86,14 @@ AddHostMetadataToTrace: false
 # "app" label is mandatory
 AddAdditionalMetadata: { "app": "default" }
 
+# Apdex gives information on performance of a request
+# Apdex Score = (Satisfied Operations Count + (1/2)(Tolerated Operations Count)) / (Total Spans Count)
+# Threshold(T) is a ideal duration time of a request in milli seconds
+# Satisfied Operations Count is Number of spans that has the duration 0 < duration < T
+# Tolerated Operations Count is Number of spans the has the duration T < duration < 4T
+# Duration is difference between end and start time of a span
+Threshold: 500
+
 # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
 # an API key with an environment name.
 # Cache misses lookup the environment name using OpsRampAPI config value.
