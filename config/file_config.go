@@ -63,6 +63,7 @@ type configContents struct {
 	InMemCollector            InMemoryCollectorCacheCapacity `validate:"required"`
 	AddHostMetadataToTrace    bool
 	AddAdditionalMetadata     map[string]string
+	Threshold                 float64 `validate:"required"`
 	AddRuleReasonToTrace      bool
 	EnvironmentCacheTTL       time.Duration
 	DatasetPrefix             string
@@ -468,6 +469,13 @@ func (f *fileConfig) GetCompressPeerCommunication() bool {
 	defer f.mux.RUnlock()
 
 	return f.conf.CompressPeerCommunication
+}
+
+func (f *fileConfig) GetThreshold() float64 {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.Threshold
 }
 
 func (f *fileConfig) GetGRPCListenAddr() (string, error) {
