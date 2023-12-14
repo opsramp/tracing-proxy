@@ -38,7 +38,7 @@ func GetCollectorImplementation(c config.Config) Collector {
 	// Get aThreshold value and set it to default by 100 and re-assign it with quarter value for bucket
 	Threshold = c.GetThreshold()
 	if Threshold <= 0 {
-		Threshold = 100
+		Threshold = 125
 	} else {
 		Threshold = Threshold / 4
 	}
