@@ -63,7 +63,7 @@ type configContents struct {
 	InMemCollector            InMemoryCollectorCacheCapacity `validate:"required"`
 	AddHostMetadataToTrace    bool
 	AddAdditionalMetadata     map[string]string
-	Threshold                 float64 `validate:"required"`
+	Threshold                 float64
 	AddRuleReasonToTrace      bool
 	EnvironmentCacheTTL       time.Duration
 	DatasetPrefix             string
