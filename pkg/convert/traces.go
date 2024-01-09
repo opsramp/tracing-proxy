@@ -122,11 +122,13 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				for key, attributeValue := range span.Attributes {
 					if attributeValue.GetKey() == "error" {
 						fmt.Println("1. span.SpanId was: ", span.SpanId, "isError Was: ", span.Attributes[key].Value.GetBoolValue())
+						fmt.Println("2. span.SpanId was: ", spanID, "isError Was: ", span.Attributes[key].Value.GetBoolValue())
 						checkError = fmt.Sprintf("%v", span.Attributes[key].Value.GetBoolValue())
 					}
 					if attributeValue.GetKey() == "http.status_code" {
 						spanStatusCode = span.Attributes[key].Value.GetIntValue()
-						fmt.Println("2. span.SpanId was: ", span.SpanId, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
+						fmt.Println("3. span.SpanId was: ", span.SpanId, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
+						fmt.Println("4. span.SpanId was: ", spanID, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
 						if spanStatusCode >= 400 || spanStatusCode == 0 {
 							isError = true
 							break
