@@ -115,17 +115,19 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 
 				spanKind := getSpanKind(span.Kind)
 
-				var spanStatusCode int64
+				var spanStatusCode, httpstatus, rpcstatus int64
 				var isError bool
 				var checkError string
+				httpstatus = -2321
+				rpcstatus = -32229
 
-				fmt.Println("0. span.Attributes was: %+v ", span.Attributes)
+				fmt.Println("spanID: ", spanID, "0. span.Attributes was: %+v ", span.Attributes)
 
-				fmt.Sprintf("0. span.Attributes was: %+v ", span.Attributes)
+				fmt.Sprintf("spanID: ", spanID, "0. span.Attributes was: %+v \n", span.Attributes)
 
-				fmt.Printf("0. span.Attributes was: %+v ", span.Attributes)
+				fmt.Printf("spanID: ", spanID, "0. span.Attributes was: %+v \n", span.Attributes)
 
-				fmt.Printf("0. span.Attributes was: %v ", span.Attributes)
+				fmt.Printf("spanID: ", spanID, "0. span.Attributes was: %v \n", span.Attributes)
 
 				for key, attributeValue := range span.Attributes {
 					if attributeValue.GetKey() == "error" {
@@ -136,6 +138,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					fmt.Println("3. span.SpanId was: ", span.SpanId, "attributeValue.GetKey(): ", attributeValue.GetKey(), "span.Attributes[key].Value.GetIntValue() ", span.Attributes[key].Value.GetKvlistValue())
 					if attributeValue.GetKey() == "http.status_code" {
 						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						httpstatus = spanStatusCode
 						fmt.Println("4. span.SpanId was: ", span.SpanId, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
 						fmt.Println("5. span.SpanId was: ", spanID, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
 						if spanStatusCode >= 400 || spanStatusCode == 0 {
@@ -144,6 +147,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 						}
 					} else if attributeValue.GetKey() == "rpc.grpc.status_code" {
 						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						rpcstatus = spanStatusCode
 						if spanStatusCode != 0 {
 							isError = true
 							break
@@ -179,7 +183,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					eventAttrs["error"] = isError
 				}
 
-				fmt.Println("The span error status is set based on the value of statusCode: ", spanStatusCode, " Error status was: ", isError, "for spanId: ", spanID)
+				fmt.Println("The span error status is set based on the value of statusCode: ", spanStatusCode, " Error status was: ", isError, "for spanId: ", spanID, "httpstatus was: ", httpstatus, "rpcstatus was: ", rpcstatus)
 
 				if span.Status != nil && len(span.Status.Message) > 0 {
 					eventAttrs["statusMessage"] = span.Status.Message
