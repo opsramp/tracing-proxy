@@ -3,10 +3,12 @@ package convert
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/google/martian/log"
 	"io"
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
@@ -139,7 +141,17 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					fmt.Println("3. span.SpanId was: ", spanID, "attributeValue.GetKey(): ", attributeValue.GetKey(), "span.Attributes[key].Value.GetIntValue() ", span.Attributes[key].Value.GetKvlistValue())
 					if attributeValue.GetKey() == "http.status_code" {
 						fmt.Printf("spanID span.Attributes[key].Value : %+v span.Attributes[key].Value type: %T \n", reflect.TypeOf(span.Attributes[key].Value))
-						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						statusCodeType := fmt.Sprintf("%v", span.Attributes[key].Value)
+						if strings.Contains(statusCodeType, "int") {
+							spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						} else {
+							var err error
+							spanStatusCode, err = strconv.ParseInt(span.Attributes[key].Value.GetStringValue(), 10, 64)
+							if err != nil {
+								log.Errorf("Unable to Check span status Code: ", err, " statusCodeType was: ", statusCodeType)
+							}
+						}
+
 						httpstatus = spanStatusCode
 						fmt.Println("4. span.SpanId was: ", span.SpanId, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
 						fmt.Println("5. span.SpanId was: ", spanID, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
@@ -148,7 +160,16 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 							break
 						}
 					} else if attributeValue.GetKey() == "rpc.grpc.status_code" {
-						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						statusCodeType := fmt.Sprintf("%v", span.Attributes[key].Value)
+						if strings.Contains(statusCodeType, "int") {
+							spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						} else {
+							var err error
+							spanStatusCode, err = strconv.ParseInt(span.Attributes[key].Value.GetStringValue(), 10, 64)
+							if err != nil {
+								log.Errorf("Unable to Check span status Code: ", err)
+							}
+						}
 						rpcstatus = spanStatusCode
 						if spanStatusCode != 0 {
 							isError = true
