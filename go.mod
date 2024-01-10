@@ -13,6 +13,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/snappy v0.0.4
 	github.com/gomodule/redigo v1.8.9
+	github.com/google/martian v2.1.0+incompatible
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/honeycombio/dynsampler-go v0.2.1
