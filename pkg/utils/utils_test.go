@@ -10,7 +10,7 @@ func TestSyncedMap_Clear(t *testing.T) {
 		name string
 		m    SyncedMap[K, V]
 	}
-	tests := []testCase[string, string]{
+	tests := []*testCase[string, string]{
 		{
 			name: "clear",
 			m: SyncedMap[string, string]{
@@ -41,7 +41,7 @@ func TestSyncedMap_Delete(t *testing.T) {
 		args args[K]
 		want map[K]V
 	}
-	tests := []testCase[string, string]{
+	tests := []*testCase[string, string]{
 		{
 			name: "delete key 'test'",
 			m: SyncedMap[string, string]{
@@ -93,7 +93,7 @@ func TestSyncedMap_Get(t *testing.T) {
 		args args[K]
 		want V
 	}
-	tests := []testCase[string, string]{
+	tests := []*testCase[string, string]{
 		{
 			name: "get key1",
 			m: SyncedMap[string, string]{
@@ -128,7 +128,7 @@ func TestSyncedMap_Set(t *testing.T) {
 		args args[K, V]
 		want map[K]V
 	}
-	tests := []testCase[string, string]{
+	tests := []*testCase[string, string]{
 		{
 			name: "add key1",
 			m: SyncedMap[string, string]{

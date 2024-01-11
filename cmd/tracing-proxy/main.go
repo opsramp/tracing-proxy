@@ -3,6 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/facebookgo/inject"
 	"github.com/facebookgo/startstop"
 	flag "github.com/jessevdk/go-flags"
@@ -18,17 +25,13 @@ import (
 	"github.com/opsramp/tracing-proxy/service/debug"
 	"github.com/opsramp/tracing-proxy/sharder"
 	"github.com/opsramp/tracing-proxy/transmit"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 // set by travis.
-var BuildID string
-var CollectorVersion string
+var (
+	BuildID          string
+	CollectorVersion string
+)
 
 type Options struct {
 	ConfigFile     string `short:"c" long:"config" description:"Path to config file" default:"/etc/tracing-proxy/config.toml"`

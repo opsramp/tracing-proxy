@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/opsramp/libtrace-go/proto/proxypb"
-	"github.com/opsramp/libtrace-go/transmission"
 	"net/http"
 	"time"
+
+	"github.com/opsramp/libtrace-go/proto/proxypb"
+	"github.com/opsramp/libtrace-go/transmission"
 
 	"github.com/opsramp/tracing-proxy/pkg/convert"
 	"github.com/opsramp/tracing-proxy/types"
@@ -99,7 +100,6 @@ func processTraceRequest(ctx context.Context, router *Router, batches []convert.
 }
 
 func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTraceProxyServiceRequest) (*proxypb.ExportTraceProxyServiceResponse, error) {
-
 	r.Logger.Debug().Logf("Received Trace data from peer")
 	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
@@ -132,7 +132,7 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 			continue
 		}
 
-		//Translate ResourceAttributes , SpanAttributes, EventAttributes from proto format to interface{}
+		// Translate ResourceAttributes , SpanAttributes, EventAttributes from proto format to interface{}
 		attributes := make(map[string]interface{})
 		for _, kv := range item.Data.ResourceAttributes {
 			attributes[kv.Key] = extractKeyValue(kv.Value)
@@ -151,7 +151,7 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 		}
 		data["eventAttributes"] = attributes
 
-		//Type cast start and end time
+		// Type cast start and end time
 		data["startTime"] = item.Data.StartTime
 		data["endTime"] = item.Data.EndTime
 

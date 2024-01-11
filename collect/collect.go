@@ -3,6 +3,13 @@ package collect
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"os"
+	"runtime"
+	"sort"
+	"sync"
+	"time"
+
 	"github.com/opsramp/tracing-proxy/collect/cache"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
@@ -12,12 +19,6 @@ import (
 	"github.com/opsramp/tracing-proxy/transmit"
 	"github.com/opsramp/tracing-proxy/types"
 	"github.com/sirupsen/logrus"
-	"maps"
-	"os"
-	"runtime"
-	"sort"
-	"sync"
-	"time"
 )
 
 var ErrWouldBlock = errors.New("not adding span, channel buffer is full")
@@ -103,7 +104,7 @@ func (i *InMemCollector) Start() error {
 	i.cache = cache.NewInMemCache(imcConfig.CacheCapacity, i.Metrics, i.Logger)
 
 	// threshold bucket ranges
-	var thresholdBuckets = []float64{Threshold}
+	thresholdBuckets := []float64{Threshold}
 	for i := 2; i <= 16; i++ {
 		thresholdBuckets = append(thresholdBuckets, Threshold*float64(i))
 	}
@@ -584,7 +585,6 @@ func (i *InMemCollector) processSpan(sp *types.Span) {
 	// if this is a root span, send the trace
 	if isRootSpan(sp) {
 		timeout, err := i.Config.GetSendDelay()
-
 		if err != nil {
 			timeout = 2 * time.Second
 		}

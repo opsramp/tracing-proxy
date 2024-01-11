@@ -54,7 +54,7 @@ func unnecessaryElse(m dsl.Matcher) {
 	m.Match(`var $v $_; if $cond { $v = $x } else { $v = $y }`).
 		Where(m["y"].Pure).
 		Report(`rewrite as '$v := $y; if $cond { $v = $x }'`)
-	//Suggest(`$v := $y; if $cond { $v = $x }`)
+	// Suggest(`$v := $y; if $cond { $v = $x }`)
 }
 
 func localVarDecl(m dsl.Matcher) {
