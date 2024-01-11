@@ -111,5 +111,4 @@ func BenchmarkCollect(b *testing.B) {
 		}
 		wait(b.N)
 	})
-
 }

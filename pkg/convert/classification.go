@@ -1,8 +1,9 @@
 package convert
 
 import (
-	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	"strings"
+
+	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 )
 
 const (
@@ -15,19 +16,17 @@ const (
 	_unknown               = "unknown"
 )
 
-var (
-	_categoryAttributes = [][2]string{
-		{"http.request.method", "HTTP"},
-		{"db.system", "Databases"},
-		{"messaging.system", "Messaging queues"},
-		{"rpc.system", "RPC Systems"},
-		{"aws.s3.bucket", "Object Store"},
-		{"exception.type", "Exceptions"},
-		{"faas.trigger", "FAAS (Function as a service)"},
-		{"feature_flag.key", "Feature Flag"},
-		{"telemetry.sdk.language", "Programming Language"},
-	}
-)
+var _categoryAttributes = [][2]string{
+	{"http.request.method", "HTTP"},
+	{"db.system", "Databases"},
+	{"messaging.system", "Messaging queues"},
+	{"rpc.system", "RPC Systems"},
+	{"aws.s3.bucket", "Object Store"},
+	{"exception.type", "Exceptions"},
+	{"faas.trigger", "FAAS (Function as a service)"},
+	{"feature_flag.key", "Feature Flag"},
+	{"telemetry.sdk.language", "Programming Language"},
+}
 
 func NormalizeClassification(m map[string]string, args ...[]*commonpb.KeyValue) map[string]string {
 	_classification := DetermineClassification(args...)

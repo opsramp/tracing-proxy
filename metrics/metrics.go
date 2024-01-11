@@ -58,7 +58,6 @@ func ConvertNumeric(val interface{}) float64 {
 }
 
 func ExtractLabelsFromSpan(span *types.Span, labelToKeyMap map[string][]string) map[string]string {
-
 	labels := map[string]string{}
 
 	attributeMapKeys := []string{"spanAttributes", "resourceAttributes", "eventAttributes"}

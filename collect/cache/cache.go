@@ -64,7 +64,6 @@ func NewInMemCache(
 		cache:          make(map[string]*types.Trace, capacity),
 		insertionOrder: make([]*types.Trace, capacity),
 	}
-
 }
 
 func (d *DefaultInMemCache) GetCacheSize() int {
@@ -74,7 +73,6 @@ func (d *DefaultInMemCache) GetCacheSize() int {
 // Set adds the trace to the ring. If it is kicking out a trace from the ring
 // that has not yet been sent, it will return that trace. Otherwise returns nil.
 func (d *DefaultInMemCache) Set(trace *types.Trace) *types.Trace {
-
 	// set retTrace to a trace if it is getting kicked out without having been
 	// sent. Leave it nil if we're not kicking out an unsent trace.
 	var retTrace *types.Trace

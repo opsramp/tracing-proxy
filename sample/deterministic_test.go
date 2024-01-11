@@ -58,5 +58,4 @@ func TestGetSampleRate(t *testing.T) {
 		assert.Equal(t, tst.sampled, keep, "%d: trace ID %s should be %v", i, tst.trace.TraceID, tst.sampled)
 		assert.Equal(t, "deterministic/chance", reason)
 	}
-
 }

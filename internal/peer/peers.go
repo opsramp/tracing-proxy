@@ -16,7 +16,6 @@ type Peers interface {
 
 func NewPeers(ctx context.Context, c config.Config, done chan struct{}) (Peers, error) {
 	t, err := c.GetPeerManagementType()
-
 	if err != nil {
 		return nil, err
 	}

@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
-	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"math"
 	"net"
@@ -18,6 +16,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
+	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/gorilla/mux"
 	jsoniter "github.com/json-iterator/go"
