@@ -6,14 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang/snappy"
-	"github.com/gorilla/mux"
-	"github.com/opsramp/tracing-proxy/pkg/utils"
-	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	io_prometheus_client "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/prompb"
 	"io"
 	"net/http"
 	"net/url"
@@ -23,6 +15,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/golang/snappy"
+	"github.com/gorilla/mux"
+	"github.com/opsramp/tracing-proxy/pkg/utils"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/prompb"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/opsramp/tracing-proxy/config"
@@ -387,6 +388,7 @@ func (p *OpsRampMetrics) Increment(name string) {
 		metData.LabelValues.Set("", time.Now().UTC())
 	}
 }
+
 func (p *OpsRampMetrics) Count(name string, n interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -398,6 +400,7 @@ func (p *OpsRampMetrics) Count(name string, n interface{}) {
 		metData.LabelValues.Set("", time.Now().UTC())
 	}
 }
+
 func (p *OpsRampMetrics) Gauge(name string, val interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -409,6 +412,7 @@ func (p *OpsRampMetrics) Gauge(name string, val interface{}) {
 		metData.LabelValues.Set("", time.Now().UTC())
 	}
 }
+
 func (p *OpsRampMetrics) Histogram(name string, obs interface{}) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -623,14 +627,12 @@ func (p *OpsRampMetrics) calculateTraceOperationError(metricFamilySlice []*io_pr
 }
 
 func (p *OpsRampMetrics) Push() (int, error) {
-
 	metricsConfig := p.Config.GetMetricsConfig()
 
 	// setting up default values and removing metrics older than 5 minutes
 	p.lock.Lock() // nolint: all // no linting here since we need to release the lock sooner than end of funtion
 
 	for metricName, metData := range p.metrics {
-
 		for labelValStr, t := range metData.LabelValues.Copy() {
 
 			timeDiff := time.Now().UTC().Sub(t)
@@ -841,7 +843,6 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	request := prompb.WriteRequest{Timeseries: timeSeries}
 
 	out, err := proto.Marshal(&request)
-
 	if err != nil {
 		return -1, err
 	}

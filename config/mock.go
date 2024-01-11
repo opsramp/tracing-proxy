@@ -113,6 +113,10 @@ func (m *MockConfig) GetRedisDatabase() int {
 	return 0
 }
 
+func (m *MockConfig) GetThreshold() float64 {
+	return 0.0
+}
+
 func (m *MockConfig) GetLogrusConfig() (*LogrusLoggerConfig, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()

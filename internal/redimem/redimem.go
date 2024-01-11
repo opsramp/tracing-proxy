@@ -218,7 +218,6 @@ func (rm *RedisMembership) scan(conn redis.Conn, pattern, count string, timeout 
 		}
 		close(errChan)
 		close(keyChan)
-
 	}()
 
 	return keyChan, errChan

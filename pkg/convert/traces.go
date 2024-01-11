@@ -19,8 +19,10 @@ const (
 	defaultSampleRate  = int32(1)
 )
 
-var possibleServiceNames = []string{"service_name", "service.name"}
-var possibleInstanceNames = []string{"instance", "k8s.pod.name", "host.name"}
+var (
+	possibleServiceNames  = []string{"service_name", "service.name"}
+	possibleInstanceNames = []string{"instance", "k8s.pod.name", "host.name"}
+)
 
 // TranslateTraceRequestResult represents an OTLP trace request translated into Opsramp-friendly structure
 // RequestSize is total byte size of the entire OTLP request
@@ -189,7 +191,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				// get sample rate after resource and scope attributes have been added
 				sampleRate := getSampleRate(eventAttrs)
 
-				//Copy resource attributes
+				// Copy resource attributes
 				eventAttrs["resourceAttributes"] = traceAttributes["resourceAttributes"]
 
 				// normalizing instance name
@@ -207,10 +209,10 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					}
 				}
 
-				//Copy span attributes
+				// Copy span attributes
 				eventAttrs["spanAttributes"] = traceAttributes["spanAttributes"]
 
-				//Check for event attributes and add them
+				// Check for event attributes and add them
 				for _, sevent := range span.Events {
 					if sevent.Attributes != nil {
 						addAttributesToMap(traceAttributes["eventAttributes"], sevent.Attributes)

@@ -52,12 +52,12 @@ func main() {
 	fileContent = strings.ReplaceAll(fileContent, "<SECRET>", *secret)
 	fileContent = strings.ReplaceAll(fileContent, "<TENANT_ID>", *tenant)
 
-	if err := os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 0600); err != nil {
+	if err := os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 0o600); err != nil {
 		log.Fatal(err)
 	}
 
 	systemctl := exec.Command("systemctl", "--version").Run()
-	if systemctl == nil { //checking os type here
+	if systemctl == nil { // checking os type here
 
 		_ = exec.Command("cp", "/opt/opsramp/service_files/tracing-proxy.service", "/etc/systemd/system/tracing-proxy.service").Run()
 		_ = exec.Command("chmod", "0644", "/etc/systemd/system/tracing-proxy").Run()
@@ -78,7 +78,7 @@ func main() {
 
 	systemctl = exec.Command("systemctl", "--version").Run()
 	if systemctl == nil {
-		//Check if the services are enabled and started properly and attempt again
+		// Check if the services are enabled and started properly and attempt again
 		if output, err := exec.Command("systemctl", "is-enabled", ServiceName).Output(); err != nil || string(output) != "enabled" {
 			_ = exec.Command("service", ServiceName, "enable").Run()
 		}

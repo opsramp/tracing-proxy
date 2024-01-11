@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/opsramp/libtrace-go/transmission"
-	"github.com/opsramp/memory"
 	"io"
 	"net"
 	"net/url"
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/opsramp/libtrace-go/transmission"
+	"github.com/opsramp/memory"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
@@ -218,8 +219,8 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("MetricsConfig.MetricsList", []string{".*"})
 
 	// InMemoryCollector Defaults
-	//cpuRequests := os.Getenv("CONTAINER_CPU_REQUEST")
-	//cpuLimit := os.Getenv("CONTAINER_CPU_LIMIT")
+	// cpuRequests := os.Getenv("CONTAINER_CPU_REQUEST")
+	// cpuLimit := os.Getenv("CONTAINER_CPU_LIMIT")
 	memReq := os.Getenv("CONTAINER_MEM_REQUEST")
 	memLimit := os.Getenv("CONTAINER_MEM_LIMIT")
 
@@ -335,7 +336,6 @@ func (f *fileConfig) unmarshal() error {
 	f.mux.Lock()
 	defer f.mux.Unlock()
 	err := f.config.Unmarshal(f.conf)
-
 	if err != nil {
 		return err
 	}
