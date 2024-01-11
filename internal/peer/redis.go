@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/opsramp/libtrace-go/transmission"
 	"net"
 	"os"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/opsramp/libtrace-go/transmission"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/opsramp/tracing-proxy/config"
@@ -85,7 +86,6 @@ func newRedisPeers(ctx context.Context, c config.Config, done chan struct{}) (Pe
 
 	// deal with this error
 	address, err := publicAddr(c)
-
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +281,6 @@ func publicAddr(c config.Config) (string, error) {
 	// compute the public version of my peer listen address
 	listenAddr, _ := c.GetGRPCPeerListenAddr()
 	_, port, err := net.SplitHostPort(listenAddr)
-
 	if err != nil {
 		return "", err
 	}

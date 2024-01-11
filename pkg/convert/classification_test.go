@@ -1,9 +1,10 @@
 package convert
 
 import (
-	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	"reflect"
 	"testing"
+
+	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 )
 
 func TestNormalizeClassification(t *testing.T) {

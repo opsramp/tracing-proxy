@@ -3,14 +3,15 @@ package peer
 import (
 	"context"
 	"fmt"
-	"github.com/opsramp/libtrace-go/proto/proxypb"
-	"github.com/opsramp/tracing-proxy/config"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"net/url"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/opsramp/libtrace-go/proto/proxypb"
+	"github.com/opsramp/tracing-proxy/config"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type filePeers struct {
@@ -36,7 +37,6 @@ func newFilePeers(c config.Config) Peers {
 }
 
 func (p *filePeers) GetPeers() ([]string, error) {
-
 	if !firstOccurancesOfGetPeers {
 		firstOccurancesOfGetPeers = true
 		return p.c.GetPeers()
@@ -68,6 +68,7 @@ func (p *filePeers) watchFilePeers() {
 		}
 	}
 }
+
 func (p *filePeers) RegisterUpdatedPeersCallback(callback func()) {
 	// do nothing, file based peers are not reloaded
 	p.callbacks = append(p.callbacks, callback)

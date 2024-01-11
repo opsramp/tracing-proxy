@@ -1,12 +1,13 @@
 package app
 
 import (
+	"net/http"
+
 	"github.com/opsramp/tracing-proxy/collect"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/metrics"
 	"github.com/opsramp/tracing-proxy/route"
-	"net/http"
 )
 
 var OpsrampToken string

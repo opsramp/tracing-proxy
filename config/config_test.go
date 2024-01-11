@@ -114,7 +114,7 @@ MetricsConfig:
 	}
 	s := string(cfg)
 	s = strings.ReplaceAll(s, "ListenAddr: 0.0.0.0:8080", "ListenAddr: 0.0.0.0:9000")
-	if file, err := os.OpenFile(config, os.O_RDWR, 0644); err == nil {
+	if file, err := os.OpenFile(config, os.O_RDWR, 0o644); err == nil {
 		if err := file.Truncate(0); err != nil {
 			t.Error(err)
 		}
@@ -132,12 +132,10 @@ MetricsConfig:
 	if d, _ := c.GetListenAddr(); d != "0.0.0.0:9000" {
 		t.Error("received", d, "expected", "0.0.0.0:9000")
 	}
-
 }
 
 func TestReadDefaults(t *testing.T) {
 	c, err := NewConfig("../config_unit_tests.yaml", "../rules_unit_tests.yaml", func(err error) {})
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -188,7 +186,6 @@ func TestReadDefaults(t *testing.T) {
 
 func TestReadRulesConfig(t *testing.T) {
 	c, err := NewConfig("../config_unit_tests.yaml", "../rules_unit_tests.yaml", func(err error) {})
-
 	if err != nil {
 		t.Error(err)
 	}

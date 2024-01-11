@@ -2,14 +2,15 @@ package logger
 
 import (
 	"fmt"
-	"github.com/opsramp/tracing-proxy/config"
-	"github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
 	"path"
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/opsramp/tracing-proxy/config"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // LogrusLogger is a Logger implementation that sends all logs to stdout using
@@ -222,8 +223,7 @@ var (
 	presentProjectRoot string
 )
 
-type CallerHook struct {
-}
+type CallerHook struct{}
 
 func (h *CallerHook) Fire(entry *logrus.Entry) error {
 	functionName, fileName := h.caller()
