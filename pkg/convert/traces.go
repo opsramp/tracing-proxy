@@ -6,7 +6,6 @@ import (
 	"github.com/google/martian/log"
 	"io"
 	"math"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -118,29 +117,12 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 
 				spanKind := getSpanKind(span.Kind)
 
-				var spanStatusCode, httpstatus, rpcstatus int64
+				var spanStatusCode int64
 				var isError bool
-				var checkError string
-				httpstatus = -2321
-				rpcstatus = -32229
-
-				fmt.Println("spanID: ", spanID, "0. span.Attributes was: %+v ", span.Attributes)
-
-				fmt.Sprintf("spanID: ", spanID, "0. span.Attributes was: %+v \n", span.Attributes)
-
-				fmt.Printf("spanID: ", spanID, "0. span.Attributes was: %+v \n", span.Attributes)
-
-				fmt.Printf("spanID: ", spanID, "0. span.Attributes was: %v \n", span.Attributes)
 
 				for key, attributeValue := range span.Attributes {
-					if attributeValue.GetKey() == "error" {
-						fmt.Println("1. span.SpanId was: ", span.SpanId, "isError Was: ", span.Attributes[key].Value.GetBoolValue())
-						fmt.Println("2. span.SpanId was: ", spanID, "isError Was: ", span.Attributes[key].Value.GetBoolValue())
-						checkError = fmt.Sprintf("%v", span.Attributes[key].Value.GetBoolValue())
-					}
-					fmt.Println("3. span.SpanId was: ", spanID, "attributeValue.GetKey(): ", attributeValue.GetKey(), "span.Attributes[key].Value.GetIntValue() ", span.Attributes[key].Value.GetKvlistValue())
+
 					if attributeValue.GetKey() == "http.status_code" {
-						fmt.Printf("spanID span.Attributes[key].Value : %+v span.Attributes[key].Value type: %T \n", reflect.TypeOf(span.Attributes[key].Value))
 						statusCodeType := fmt.Sprintf("%v", span.Attributes[key].Value)
 						if strings.Contains(statusCodeType, "int") {
 							spanStatusCode = span.Attributes[key].Value.GetIntValue()
@@ -151,10 +133,6 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 								log.Errorf("Unable to Check span status Code: ", err, " statusCodeType was: ", statusCodeType)
 							}
 						}
-
-						httpstatus = spanStatusCode
-						fmt.Println("4. span.SpanId was: ", span.SpanId, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
-						fmt.Println("5. span.SpanId was: ", spanID, "isError Was: ", checkError, "spanStatusCode was: ", spanStatusCode)
 						if spanStatusCode >= 400 || spanStatusCode == 0 {
 							isError = true
 							break
@@ -170,7 +148,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 								log.Errorf("Unable to Check span status Code: ", err)
 							}
 						}
-						rpcstatus = spanStatusCode
+
 						if spanStatusCode != 0 {
 							isError = true
 							break
@@ -205,8 +183,6 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				if isError {
 					eventAttrs["error"] = isError
 				}
-
-				fmt.Println("The span error status is set based on the value of statusCode: ", spanStatusCode, " Error status was: ", isError, "for spanId: ", spanID, "httpstatus was: ", httpstatus, "rpcstatus was: ", rpcstatus)
 
 				if span.Status != nil && len(span.Status.Message) > 0 {
 					eventAttrs["statusMessage"] = span.Status.Message
