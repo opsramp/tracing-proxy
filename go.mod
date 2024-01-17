@@ -1,8 +1,6 @@
 module github.com/opsramp/tracing-proxy
 
-go 1.21.3
-
-toolchain go1.21.5
+go 1.21.6
 
 require (
 	github.com/dgryski/go-wyhash v0.0.0-20191203203029-c4841ae36371
