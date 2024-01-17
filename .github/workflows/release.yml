@@ -99,10 +99,10 @@ jobs:
         with:
           images: ghcr.io/LokeshOpsramp/trace-proxy
           tags: |
-            type=semver,pattern="${{ github.event.release.tag_name }}-hpe"
+            type=semver,pattern=${{ github.event.release.tag_name }}-hpe
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           file: "{context}/Dockerfile_debian"
           push: true
-          tags: "${{ steps.meta.outputs.tags }}-hpe"
+          tags: ${{ steps.meta.outputs.tags }}
