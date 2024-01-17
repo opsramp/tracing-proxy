@@ -101,11 +101,11 @@ jobs:
           flavor: |
             latest=true
             suffix=-hpe,onlatest=true
-          tags: | 
+          tags: |
             type=semver,pattern=${{ github.event.release.tag_name }}
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          file: "${{ github.workspace }}/deploy/Dockerfile"
+          context: "{{defaultContext}}:deploy"
           push: true
           tags: ${{ steps.meta.outputs.tags }}
