@@ -100,7 +100,7 @@ jobs:
           images: ghcr.io/LokeshOpsramp/trace-proxy
           flavor: |
             latest=true
-            suffix="-hpe",onlatest=true
+            suffix=-hpe,onlatest=true
           tags: | 
             type=semver,pattern=${{ github.event.release.tag_name }}
       - name: Build and push
