@@ -98,12 +98,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/LokeshOpsramp/trace-proxy
+          flavor: |
+            latest=true
+            suffix=-hpe,onlatest=true
           tags: |
             type=semver,pattern=${{ github.event.release.tag_name }}
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: "Dockerfile_debian"
+          context: "{{defaultContext}}"
+          file: "deploy/Dockerfile"
           push: true
-          tags: "${{ steps.meta.outputs.tags }}-hpe"
+          tags: ${{ steps.meta.outputs.tags }}

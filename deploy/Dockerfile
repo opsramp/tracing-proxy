@@ -30,12 +30,12 @@ RUN set -eux; \
 ARG BUILD_ID="17.0.1"
 WORKDIR /app
 
-ADD go.mod go.sum ./
+ADD ../go.mod ../go.sum ./
 
 RUN go mod download
 RUN go mod verify
 
-ADD . .
+ADD .. .
 
 RUN CGO_ENABLED=0 \
     GOOS=${TARGETOS} \
