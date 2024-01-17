@@ -3,9 +3,11 @@ package convert
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/google/martian/log"
 	"io"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
@@ -121,14 +123,34 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				var isError bool
 
 				for key, attributeValue := range span.Attributes {
+
 					if attributeValue.GetKey() == "http.status_code" {
-						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						statusCodeType := fmt.Sprintf("%v", span.Attributes[key].Value)
+						if strings.Contains(statusCodeType, "int") {
+							spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						} else {
+							var err error
+							spanStatusCode, err = strconv.ParseInt(span.Attributes[key].Value.GetStringValue(), 10, 64)
+							if err != nil {
+								log.Errorf("Unable to Check span status Code: ", err, " statusCodeType was: ", statusCodeType)
+							}
+						}
 						if spanStatusCode >= 400 || spanStatusCode == 0 {
 							isError = true
 							break
 						}
 					} else if attributeValue.GetKey() == "rpc.grpc.status_code" {
-						spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						statusCodeType := fmt.Sprintf("%v", span.Attributes[key].Value)
+						if strings.Contains(statusCodeType, "int") {
+							spanStatusCode = span.Attributes[key].Value.GetIntValue()
+						} else {
+							var err error
+							spanStatusCode, err = strconv.ParseInt(span.Attributes[key].Value.GetStringValue(), 10, 64)
+							if err != nil {
+								log.Errorf("Unable to Check span status Code: ", err)
+							}
+						}
+
 						if spanStatusCode != 0 {
 							isError = true
 							break
@@ -163,8 +185,6 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				if isError {
 					eventAttrs["error"] = isError
 				}
-
-				fmt.Println("The span error status is set based on the value of statusCode: ", spanStatusCode, " Error status was: ", isError, "for spanId: ", spanID)
 
 				if span.Status != nil && len(span.Status.Message) > 0 {
 					eventAttrs["statusMessage"] = span.Status.Message
