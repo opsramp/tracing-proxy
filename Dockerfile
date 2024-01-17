@@ -1,11 +1,11 @@
-FROM --platform=$BUILDPLATFORM golang:alpine as builder
+FROM --platform=$BUILDPLATFORM golang:1.21.6-alpine3.19 as builder
 
 ARG TARGETOS
 ARG TARGETARCH
 
 RUN apk update && apk add --no-cache git bash ca-certificates && update-ca-certificates
 
-ARG BUILD_ID="17.0.0"
+ARG BUILD_ID="17.0.1"
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 \
     -o tracing-proxy \
     ./cmd/tracing-proxy
 
-FROM --platform=$TARGETPLATFORM alpine:3.18
+FROM --platform=$TARGETPLATFORM alpine:3.19
 
 RUN apk update && apk add --no-cache bash ca-certificates && update-ca-certificates
 
