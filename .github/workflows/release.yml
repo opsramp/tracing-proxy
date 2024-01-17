@@ -104,6 +104,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: "{context}/Dockerfile_debian"
+          file: "Dockerfile_debian"
           push: true
           tags: "${{ steps.meta.outputs.tags }}-hpe"
