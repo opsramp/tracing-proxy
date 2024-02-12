@@ -28,6 +28,13 @@ type Event struct {
 	SampleRate  uint
 	Timestamp   time.Time
 	Data        map[string]interface{}
+	SpanEvents  []SpanEvent
+}
+
+type SpanEvent struct {
+	Attributes map[string]interface{}
+	Timestamp  uint64
+	Name       string
 }
 
 // Trace isn't something that shows up on the wire; it gets created within

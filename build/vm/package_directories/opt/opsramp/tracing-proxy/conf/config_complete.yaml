@@ -94,6 +94,12 @@ AddAdditionalMetadata: { "app": "default" }
 # Duration is difference between end and start time of a span
 Threshold: 500
 
+# Url to push events as logs
+LogsEndpoint: "<OPSRAMP_LOGS_API>"
+
+# If true trace proxy will send span events as logs
+SendEvents: true
+
 # EnvironmentCacheTTL is the amount of time a cache entry will live that associates
 # an API key with an environment name.
 # Cache misses lookup the environment name using OpsRampAPI config value.

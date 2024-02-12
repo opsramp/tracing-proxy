@@ -117,6 +117,13 @@ func (m *MockConfig) GetThreshold() float64 {
 	return 0.0
 }
 
+func (m *MockConfig) GetLogsEndpoint() string {
+	return ""
+}
+
+func (m *MockConfig) GetSendEvents() bool {
+	return false
+}
 func (m *MockConfig) GetLogrusConfig() (*LogrusLoggerConfig, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
