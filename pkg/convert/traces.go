@@ -36,21 +36,22 @@ type TranslateTraceRequestResult struct {
 
 // TranslateTraceRequestFromReader translates an OTLP/HTTP request into Honeycomb-friendly structure
 // RequestInfo is the parsed information from the HTTP headers
-func TranslateTraceRequestFromReader(body io.ReadCloser, ri RequestInfo, additionalAttr map[string]string) (*TranslateOTLPRequestResult, error) {
+func TranslateTraceRequestFromReader(body io.ReadCloser, ri RequestInfo, additionalAttr map[string]string, sendEvents bool) (*TranslateOTLPRequestResult, error) {
 	request := &coltracepb.ExportTraceServiceRequest{}
 	if err := parseOtlpRequestBody(body, ri.ContentType, ri.ContentEncoding, request); err != nil {
 		return nil, fmt.Errorf("%s: %s", ErrFailedParseBody, err)
 	}
-	return TranslateTraceRequest(request, ri, additionalAttr)
+	return TranslateTraceRequest(request, ri, additionalAttr, sendEvents)
 }
 
 // TranslateTraceRequest translates an OTLP/gRPC request into OpsRamp-friendly structure
 // RequestInfo is the parsed information from the gRPC metadata
-func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri RequestInfo, additionalResAttr map[string]string) (*TranslateOTLPRequestResult, error) {
+func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri RequestInfo, additionalResAttr map[string]string, sendEvents bool) (*TranslateOTLPRequestResult, error) {
 	var batches []Batch
 
 	for _, resourceSpan := range request.ResourceSpans {
 		var events []Event
+		var spanEvents []SpanEvent
 		resourceAttrs := getResourceAttributes(resourceSpan.Resource)
 		dataset := getDataset(ri, resourceAttrs)
 		traceAttributes := make(map[string]map[string]interface{})
@@ -233,11 +234,25 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				eventAttrs["spanAttributes"] = traceAttributes["spanAttributes"]
 
 				// Check for event attributes and add them
-				for _, sevent := range span.Events {
-					if sevent.Attributes != nil {
-						addAttributesToMap(traceAttributes["eventAttributes"], sevent.Attributes)
+
+				fmt.Println("SendEvents Value was: ", sendEvents)
+				if sendEvents {
+					for _, sevent := range span.Events {
+						traceAttributes["spanEventAttributes"] = make(map[string]interface{})
+						if sevent.Attributes != nil {
+							addAttributesToMap(traceAttributes["eventAttributes"], sevent.Attributes)
+						}
+						addAttributesToMap(traceAttributes["spanEventAttributes"], sevent.Attributes)
+						traceAttributes["spanEventAttributes"]["traceId"] = traceID
+						traceAttributes["spanEventAttributes"]["spanId"] = spanID
+						spanEvents = append(spanEvents, SpanEvent{
+							Name:       sevent.GetName(),
+							Timestamp:  sevent.TimeUnixNano,
+							Attributes: traceAttributes["spanEventAttributes"],
+						})
 					}
 				}
+
 				eventAttrs["eventAttributes"] = traceAttributes["eventAttributes"]
 
 				eventAttrs["time"] = int64(span.StartTimeUnixNano)
@@ -248,6 +263,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					Attributes: eventAttrs,
 					Timestamp:  timestamp,
 					SampleRate: sampleRate,
+					SpanEvents: spanEvents,
 				})
 			}
 		}
