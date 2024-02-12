@@ -150,6 +150,8 @@ func main() {
 		logrusLogger.Fatal(err)
 	}
 	retryConfig := c.GetRetryConfig()
+	logsEndpoint := c.GetLogsEndpoint()
+	sendEvents := c.GetSendEvents()
 
 	userAgentAddition := "tracing-proxy/" + CollectorVersion
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{ // nolint:all
@@ -180,7 +182,9 @@ func main() {
 				MaxInterval:         retryConfig.MaxInterval,
 				MaxElapsedTime:      retryConfig.MaxElapsedTime,
 			},
-			Logger: logrusLogger,
+			Logger:       logrusLogger,
+			LogsEndpoint: logsEndpoint,
+			SendEvents:   sendEvents,
 		},
 	})
 	if err != nil {
@@ -214,7 +218,9 @@ func main() {
 				MaxInterval:         retryConfig.MaxInterval,
 				MaxElapsedTime:      retryConfig.MaxElapsedTime,
 			},
-			Logger: logrusLogger,
+			Logger:       logrusLogger,
+			LogsEndpoint: logsEndpoint,
+			SendEvents:   sendEvents,
 		},
 	})
 	if err != nil {

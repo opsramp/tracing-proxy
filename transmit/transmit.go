@@ -111,6 +111,16 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 	libhEv.Timestamp = ev.Timestamp
 	libhEv.APIToken = ev.APIToken
 	libhEv.APITenantId = ev.APITenantId
+	var libtraceSpanEvents []libtrace.SpanEvent
+	for _, spanEvent := range ev.SpanEvents {
+		libtraceSpanEvent := libtrace.SpanEvent{
+			Attributes: spanEvent.Attributes,
+			Timestamp:  spanEvent.Timestamp,
+			Name:       spanEvent.Name,
+		}
+		libtraceSpanEvents = append(libtraceSpanEvents, libtraceSpanEvent)
+	}
+	libhEv.SpanEvents = libtraceSpanEvents
 	// metadata is used to make error logs more helpful when processing responses
 	metadata := map[string]any{
 		"api_host":    ev.APIHost,

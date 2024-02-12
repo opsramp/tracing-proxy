@@ -21,8 +21,9 @@ func main() {
 	key := flag.String("K", "", "OpsRamp Key")
 	secret := flag.String("S", "", "OpsRamp Secret")
 	tenant := flag.String("T", "", "OpsRamp TenantID")
-	tracesAPI := flag.String("B", "", "API to Sent Traces (Defaults to Authorization API specified using -A flag if not set)")
+	tracesAPI := flag.String("B", "", "API To Sent Traces (Defaults to Authorization API specified using -A flag if not set)")
 	metricsAPI := flag.String("M", "", "API To Send Metrics (Defaults to Authorization API specified using -A flag if not set)")
+	logsAPI := flag.String("L", "", "API To Send Logs (Defaults to Authorization API specified using -A flag if not set)")
 	flag.Parse()
 
 	if *api == "" {
@@ -51,6 +52,9 @@ func main() {
 	fileContent = strings.ReplaceAll(fileContent, "<KEY>", *key)
 	fileContent = strings.ReplaceAll(fileContent, "<SECRET>", *secret)
 	fileContent = strings.ReplaceAll(fileContent, "<TENANT_ID>", *tenant)
+	if *logsAPI != "" {
+		fileContent = strings.ReplaceAll(fileContent, "<OPSRAMP_LOGS_API>", *logsAPI)
+	}
 
 	if err := os.WriteFile("/opt/opsramp/tracing-proxy/conf/config_complete.yaml", []byte(fileContent), 0o600); err != nil {
 		log.Fatal(err)
