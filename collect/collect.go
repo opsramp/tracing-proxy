@@ -40,8 +40,6 @@ func GetCollectorImplementation(c config.Config) Collector {
 	Threshold = c.GetThreshold()
 	if Threshold <= 0 {
 		Threshold = 125
-	} else {
-		Threshold = Threshold / 4
 	}
 
 	collectorType, err := c.GetCollectorType()
@@ -104,11 +102,7 @@ func (i *InMemCollector) Start() error {
 	i.cache = cache.NewInMemCache(imcConfig.CacheCapacity, i.Metrics, i.Logger)
 
 	// threshold bucket ranges
-	thresholdBuckets := []float64{Threshold}
-	for i := 2; i <= 16; i++ {
-		thresholdBuckets = append(thresholdBuckets, Threshold*float64(i))
-	}
-	thresholdBuckets = append(thresholdBuckets, 32*Threshold, 64*Threshold)
+	thresholdBuckets := []float64{Threshold / 4, Threshold / 3, Threshold / 2, Threshold, 4 * (Threshold / 3), 2 * Threshold, 4 * Threshold, 16 * Threshold, 32 * Threshold}
 
 	// listen for config reloads
 	i.Config.RegisterReloadCallback(i.sendReloadSignal)
