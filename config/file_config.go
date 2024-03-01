@@ -65,6 +65,8 @@ type configContents struct {
 	AddHostMetadataToTrace    bool
 	AddAdditionalMetadata     map[string]string
 	Threshold                 float64
+	LogsEndpoint              string
+	SendEvents                bool
 	AddRuleReasonToTrace      bool
 	EnvironmentCacheTTL       time.Duration
 	DatasetPrefix             string
@@ -476,6 +478,20 @@ func (f *fileConfig) GetThreshold() float64 {
 	defer f.mux.RUnlock()
 
 	return f.conf.Threshold
+}
+
+func (f *fileConfig) GetLogsEndpoint() string {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.LogsEndpoint
+}
+
+func (f *fileConfig) GetSendEvents() bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return f.conf.SendEvents
 }
 
 func (f *fileConfig) GetGRPCListenAddr() (string, error) {

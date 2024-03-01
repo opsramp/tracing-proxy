@@ -178,6 +178,7 @@ func (r *Router) LnS(incomingOrPeer string) {
 
 	// handle OTLP trace requests
 	otlpMuxxer.HandleFunc("/traces", r.postOTLP).Name("otlp")
+	otlpMuxxer.HandleFunc("/log-traces", r.postOTLP).Name("otlp")
 
 	// pass everything else through unmolested
 	muxxer.PathPrefix("/").HandlerFunc(r.proxy).Name("proxy")
