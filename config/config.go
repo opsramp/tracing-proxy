@@ -98,6 +98,12 @@ type Config interface {
 	// GetThreshold is used to caliculate the apdex score
 	GetThreshold() float64
 
+	// GetLogsEnpoint is used to get endpoint for logs
+	GetLogsEndpoint() string
+
+	// Send Events as Logs
+	GetSendEvents() bool
+
 	// GetOtherConfig attempts to fill the passed in struct with the contents of
 	// a subsection of the config.   This is used by optional configurations to
 	// allow different implementations of necessary interfaces configure

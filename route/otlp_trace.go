@@ -27,7 +27,7 @@ func (r *Router) postOTLP(w http.ResponseWriter, req *http.Request) {
 		ri.Dataset, _ = r.Config.GetDataset()
 	}
 
-	result, err := convert.TranslateTraceRequestFromReader(req.Body, ri, r.Config.GetAddAdditionalMetadata())
+	result, err := convert.TranslateTraceRequestFromReader(req.Body, ri, r.Config.GetAddAdditionalMetadata(), r.Config.GetSendEvents())
 	if err != nil {
 		r.handlerReturnWithError(w, ErrUpstreamFailed, err)
 		return
@@ -51,7 +51,7 @@ func (r *Router) Export(ctx context.Context, req *coltracepb.ExportTraceServiceR
 
 	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
 
-	result, err := convert.TranslateTraceRequest(req, ri, r.Config.GetAddAdditionalMetadata())
+	result, err := convert.TranslateTraceRequest(req, ri, r.Config.GetAddAdditionalMetadata(), r.Config.GetSendEvents())
 	if err != nil {
 		return nil, convert.AsGRPCError(err)
 	}
@@ -79,6 +79,15 @@ func processTraceRequest(ctx context.Context, router *Router, batches []convert.
 
 	for _, batch := range batches {
 		for _, ev := range batch.Events {
+			var typeSpanEvents []types.SpanEvent
+			for _, spanEvent := range ev.SpanEvents {
+				typeSpanEvent := types.SpanEvent{
+					Attributes: spanEvent.Attributes,
+					Timestamp:  spanEvent.Timestamp,
+					Name:       spanEvent.Name,
+				}
+				typeSpanEvents = append(typeSpanEvents, typeSpanEvent)
+			}
 			event := &types.Event{
 				Context:     ctx,
 				APIHost:     apiHost,
@@ -89,13 +98,13 @@ func processTraceRequest(ctx context.Context, router *Router, batches []convert.
 				SampleRate:  uint(ev.SampleRate),
 				Timestamp:   ev.Timestamp,
 				Data:        ev.Attributes,
+				SpanEvents:  typeSpanEvents,
 			}
 			if err := router.processEvent(event, requestID); err != nil {
 				router.Logger.Error().Logf("Error processing event: " + err.Error())
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -170,6 +179,88 @@ func (r *Router) ExportTraceProxy(ctx context.Context, in *proxypb.ExportTracePr
 	return &proxypb.ExportTraceProxyServiceResponse{Message: "Received Successfully by peer", Status: "Success"}, nil
 }
 
+func (r *Router) ExportLogTraceProxy(ctx context.Context, in *proxypb.ExportLogTraceProxyServiceRequest) (*proxypb.ExportTraceProxyServiceResponse, error) {
+	r.Logger.Debug().Logf("Received Trace data from peer")
+	r.Metrics.Increment(r.incomingOrPeer + "_router_batch")
+
+	apiHost, err := r.Config.GetOpsrampAPI()
+	if err != nil {
+		r.Logger.Error().Logf("Unable to retrieve APIHost from config while processing OTLP batch")
+		return &proxypb.ExportTraceProxyServiceResponse{Message: "Failed to get apihost", Status: "Failed"}, nil
+	}
+	dataset, _ := r.Config.GetDataset()
+	tenantId, _ := r.Config.GetTenantId()
+
+	var requestID types.RequestIDContextKey
+
+	for _, item := range in.Items {
+		timestamp, err := time.Parse(time.RFC3339Nano, item.Timestamp)
+		if err != nil {
+			r.Logger.Error().Logf("failed to parse timestamp: %v", err)
+			continue
+		}
+
+		var data map[string]interface{}
+		inrec, err := json.Marshal(item.Data)
+		if err != nil {
+			r.Logger.Error().Logf("failed to marshal: %v", err)
+			continue
+		}
+		err = json.Unmarshal(inrec, &data)
+		if err != nil {
+			r.Logger.Error().Logf("failed to unmarshal: %v", err)
+			continue
+		}
+
+		// Translate ResourceAttributes , SpanAttributes, EventAttributes from proto format to interface{}
+		attributes := make(map[string]interface{})
+		for _, kv := range item.Data.ResourceAttributes {
+			attributes[kv.Key] = extractKeyValue(kv.Value)
+		}
+		data["resourceAttributes"] = attributes
+
+		attributes = make(map[string]interface{})
+		for _, kv := range item.Data.SpanAttributes {
+			attributes[kv.Key] = extractKeyValue(kv.Value)
+		}
+		data["spanAttributes"] = attributes
+
+		attributes = make(map[string]interface{})
+		for _, kv := range item.Data.EventAttributes {
+			attributes[kv.Key] = extractKeyValue(kv.Value)
+		}
+		data["eventAttributes"] = attributes
+
+		// Type cast start and end time
+		data["startTime"] = item.Data.StartTime
+		data["endTime"] = item.Data.EndTime
+
+		var proxySpanEvents []types.SpanEvent
+		for _, spanEvent := range item.Data.SpanEvents {
+			proxySpanEvent := types.SpanEvent{
+				Attributes: ConvertKeyValueSliceToMap(spanEvent.SpanEventAttributes),
+				Timestamp:  spanEvent.TimeStamp,
+				Name:       spanEvent.Name,
+			}
+			proxySpanEvents = append(proxySpanEvents, proxySpanEvent)
+		}
+
+		event := &types.Event{
+			Context:     ctx,
+			APIHost:     apiHost,
+			APITenantId: tenantId,
+			Dataset:     dataset,
+			Timestamp:   timestamp,
+			Data:        data,
+			SpanEvents:  proxySpanEvents,
+		}
+		if err := r.processEvent(event, requestID); err != nil {
+			r.Logger.Error().Logf("Error processing event: " + err.Error())
+		}
+	}
+	return &proxypb.ExportTraceProxyServiceResponse{Message: "Received Successfully by peer", Status: "Success"}, nil
+}
+
 func (r *Router) Status(context.Context, *proxypb.StatusRequest) (*proxypb.StatusResponse, error) {
 	return &proxypb.StatusResponse{
 		PeerActive: transmission.DefaultAvailability.Status(),
@@ -193,4 +284,32 @@ func extractKeyValue(v *proxypb.AnyValue) string {
 		return x.KvlistValue.String()
 	}
 	return v.String()
+}
+
+// ConvertKeyValueSliceToMap converts a slice of KeyValue messages to a map of string to interface{}
+func ConvertKeyValueSliceToMap(kvSlice []*proxypb.KeyValue) map[string]interface{} {
+	kvMap := make(map[string]interface{})
+	for _, kv := range kvSlice {
+		// Get the key and value from the KeyValue message
+		key := kv.GetKey()
+		value := kv.GetValue()
+
+		// Convert the value to an interface{} based on the type of the AnyValue message
+		var valueInterface interface{}
+		switch v := value.Value.(type) {
+		case *proxypb.AnyValue_StringValue:
+			valueInterface = v.StringValue
+		case *proxypb.AnyValue_BoolValue:
+			valueInterface = v.BoolValue
+		case *proxypb.AnyValue_IntValue:
+			valueInterface = v.IntValue
+		default:
+			// If the value is unknown, use nil
+			valueInterface = nil
+		}
+
+		// Add the key and value to the map
+		kvMap[key] = valueInterface
+	}
+	return kvMap
 }
