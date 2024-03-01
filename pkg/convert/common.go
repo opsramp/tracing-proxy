@@ -85,11 +85,18 @@ type Batch struct {
 	Events    []Event
 }
 
+type SpanEvent struct {
+	Attributes map[string]interface{}
+	Timestamp  uint64
+	Name       string
+}
+
 // Event represents a single Honeycomb event
 type Event struct {
 	Attributes map[string]interface{}
 	Timestamp  time.Time
 	SampleRate int32
+	SpanEvents []SpanEvent
 }
 
 // RequestInfo represents information parsed from either HTTP headers or gRPC metadata
