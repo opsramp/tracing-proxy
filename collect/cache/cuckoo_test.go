@@ -57,7 +57,7 @@ func BenchmarkCuckooTraceChecker_AddParallel(b *testing.B) {
 	})
 
 	c := NewCuckooTraceChecker(1000000, &metrics.NullMetrics{})
-	ch := make(chan int, numGoroutines)
+	ch := make(chan int, numGoroutines) // nolint:all
 	for i := 0; i < numGoroutines; i++ {
 		p.Go(func() {
 			for n := range ch {
@@ -122,23 +122,7 @@ func BenchmarkCuckooTraceChecker_CheckParallel(b *testing.B) {
 
 	p := pool.New().WithMaxGoroutines(numGoroutines + 1)
 	stop := make(chan struct{})
-	p.Go(func() {
-		n := 0
-		select {
-		case <-stop:
-			return
-		default:
-			if n&1 == 0 {
-				c.Add(traceIDs[n])
-			}
-			n++
-			if n >= b.N {
-				n = 0
-			}
-		}
-	})
-
-	ch := make(chan int, numGoroutines)
+	ch := make(chan int, numGoroutines) //  nolint:all
 	for i := 0; i < numGoroutines; i++ {
 		p.Go(func() {
 			for n := range ch {
