@@ -214,6 +214,8 @@ github.com/opsramp/libtrace-go v0.0.0-20240214103128-b8df5dd86f8b h1:ENygJduXnNQ
 github.com/opsramp/libtrace-go v0.0.0-20240214103128-b8df5dd86f8b/go.mod h1:AeZbDB89H/6oPxc9BigtICS/KajYQU5sY/wvZyHlED4=
 github.com/opsramp/libtrace-go v0.0.0-20240222080827-11a5181e421f h1:Innf4W2renC8vIu9myR8fKVPCsc2hAbuYApWbWDgoDw=
 github.com/opsramp/libtrace-go v0.0.0-20240222080827-11a5181e421f/go.mod h1:AeZbDB89H/6oPxc9BigtICS/KajYQU5sY/wvZyHlED4=
+github.com/opsramp/libtrace-go v0.0.0-20240311065314-852ac0d13f81 h1:lR/z4gMj03M29F8Fd/kH0lQTvOFmmm5hgIlifuei6C0=
+github.com/opsramp/libtrace-go v0.0.0-20240311065314-852ac0d13f81/go.mod h1:AeZbDB89H/6oPxc9BigtICS/KajYQU5sY/wvZyHlED4=
 github.com/opsramp/memory v0.0.0-20230922051903-fb43c78a30b6 h1:8n6I6RZ+EVc5EmjEmYfvPVTVABUmOsZZ8Y/nHYn8H70=
 github.com/opsramp/memory v0.0.0-20230922051903-fb43c78a30b6/go.mod h1:LfWe7YI24fDDWRpYrKtIojZGjg5/OifZv9coQDB708I=
 github.com/panmari/cuckoofilter v1.0.3 h1:MgTxXG2aP0YPWFyY1sKt1caWidUFREk9BaOnakDKZOU=
