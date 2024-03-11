@@ -135,7 +135,7 @@ func main() {
 	sendEvents := c.GetSendEvents()
 
 	// set proxy details
-	prxy := proxy.NewProxy(c.GetProxyConfig(), opsrampAPI, logsEndpoint, authConfig.Endpoint)
+	prxy := proxy.NewProxy(c.GetProxyConfig(), opsrampAPI, logsEndpoint, authConfig.Endpoint, c.GetMetricsConfig().OpsRampAPI)
 
 	if err := prxy.UpdateProxyEnvVars(); err != nil {
 		fmt.Printf("error while setting proxy: %v\n", err)
