@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
 	"golang.org/x/net/http/httpproxy"
 	xproxy "golang.org/x/net/proxy"
 )
@@ -18,19 +19,24 @@ import (
 const delim = "|"
 
 type Proxy struct {
-	m                sync.RWMutex
+	Logger logger.Logger `inject:""`
+
+	m                *sync.RWMutex
 	activeProxyIndex int
 	checkUrls        []string
 	proxyList        []config.ProxyConfiguration
+
+	lastUpdated time.Time
 }
 
 func NewProxy(cfg config.ProxyConfiguration, addr ...string) *Proxy {
 	if cfg.Host == "" || cfg.Protocol == "" {
 		return &Proxy{
-			m:                sync.RWMutex{},
+			m:                &sync.RWMutex{},
 			activeProxyIndex: -1,
 			checkUrls:        nil,
 			proxyList:        nil,
+			lastUpdated:      time.Unix(0, 0),
 		}
 	}
 
@@ -41,9 +47,12 @@ func NewProxy(cfg config.ProxyConfiguration, addr ...string) *Proxy {
 			continue
 		}
 
-		host, port, err := net.SplitHostPort(u.Host)
-		if err != nil {
-			continue
+		host, port, _ := net.SplitHostPort(u.Host)
+		if host == "" {
+			host = u.Host
+		}
+		if port == "" {
+			port = u.Port()
 		}
 		if port == "" {
 			port = "80"
@@ -55,10 +64,11 @@ func NewProxy(cfg config.ProxyConfiguration, addr ...string) *Proxy {
 	}
 
 	return &Proxy{
-		m:                sync.RWMutex{},
+		m:                &sync.RWMutex{},
 		activeProxyIndex: 0,
 		checkUrls:        checkAddr,
 		proxyList:        splitProxyConfig(cfg),
+		lastUpdated:      time.Unix(0, 0),
 	}
 }
 
@@ -105,7 +115,7 @@ func (p *Proxy) GetActiveConfig() config.ProxyConfiguration {
 	return p.proxyList[p.activeProxyIndex]
 }
 
-func (p *Proxy) CheckActiveProxyStatus() bool {
+func (p *Proxy) checkActiveProxyStatus() bool {
 	p.m.RLock()
 	defer p.m.RUnlock()
 
@@ -144,8 +154,31 @@ func (p *Proxy) CheckActiveProxyStatus() bool {
 	return false
 }
 
+func (p *Proxy) allowUpdate() bool {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	presentTime := time.Now().UTC()
+	return presentTime.Sub(p.lastUpdated) > time.Minute
+}
+
 func (p *Proxy) SwitchProxy() error {
-	p.rotateProxy()
+	if !p.allowUpdate() {
+		return nil
+	}
+
+	rotations := 0
+	maxRotations := len(p.proxyList)
+	ok := p.checkActiveProxyStatus()
+	for !ok && rotations <= maxRotations {
+		rotations += 1
+		p.rotateProxy()
+		ok = p.checkActiveProxyStatus()
+	}
+
+	p.lastUpdated = time.Now().UTC()
+
+	p.Logger.Info().Logf("proxy index changed to: %d", p.activeProxyIndex)
 	return p.UpdateProxyEnvVars()
 }
 
@@ -165,7 +198,7 @@ func (p *Proxy) UpdateProxyEnvVars() error {
 	proxyUrl := ""
 	proxyUrl = fmt.Sprintf("%s://%s:%s/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
 	if proxyConfig.Username != "" && proxyConfig.Password != "" {
-		proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%s", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
+		proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%s/", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
 	}
 	err := os.Setenv("HTTPS_PROXY", proxyUrl)
 	if err != nil {

@@ -242,16 +242,15 @@ func (oauth *Auth) UnaryClientInterceptor(c context.Context,
 			if retriesCount%2 == 0 {
 				// check if the active proxy is working
 				if oauth.Proxy.Enabled() {
-					if ok := oauth.Proxy.CheckActiveProxyStatus(); !ok {
-						_ = oauth.Proxy.SwitchProxy()
-						if err := oauth.conn.RenewConnection(); err != nil {
-							// updating the present connection
-							if strings.Contains(method, "LogsService") {
-								cc = oauth.conn.GetLogConn()
-							}
-							if strings.Contains(method, "TraceProxyService") {
-								cc = oauth.conn.GetTraceConn()
-							}
+					_ = oauth.Proxy.SwitchProxy()
+
+					if err := oauth.conn.RenewConnection(); err == nil {
+						// updating the present connection
+						if strings.Contains(method, "LogsService") {
+							cc = oauth.conn.GetLogConn()
+						}
+						if strings.Contains(method, "TraceProxyService") {
+							cc = oauth.conn.GetTraceConn()
 						}
 					}
 				}

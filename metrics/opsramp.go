@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -19,6 +18,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/gorilla/mux"
 	"github.com/opsramp/tracing-proxy/pkg/utils"
+	"github.com/opsramp/tracing-proxy/proxy"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	io_prometheus_client "github.com/prometheus/client_model/go"
@@ -77,6 +77,7 @@ type OpsRampMetrics struct {
 	lock sync.RWMutex
 
 	Client http.Client
+	Proxy  *proxy.Proxy `inject:"proxyConfig"`
 
 	apiEndpoint string
 	tenantID    string
@@ -156,6 +157,13 @@ func (p *OpsRampMetrics) Start() error {
 				statusCode, err := p.Push()
 				if err != nil {
 					p.Logger.Error().Logf("error while pushing metrics with statusCode: %d and Error: %v", statusCode, err)
+					if strings.Contains(err.Error(), "connection refused") ||
+						strings.Contains(err.Error(), "unreachable") {
+						if p.Proxy.Enabled() {
+							_ = p.Proxy.SwitchProxy()
+						}
+						continue
+					}
 					if err.Error() == missingMetricsWriteScope {
 						p.Logger.Info().Logf("renewing auth token since the existing token is missing metrics:write scope")
 						err := p.RenewOAuthToken()
@@ -521,7 +529,6 @@ type OpsRampAuthTokenResponse struct {
 func (p *OpsRampMetrics) Populate() {
 	metricsConfig := p.Config.GetMetricsConfig()
 	authConfig := p.Config.GetAuthConfig()
-	proxyConfig := p.Config.GetProxyConfig()
 
 	p.apiEndpoint = metricsConfig.OpsRampAPI
 
@@ -540,40 +547,11 @@ func (p *OpsRampMetrics) Populate() {
 	}
 	p.re = regexp.MustCompile(regexString)
 
-	proxyURL := ""
-	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
-		p.Logger.Info().Logf("Proxy Configuration found, setting up proxy for Metrics")
-		proxyURL = fmt.Sprintf("%s://%s:%s/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
-		if proxyConfig.Username != "" && proxyConfig.Password != "" {
-			proxyURL = fmt.Sprintf("%s://%s:%s@%s:%s", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
-			p.Logger.Info().Logf("Using Authentication for ProxyConfiguration Communication for Metrics")
-		}
-	}
+	_ = p.Proxy.UpdateProxyEnvVars()
 
 	p.Client = http.Client{
-		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			MaxIdleConns:    10,
-			MaxConnsPerHost: 10,
-			IdleConnTimeout: 5 * time.Minute,
-		},
-		Timeout: time.Duration(240) * time.Second,
-	}
-	if proxyURL != "" {
-		proxyURL, err := url.Parse(proxyURL)
-		if err != nil {
-			p.Logger.Error().Logf("skipping proxy err: %v", err)
-		} else {
-			p.Client = http.Client{
-				Transport: &http.Transport{
-					Proxy:           http.ProxyURL(proxyURL),
-					MaxIdleConns:    10,
-					MaxConnsPerHost: 10,
-					IdleConnTimeout: 5 * time.Minute,
-				},
-				Timeout: time.Duration(240) * time.Second,
-			}
-		}
+		Transport: utils.CreateNewHTTPTransport(),
+		Timeout:   time.Duration(240) * time.Second,
 	}
 }
 
@@ -900,6 +878,12 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 
 	resp, err := p.Client.Do(req)
 	if err != nil {
+		if strings.Contains(err.Error(), "connection refused") ||
+			strings.Contains(err.Error(), "unreachable") {
+			if p.Proxy.Enabled() {
+				_ = p.Proxy.SwitchProxy()
+			}
+		}
 		return err
 	}
 
