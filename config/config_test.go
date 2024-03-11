@@ -11,7 +11,7 @@ import (
 )
 
 // creates two temporary toml files from the strings passed in and returns their filenames
-func createTempConfigs(t *testing.T, configBody string, rulesBody string) (string, string) {
+func createTempConfigs(t *testing.T, configBody, rulesBody string) (string, string) {
 	tmpDir, err := os.MkdirTemp("", "")
 	assert.NoError(t, err)
 

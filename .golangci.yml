@@ -2,8 +2,13 @@
 linters:
   enable:
     - gocritic
+    - goimports
+    - gofumpt
 
 linters-settings:
+  gofumpt:
+    module-path: "github.com/opsramp/tracing-proxy"
+    extra-rules: true
   gocritic:
     enabled-checks:
       - ruleguard
