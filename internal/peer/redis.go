@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opsramp/libtrace-go/transmission"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/transmission"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/opsramp/tracing-proxy/config"

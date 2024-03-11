@@ -173,7 +173,7 @@ func (p *OpsRampMetrics) Start() error {
 
 // Register takes a name and a metric type. The type should be one of "counter",
 // "gauge", or "histogram"
-func (p *OpsRampMetrics) Register(name string, metricType string) {
+func (p *OpsRampMetrics) Register(name, metricType string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -227,7 +227,7 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 
 // RegisterWithDescriptionLabels takes a name, a metric type, description, labels. The type should be one of "counter",
 // "gauge", or "histogram"
-func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
+func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name, metricType, desc string, labels []string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -543,9 +543,9 @@ func (p *OpsRampMetrics) Populate() {
 	proxyURL := ""
 	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
 		p.Logger.Info().Logf("Proxy Configuration found, setting up proxy for Metrics")
-		proxyURL = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
+		proxyURL = fmt.Sprintf("%s://%s:%s/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
 		if proxyConfig.Username != "" && proxyConfig.Password != "" {
-			proxyURL = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
+			proxyURL = fmt.Sprintf("%s://%s:%s@%s:%s", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
 			p.Logger.Info().Logf("Using Authentication for ProxyConfiguration Communication for Metrics")
 		}
 	}

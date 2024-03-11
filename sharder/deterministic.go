@@ -86,7 +86,7 @@ func (d *DetShard) String() string {
 
 // GetHashesFor generates a number of hashShards for a given DetShard by repeatedly hashing the
 // seed with itself. The intent is to generate a repeatable pseudo-random sequence.
-func (d *DetShard) GetHashesFor(index int, n int, seed uint64) []hashShard {
+func (d *DetShard) GetHashesFor(index, n int, seed uint64) []hashShard {
 	var hashes []hashShard
 	addr := d.GetAddress()
 	for i := 0; i < n; i++ {

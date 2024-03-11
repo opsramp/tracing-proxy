@@ -20,12 +20,26 @@ type Entry interface {
 
 	// WithString does the same thing as WithField, but is more efficient for
 	// disabled log levels. (Because the value parameter doesn't escape.)
-	WithString(key string, value string) Entry
+	WithString(key, value string) Entry
 
 	WithFields(fields map[string]interface{}) Entry
 	Logf(f string, args ...interface{})
 }
 
-func GetLoggerImplementation() Logger {
-	return &LogrusLogger{}
+func GetLoggerImplementation(format, output, filename string, maxSize, maxBackup int, compress bool) Logger {
+	return &LogrusLogger{
+		LogFormatter: format,
+		LogOutput:    output,
+		File: struct {
+			FileName   string
+			MaxSize    int
+			MaxBackups int
+			Compress   bool
+		}{
+			FileName:   filename,
+			MaxSize:    maxSize,
+			MaxBackups: maxBackup,
+			Compress:   compress,
+		},
+	}
 }

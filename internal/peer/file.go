@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opsramp/libtrace-go/proto/proxypb"
 	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/proto/proxypb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opsramp/libtrace-go/transmission"
 	"github.com/opsramp/memory"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/constants"
+	"github.com/opsramp/tracing-proxy/pkg/retry"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
-	"github.com/opsramp/libtrace-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -83,21 +83,13 @@ type configContents struct {
 	ProxyConfiguration
 	AuthConfiguration
 	MetricsConfig
-	RetryConfiguration *RetryConfiguration
-}
-
-type RetryConfiguration struct {
-	InitialInterval     time.Duration
-	RandomizationFactor float64
-	Multiplier          float64
-	MaxInterval         time.Duration
-	MaxElapsedTime      time.Duration
+	RetryConfiguration *retry.Config
 }
 
 type ProxyConfiguration struct {
 	Protocol string
 	Host     string
-	Port     int64
+	Port     string
 	Username string
 	Password string
 }
@@ -187,12 +179,12 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 	c.SetDefault("LoggingLevel", "info")
 	c.SetDefault("Collector", "InMemCollector")
 	c.SetDefault("SendDelay", 2*time.Second)
-	c.SetDefault("BatchTimeout", libtrace.DefaultBatchTimeout)
+	c.SetDefault("BatchTimeout", constants.DefaultBatchTimeout)
 	c.SetDefault("TraceTimeout", 60*time.Second)
 	c.SetDefault("MaxBatchSize", 500)
 	c.SetDefault("SendTicker", 100*time.Millisecond)
-	c.SetDefault("UpstreamBufferSize", libtrace.DefaultPendingWorkCapacity)
-	c.SetDefault("PeerBufferSize", libtrace.DefaultPendingWorkCapacity)
+	c.SetDefault("UpstreamBufferSize", constants.DefaultPendingWorkCapacity)
+	c.SetDefault("PeerBufferSize", constants.DefaultPendingWorkCapacity)
 	c.SetDefault("MaxAlloc", uint64(0))
 	c.SetDefault("AddHostMetadataToTrace", false) // nolint:all // setting default value
 	c.SetDefault("AddAdditionalMetadata", map[string]string{"app": "default"})
@@ -644,19 +636,12 @@ func (f *fileConfig) GetAuthConfig() AuthConfiguration {
 	return f.conf.AuthConfiguration
 }
 
-func (f *fileConfig) GetRetryConfig() *RetryConfiguration {
+func (f *fileConfig) GetRetryConfig() *retry.Config {
 	f.mux.RLock()
 	defer f.mux.RUnlock()
 
 	if f.conf.RetryConfiguration == nil {
-		defaultConfig := transmission.NewDefaultRetrySettings()
-		return &RetryConfiguration{
-			InitialInterval:     defaultConfig.InitialInterval,
-			RandomizationFactor: defaultConfig.RandomizationFactor,
-			Multiplier:          defaultConfig.Multiplier,
-			MaxInterval:         defaultConfig.MaxInterval,
-			MaxElapsedTime:      defaultConfig.MaxElapsedTime,
-		}
+		return retry.NewDefaultRetrySettings()
 	}
 
 	return f.conf.RetryConfiguration

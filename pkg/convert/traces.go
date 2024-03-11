@@ -3,12 +3,13 @@ package convert
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/google/martian/log"
 	"io"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/martian/log"
 
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -124,7 +125,6 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				var isError bool
 
 				for key, attributeValue := range span.Attributes {
-
 					if attributeValue.GetKey() == "http.status_code" {
 						statusCodeType := fmt.Sprintf("%v", span.Attributes[key].Value)
 						if strings.Contains(statusCodeType, "int") {
