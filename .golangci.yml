@@ -1,9 +1,10 @@
 ---
 linters:
   enable:
-    - gocritic
-    - goimports
+    - whitespace
+    - misspell
     - gofumpt
+    - gocritic
 
 linters-settings:
   gofumpt:

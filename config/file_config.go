@@ -252,7 +252,6 @@ func NewConfig(config, rules string, errorCallback func(error)) (Config, error) 
 
 	r.SetConfigFile(rules)
 	err = r.ReadInConfig()
-
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +334,6 @@ func (f *fileConfig) unmarshal() error {
 	}
 
 	err = f.rules.Unmarshal(f.conf)
-
 	if err != nil {
 		return err
 	}
@@ -740,7 +738,6 @@ func (f *fileConfig) GetSamplerConfigForDataset(dataset string) (interface{}, st
 		if sub := f.rules.Sub(dataset); sub != nil {
 			return i, t, sub.Unmarshal(i)
 		}
-
 	} else if ok := f.rules.IsSet("Sampler"); ok {
 		t := f.rules.GetString("Sampler")
 		var i interface{}

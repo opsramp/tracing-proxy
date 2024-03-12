@@ -110,10 +110,10 @@ func BenchmarkDeterministicShard(b *testing.B) {
 		selfAddr = "127.0.0.1:8081"
 		traceID  = "test"
 	)
-	for _, strat := range []string{"legacy", "hash"} {
+	for _, start := range []string{"legacy", "hash"} {
 		for i := 0; i < 5; i++ {
 			npeers := i*10 + 4
-			b.Run(fmt.Sprintf("benchmark_deterministic_%s_%d", strat, npeers), func(b *testing.B) {
+			b.Run(fmt.Sprintf("benchmark_deterministic_%s_%d", start, npeers), func(b *testing.B) {
 				peers := []string{
 					"http://" + selfAddr,
 				}
@@ -124,7 +124,7 @@ func BenchmarkDeterministicShard(b *testing.B) {
 					GetPeerListenAddrVal:   selfAddr,
 					GetPeersVal:            peers,
 					PeerManagementType:     "file",
-					PeerManagementStrategy: strat,
+					PeerManagementStrategy: start,
 				}
 				done := make(chan struct{})
 				defer close(done)
