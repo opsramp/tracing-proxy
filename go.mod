@@ -20,6 +20,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.17.4
+	github.com/opsramp/go-proxy-dialer v0.0.0-20240209060732-5e75def1c040
 	github.com/opsramp/memory v0.0.0-20230922051903-fb43c78a30b6
 	github.com/panmari/cuckoofilter v1.0.3
 	github.com/pelletier/go-toml/v2 v2.1.1
@@ -37,7 +38,7 @@ require (
 	github.com/tidwall/gjson v1.17.1
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	go.opentelemetry.io/proto/otlp v1.1.0
-	golang.org/x/net v0.20.0
+	golang.org/x/net v0.21.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe
 	google.golang.org/grpc v1.62.1

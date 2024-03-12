@@ -1,6 +1,11 @@
 package proxy
 
 import (
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"sync"
@@ -8,6 +13,8 @@ import (
 	"time"
 
 	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_splitProxyConfig(t *testing.T) {
@@ -298,6 +305,185 @@ func TestNewProxy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NewProxy(tt.args.cfg, tt.args.addr...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewProxy() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestProxy_SwitchProxy(t *testing.T) {
+	type fields struct {
+		Logger           logger.Logger
+		m                *sync.RWMutex
+		activeProxyIndex int
+		checkUrls        []string
+		proxyList        []config.ProxyConfiguration
+		lastUpdated      time.Time
+	}
+	tests := []struct {
+		name                   string
+		fields                 fields
+		want                   int
+		wantErr                bool
+		dummyConnectivityCheck func(host, port string, checkUrls []string) bool
+	}{
+		{
+			name: "single proxy and status always false",
+			fields: fields{
+				Logger:           &logger.NullLogger{},
+				m:                &sync.RWMutex{},
+				activeProxyIndex: 0,
+				checkUrls:        nil,
+				proxyList: []config.ProxyConfiguration{
+					{
+						Protocol: "http",
+						Host:     "10.10.10.1",
+						Port:     "3128",
+					},
+				},
+				lastUpdated: time.Unix(0, 0),
+			},
+			want:    0,
+			wantErr: false,
+			dummyConnectivityCheck: func(host, port string, checkUrls []string) bool {
+				return false
+			},
+		},
+		{
+			name: "multiple proxy and status always false",
+			fields: fields{
+				Logger:           &logger.NullLogger{},
+				m:                &sync.RWMutex{},
+				activeProxyIndex: 0,
+				checkUrls:        nil,
+				proxyList: []config.ProxyConfiguration{
+					{
+						Protocol: "http",
+						Host:     "10.10.10.1",
+						Port:     "3128",
+					},
+					{
+						Protocol: "http",
+						Host:     "10.10.10.2",
+						Port:     "3128",
+					},
+					{
+						Protocol: "http",
+						Host:     "10.10.10.3",
+						Port:     "3128",
+					},
+				},
+				lastUpdated: time.Unix(0, 0),
+			},
+			want:    0,
+			wantErr: false,
+			dummyConnectivityCheck: func(host, port string, checkUrls []string) bool {
+				return false
+			},
+		},
+		{
+			name: "multiple proxy and status for index 1 is true",
+			fields: fields{
+				Logger:           &logger.NullLogger{},
+				m:                &sync.RWMutex{},
+				activeProxyIndex: 0,
+				checkUrls:        nil,
+				proxyList: []config.ProxyConfiguration{
+					{
+						Protocol: "http",
+						Host:     "10.10.10.1",
+						Port:     "3128",
+					},
+					{
+						Protocol: "http",
+						Host:     "10.10.10.2",
+						Port:     "3128",
+					},
+					{
+						Protocol: "http",
+						Host:     "10.10.10.3",
+						Port:     "3128",
+					},
+				},
+				lastUpdated: time.Unix(0, 0),
+			},
+			want:    1,
+			wantErr: false,
+			dummyConnectivityCheck: func(host, port string, checkUrls []string) bool {
+				return host == "10.10.10.2"
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := Proxy{
+				Logger:           tt.fields.Logger,
+				m:                tt.fields.m,
+				activeProxyIndex: tt.fields.activeProxyIndex,
+				checkUrls:        tt.fields.checkUrls,
+				proxyList:        tt.fields.proxyList,
+				lastUpdated:      tt.fields.lastUpdated,
+			}
+			checkConnectivity = tt.dummyConnectivityCheck
+
+			err := p.SwitchProxy()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SwitchProxy() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			assert.Equal(t, tt.want, p.activeProxyIndex)
+		})
+	}
+}
+
+func Test_checkConnectivity(t *testing.T) {
+	ns := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintln(w, "I Am Mock Proxy!")
+	}))
+	defer ns.Close()
+	u, err := url.Parse(ns.URL)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	host, port, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintln(w, "Hello, client")
+	}))
+	defer ts.Close()
+
+	type args struct {
+		host      string
+		port      string
+		checkUrls []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "working proxy",
+			args: args{
+				host:      host,
+				port:      port,
+				checkUrls: []string{ts.URL},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_ = os.Setenv("HTTP_PROXY", fmt.Sprintf("http://%s:%s", host, port))
+			_ = os.Setenv("HTTPS_PROXY", fmt.Sprintf("http://%s:%s", host, port))
+
+			got := checkConnectivity(tt.args.host, tt.args.port, tt.args.checkUrls)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("checkConnectivity() = %v, want %v", got, tt.want)
 			}
 		})
 	}
