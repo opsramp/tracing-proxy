@@ -2,12 +2,14 @@ package proxy
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -311,6 +313,8 @@ func TestNewProxy(t *testing.T) {
 }
 
 func TestProxy_SwitchProxy(t *testing.T) {
+	backupCheckConnectivity := checkConnectivity
+
 	type fields struct {
 		Logger           logger.Logger
 		m                *sync.RWMutex
@@ -433,11 +437,21 @@ func TestProxy_SwitchProxy(t *testing.T) {
 			assert.Equal(t, tt.want, p.activeProxyIndex)
 		})
 	}
+
+	checkConnectivity = backupCheckConnectivity
 }
 
 func Test_checkConnectivity(t *testing.T) {
 	ns := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = fmt.Fprintln(w, "I Am Mock Proxy!")
+		if r.Method == http.MethodConnect {
+			_, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusServiceUnavailable)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 	}))
 	defer ns.Close()
 	u, err := url.Parse(ns.URL)
@@ -452,6 +466,8 @@ func Test_checkConnectivity(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintln(w, "Hello, client")
+		_, _ = fmt.Fprintln(w, io.EOF)
+		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
 
@@ -470,7 +486,7 @@ func Test_checkConnectivity(t *testing.T) {
 			args: args{
 				host:      host,
 				port:      port,
-				checkUrls: []string{ts.URL},
+				checkUrls: []string{strings.TrimPrefix(ts.URL, "http://")},
 			},
 			want: true,
 		},
@@ -478,8 +494,14 @@ func Test_checkConnectivity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = os.Setenv("HTTP_PROXY", fmt.Sprintf("http://%s:%s", host, port))
-			_ = os.Setenv("HTTPS_PROXY", fmt.Sprintf("http://%s:%s", host, port))
+			err = os.Setenv("HTTP_PROXY", fmt.Sprintf("http://%s:%s/", host, port))
+			if err != nil {
+				t.Error(err)
+			}
+			err = os.Setenv("HTTPS_PROXY", fmt.Sprintf("http://%s:%s/", host, port))
+			if err != nil {
+				t.Error(err)
+			}
 
 			got := checkConnectivity(tt.args.host, tt.args.port, tt.args.checkUrls)
 			if !reflect.DeepEqual(got, tt.want) {

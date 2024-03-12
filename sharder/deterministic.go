@@ -128,17 +128,17 @@ func (d *DeterministicSharder) Start() error {
 
 	// this isn't runtime-reloadable because it would
 	// reassign nearly every trace to a new shard.
-	strat, err := d.Config.GetPeerManagementStrategy()
+	start, err := d.Config.GetPeerManagementStrategy()
 	if err != nil {
 		return fmt.Errorf("getting peer management strategy: %w", err)
 	}
-	switch strat {
+	switch start {
 	case "legacy", "":
 		d.shardFunc = d.WhichShardLegacy
 	case "hash":
 		d.shardFunc = d.WhichShardHashed
 	default:
-		return fmt.Errorf("unknown PeerManagementStrategy '%s'", strat)
+		return fmt.Errorf("unknown PeerManagementStrategy '%s'", start)
 	}
 
 	// Try up to 5 times to find myself in the peer list before giving up

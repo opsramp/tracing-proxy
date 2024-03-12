@@ -94,7 +94,7 @@ func CreateNewAuth(endpoint, key, secret string, timeout time.Duration, retrySet
 
 func (oauth *Auth) Start() error {
 	if oauth.liveliness {
-		return fmt.Errorf("already started, dont reuse Auth object, prefer reinitalization")
+		return fmt.Errorf("already started, dont reuse Auth object, prefer reinitialization")
 	}
 
 	go func() {

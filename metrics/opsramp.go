@@ -612,7 +612,6 @@ func (p *OpsRampMetrics) Push() (int, error) {
 
 	for metricName, metData := range p.metrics {
 		for labelValStr, t := range metData.LabelValues.Copy() {
-
 			timeDiff := time.Now().UTC().Sub(t)
 			if timeDiff < time.Duration(metricsConfig.ReportingInterval)*time.Second*2 {
 				continue
@@ -661,7 +660,6 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	var timeSeries []prompb.TimeSeries
 
 	for _, metricFamily := range metricFamilySlice {
-
 		if !p.re.MatchString(metricFamily.GetName()) {
 			continue
 		}

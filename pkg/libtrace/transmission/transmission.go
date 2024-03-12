@@ -304,7 +304,7 @@ func (h *TraceProxy) Add(ev *Event) {
 }
 
 // tryAdd attempts to add ev to the underlying muster. It returns false if this
-// was unsucessful because the muster queue (muster.Work) is full.
+// was unsuccessful because the muster queue (muster.Work) is full.
 func (h *TraceProxy) tryAdd(ev *Event) bool {
 	h.musterLock.RLock()
 	defer h.musterLock.RUnlock()

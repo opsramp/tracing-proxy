@@ -203,7 +203,6 @@ func (r *Router) LnS(incomingOrPeer string) {
 			r.iopLogger.Error().Logf("failed to get grpc listen addr config: %s", err)
 			return
 		}
-
 	}
 
 	r.iopLogger.Info().Logf("Listening on %s", listenAddr)
@@ -728,7 +727,6 @@ func getEventTime(etHeader string) time.Time {
 						sec, dec := math.Modf(epochFloat)
 						eventTime = time.Unix(int64(sec), int64(dec*(1e9)))
 					}
-
 				}
 			} else {
 				epochFloat, err := strconv.ParseFloat(etHeader, 64)
@@ -805,7 +803,7 @@ func (c *environmentCache) get(key string) (string, error) {
 	}
 
 	// get write lock early so we don't execute getFn in parallel so the
-	// the result will be cached before the next lock is aquired to prevent
+	// the result will be cached before the next lock is acquired to prevent
 	// subsequent calls to getFn for the same key
 	c.mutex.Lock()
 	defer c.mutex.Unlock()

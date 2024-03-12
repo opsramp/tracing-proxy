@@ -153,7 +153,7 @@ func (c *Client) Close() {
 
 // Flush closes and reopens the Output interface, ensuring events
 // are sent without waiting on the batch to be sent asyncronously.
-// Generally, it is more efficient to rely on asyncronous batches than to
+// Generally, it is more efficient to rely on asynchronous batches than to
 // call Flush, but certain scenarios may require Flush if asynchronous sends
 // are not guaranteed to run (i.e. running in AWS Lambda)
 func (c *Client) Flush() {

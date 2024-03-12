@@ -112,7 +112,6 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 			}
 
 			for _, span := range librarySpan.GetSpans() {
-
 				traceAttributes["spanAttributes"] = make(map[string]interface{})
 				traceAttributes["eventAttributes"] = make(map[string]interface{})
 
