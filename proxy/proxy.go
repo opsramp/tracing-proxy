@@ -174,10 +174,12 @@ func (p *Proxy) SwitchProxy() error {
 
 	rotations := 0
 	maxRotations := len(p.proxyList)
+	_ = p.UpdateProxyEnvVars()
 	ok := p.checkActiveProxyStatus()
 	for !ok && rotations < maxRotations {
 		rotations += 1
 		p.rotateProxy()
+		_ = p.UpdateProxyEnvVars()
 		ok = p.checkActiveProxyStatus()
 	}
 
