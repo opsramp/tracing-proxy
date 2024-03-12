@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	_ "github.com/opsramp/go-proxy-dialer/connect"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
 	"golang.org/x/net/http/httpproxy"
@@ -115,13 +116,7 @@ func (p *Proxy) GetActiveConfig() config.ProxyConfiguration {
 	return p.proxyList[p.activeProxyIndex]
 }
 
-func (p *Proxy) checkActiveProxyStatus() bool {
-	p.m.RLock()
-	defer p.m.RUnlock()
-
-	host := p.proxyList[p.activeProxyIndex].Host
-	port := p.proxyList[p.activeProxyIndex].Port
-
+var checkConnectivity = func(host, port string, checkUrls []string) bool {
 	timeout := time.Second * 2
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
 	if err != nil {
@@ -141,7 +136,7 @@ func (p *Proxy) checkActiveProxyStatus() bool {
 		if err != nil {
 			return false
 		}
-		for _, addr := range p.checkUrls {
+		for _, addr := range checkUrls {
 			conn, err := dialer.Dial("tcp", addr)
 			if err != nil {
 				return false
@@ -152,6 +147,16 @@ func (p *Proxy) checkActiveProxyStatus() bool {
 		return true
 	}
 	return false
+}
+
+func (p *Proxy) checkActiveProxyStatus() bool {
+	p.m.RLock()
+	defer p.m.RUnlock()
+
+	host := p.proxyList[p.activeProxyIndex].Host
+	port := p.proxyList[p.activeProxyIndex].Port
+
+	return checkConnectivity(host, port, p.checkUrls)
 }
 
 func (p *Proxy) allowUpdate() bool {
@@ -170,7 +175,7 @@ func (p *Proxy) SwitchProxy() error {
 	rotations := 0
 	maxRotations := len(p.proxyList)
 	ok := p.checkActiveProxyStatus()
-	for !ok && rotations <= maxRotations {
+	for !ok && rotations < maxRotations {
 		rotations += 1
 		p.rotateProxy()
 		ok = p.checkActiveProxyStatus()
