@@ -140,6 +140,8 @@ func main() {
 	// connect to working proxy at start-up
 	_ = prxy.SwitchProxy()
 
+	lgr.Info().Logf("valid proxy config received: %d", prxy.Len())
+
 	userAgentAddition := "tracing-proxy/" + CollectorVersion
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{ // nolint:all
 		Logger: lgr,

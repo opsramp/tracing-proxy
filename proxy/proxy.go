@@ -13,11 +13,15 @@ import (
 	_ "github.com/opsramp/go-proxy-dialer/connect"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
+	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 	"golang.org/x/net/http/httpproxy"
 	xproxy "golang.org/x/net/proxy"
 )
 
 const delim = "|"
+
+const proxyAddrDialErr = "bad dial to %s, please check the specified address in the config or any restrictions on the address in the proxy"
 
 type Proxy struct {
 	Logger logger.Logger `inject:""`
@@ -41,7 +45,7 @@ func NewProxy(cfg config.ProxyConfiguration, addr ...string) *Proxy {
 		}
 	}
 
-	var checkAddr []string
+	checkAddr := make(map[string]struct{})
 	for _, x := range addr {
 		u, err := url.Parse(x)
 		if err != nil {
@@ -61,13 +65,16 @@ func NewProxy(cfg config.ProxyConfiguration, addr ...string) *Proxy {
 				port = "443"
 			}
 		}
-		checkAddr = append(checkAddr, fmt.Sprintf("%s:%s", host, port))
+		checkAddr[fmt.Sprintf("%s:%s", host, port)] = struct{}{}
 	}
+
+	cUrls := maps.Keys(checkAddr)
+	slices.Sort(cUrls)
 
 	return &Proxy{
 		m:                &sync.RWMutex{},
 		activeProxyIndex: 0,
-		checkUrls:        checkAddr,
+		checkUrls:        cUrls,
 		proxyList:        splitProxyConfig(cfg),
 		lastUpdated:      time.Unix(0, 0),
 	}
@@ -116,11 +123,11 @@ func (p *Proxy) GetActiveConfig() config.ProxyConfiguration {
 	return p.proxyList[p.activeProxyIndex]
 }
 
-var checkConnectivity = func(host, port string, checkUrls []string) bool {
+var checkConnectivity = func(host, port string, checkUrls []string) (bool, error) {
 	timeout := time.Second * 2
 	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
 	if err != nil {
-		return false
+		return false, err
 	}
 	if conn != nil {
 		defer func(conn net.Conn) {
@@ -129,24 +136,24 @@ var checkConnectivity = func(host, port string, checkUrls []string) bool {
 
 		uri, err := url.Parse(httpproxy.FromEnvironment().HTTPProxy)
 		if err != nil {
-			return false
+			return false, err
 		}
 
 		dialer, err := xproxy.FromURL(uri, xproxy.Direct)
 		if err != nil {
-			return false
+			return false, err
 		}
 		for _, addr := range checkUrls {
 			conn, err := dialer.Dial("tcp", addr)
 			if err != nil {
-				return false
+				return false, errors.Wrap(err, fmt.Sprintf(proxyAddrDialErr, addr))
 			}
 			_ = conn.Close()
 		}
 
-		return true
+		return true, nil
 	}
-	return false
+	return false, err
 }
 
 func (p *Proxy) checkActiveProxyStatus() bool {
@@ -156,7 +163,12 @@ func (p *Proxy) checkActiveProxyStatus() bool {
 	host := p.proxyList[p.activeProxyIndex].Host
 	port := p.proxyList[p.activeProxyIndex].Port
 
-	return checkConnectivity(host, port, p.checkUrls)
+	ok, err := checkConnectivity(host, port, p.checkUrls)
+	if err != nil {
+		p.Logger.Debug().Logf("proxy %s:%s: %v", host, port, err)
+	}
+
+	return ok
 }
 
 func (p *Proxy) allowUpdate() bool {
@@ -185,7 +197,7 @@ func (p *Proxy) SwitchProxy() error {
 
 	p.lastUpdated = time.Now().UTC()
 
-	p.Logger.Info().Logf("proxy index changed to: %d", p.activeProxyIndex)
+	p.Logger.Info().Logf("active proxy set to index: %d", p.activeProxyIndex)
 	return p.UpdateProxyEnvVars()
 }
 
@@ -216,4 +228,11 @@ func (p *Proxy) UpdateProxyEnvVars() error {
 		return err
 	}
 	return nil
+}
+
+func (p *Proxy) Len() int {
+	p.m.RLock()
+	defer p.m.RUnlock()
+
+	return len(p.proxyList)
 }

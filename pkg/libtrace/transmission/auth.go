@@ -232,18 +232,15 @@ func (oauth *Auth) UnaryClientInterceptor(c context.Context,
 	backoff := oauth.RetrySettings.NewExponentialBackOff()
 	backoff.Start()
 
-	var retriesCount uint64
 	for {
 		select {
 		case <-backoff.Stop:
 			return fmt.Errorf("all retries are exhauset, dropping traces")
 		case <-backoff.C:
-			retriesCount += 1
-			if retriesCount%2 == 0 {
+			if status.Code(err) == codes.Unavailable || status.Code(err) == codes.DeadlineExceeded {
 				// check if the active proxy is working
 				if oauth.Proxy.Enabled() {
 					_ = oauth.Proxy.SwitchProxy()
-
 					if err := oauth.conn.RenewConnection(); err == nil {
 						// updating the present connection
 						if strings.Contains(method, "LogsService") {
@@ -255,6 +252,7 @@ func (oauth *Auth) UnaryClientInterceptor(c context.Context,
 					}
 				}
 			}
+
 			if status.Code(err) == codes.Unauthenticated {
 				// renew oauth token here before retry
 				_, err := oauth.Renew()
