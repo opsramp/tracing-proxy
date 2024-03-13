@@ -27,7 +27,7 @@ type Entry interface {
 }
 
 func GetLoggerImplementation(format, output, filename string, maxSize, maxBackup int, compress bool) Logger {
-	return &LogrusLogger{
+	lgr := &LogrusLogger{
 		LogFormatter: format,
 		LogOutput:    output,
 		File: struct {
@@ -42,4 +42,7 @@ func GetLoggerImplementation(format, output, filename string, maxSize, maxBackup
 			Compress:   compress,
 		},
 	}
+	_ = lgr.Init()
+	_ = lgr.Start()
+	return lgr
 }

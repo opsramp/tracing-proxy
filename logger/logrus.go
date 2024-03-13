@@ -85,6 +85,9 @@ func (l *LogrusLogger) Start() error {
 }
 
 func (l *LogrusLogger) Init() *logrus.Logger {
+	if l.logger != nil {
+		return l.logger
+	}
 	l.logger = logrus.New()
 	return l.logger
 }
