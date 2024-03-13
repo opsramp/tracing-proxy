@@ -136,11 +136,9 @@ func main() {
 
 	// set proxy details
 	prxy := proxy.NewProxy(c.GetProxyConfig(), opsrampAPI, logsEndpoint, authConfig.Endpoint, c.GetMetricsConfig().OpsRampAPI)
-
-	if err := prxy.UpdateProxyEnvVars(); err != nil {
-		fmt.Printf("error while setting proxy: %v\n", err)
-		os.Exit(1)
-	}
+	prxy.Logger = lgr
+	// connect to working proxy at start-up
+	_ = prxy.SwitchProxy()
 
 	userAgentAddition := "tracing-proxy/" + CollectorVersion
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{ // nolint:all

@@ -157,13 +157,6 @@ func (p *OpsRampMetrics) Start() error {
 				statusCode, err := p.Push()
 				if err != nil {
 					p.Logger.Error().Logf("error while pushing metrics with statusCode: %d and Error: %v", statusCode, err)
-					if strings.Contains(err.Error(), "connection refused") ||
-						strings.Contains(err.Error(), "unreachable") {
-						if p.Proxy.Enabled() {
-							_ = p.Proxy.SwitchProxy()
-						}
-						continue
-					}
 					if err.Error() == missingMetricsWriteScope {
 						p.Logger.Info().Logf("renewing auth token since the existing token is missing metrics:write scope")
 						err := p.RenewOAuthToken()
@@ -549,10 +542,7 @@ func (p *OpsRampMetrics) Populate() {
 
 	_ = p.Proxy.UpdateProxyEnvVars()
 
-	p.Client = http.Client{
-		Transport: utils.CreateNewHTTPTransport(),
-		Timeout:   time.Duration(240) * time.Second,
-	}
+	p.RenewClient()
 }
 
 func ConvertLabelsToMap(labels []prompb.Label) map[string]string {
@@ -854,9 +844,21 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		return resp.StatusCode, fmt.Errorf("unexpected status code %d while pushing: %s", resp.StatusCode, body)
 	}
-	p.Logger.Debug().Logf("metrics push response: %v", string(body))
+	p.Logger.Debug().Logf("metrics %s push response: %v", p.prefix, string(body))
 
 	return resp.StatusCode, nil
+}
+
+func (p *OpsRampMetrics) RenewClient() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.Client.CloseIdleConnections()
+
+	p.Client = http.Client{
+		Transport: utils.CreateNewHTTPTransport(),
+		Timeout:   time.Duration(240) * time.Second,
+	}
 }
 
 func (p *OpsRampMetrics) RenewOAuthToken() error {
@@ -876,13 +878,24 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 
 	resp, err := p.Client.Do(req)
 	if err != nil {
+		retry := false
 		if strings.Contains(err.Error(), "connection refused") ||
 			strings.Contains(err.Error(), "unreachable") {
 			if p.Proxy.Enabled() {
 				_ = p.Proxy.SwitchProxy()
+				p.RenewClient()
+				retry = true
 			}
 		}
-		return err
+
+		if retry {
+			resp, err = p.Client.Do(req)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -900,10 +913,24 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 }
 
 func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
+	retry := false
 	response, err := p.Client.Do(request)
 	if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 		return response, nil
 	}
+	if err != nil &&
+		(strings.Contains(err.Error(), "connection refused") ||
+			strings.Contains(err.Error(), "unreachable")) {
+		if p.Proxy.Enabled() {
+			_ = p.Proxy.SwitchProxy()
+			p.RenewClient()
+			retry = true
+		}
+	}
+	if retry {
+		response, err = p.Client.Do(request)
+	}
+
 	if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
 		err := p.RenewOAuthToken()
 		if err != nil {
