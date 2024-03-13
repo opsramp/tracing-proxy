@@ -248,7 +248,6 @@ func TestNewProxy(t *testing.T) {
 				activeProxyIndex: 0,
 				checkUrls: []string{
 					"portal.api.opsramp.net:443",
-					"portal.api.opsramp.net:443",
 					"portalsp.portal-api.opsramp.net:443",
 				},
 				proxyList: []config.ProxyConfiguration{
@@ -281,7 +280,6 @@ func TestNewProxy(t *testing.T) {
 				m:                &sync.RWMutex{},
 				activeProxyIndex: 0,
 				checkUrls: []string{
-					"portal.api.opsramp.net:443",
 					"portal.api.opsramp.net:443",
 					"portalsp.portal-api.opsramp.net:443",
 				},
@@ -328,7 +326,7 @@ func TestProxy_SwitchProxy(t *testing.T) {
 		fields                 fields
 		want                   int
 		wantErr                bool
-		dummyConnectivityCheck func(host, port string, checkUrls []string) bool
+		dummyConnectivityCheck func(host, port string, checkUrls []string) (bool, error)
 	}{
 		{
 			name: "single proxy and status always false",
@@ -348,8 +346,8 @@ func TestProxy_SwitchProxy(t *testing.T) {
 			},
 			want:    0,
 			wantErr: false,
-			dummyConnectivityCheck: func(host, port string, checkUrls []string) bool {
-				return false
+			dummyConnectivityCheck: func(host, port string, checkUrls []string) (bool, error) {
+				return false, nil
 			},
 		},
 		{
@@ -380,8 +378,8 @@ func TestProxy_SwitchProxy(t *testing.T) {
 			},
 			want:    0,
 			wantErr: false,
-			dummyConnectivityCheck: func(host, port string, checkUrls []string) bool {
-				return false
+			dummyConnectivityCheck: func(host, port string, checkUrls []string) (bool, error) {
+				return false, nil
 			},
 		},
 		{
@@ -412,8 +410,8 @@ func TestProxy_SwitchProxy(t *testing.T) {
 			},
 			want:    1,
 			wantErr: false,
-			dummyConnectivityCheck: func(host, port string, checkUrls []string) bool {
-				return host == "10.10.10.2"
+			dummyConnectivityCheck: func(host, port string, checkUrls []string) (bool, error) {
+				return host == "10.10.10.2", nil
 			},
 		},
 	}
@@ -503,7 +501,7 @@ func Test_checkConnectivity(t *testing.T) {
 				t.Error(err)
 			}
 
-			got := checkConnectivity(tt.args.host, tt.args.port, tt.args.checkUrls)
+			got, _ := checkConnectivity(tt.args.host, tt.args.port, tt.args.checkUrls)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("checkConnectivity() = %v, want %v", got, tt.want)
 			}
