@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opsramp/libtrace-go/proto/proxypb"
 	"github.com/opsramp/tracing-proxy/config"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/proto/proxypb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -49,6 +49,14 @@ func (p *filePeers) GetPeers() ([]string, error) {
 }
 
 func (p *filePeers) watchFilePeers() {
+	// wait till the current peer servers are listening
+	grpcPeerListenAddr, _ := p.c.GetGRPCPeerListenAddr()
+	checkConn := checkConnection(grpcPeerListenAddr)
+	for !checkConn {
+		time.Sleep(time.Second * 10)
+		checkConn = checkConnection(grpcPeerListenAddr)
+	}
+
 	tk := time.NewTicker(20 * time.Second)
 	originalPeerList, _ := p.c.GetPeers()
 	sort.Strings(originalPeerList)
@@ -112,4 +120,13 @@ func isOpen(peerURL string) bool {
 		return false
 	}
 	return resp.GetPeerActive()
+}
+
+func checkConnection(addr string) bool {
+	grpcConn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return false
+	}
+	_ = grpcConn.Close()
+	return true
 }

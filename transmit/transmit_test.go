@@ -8,17 +8,17 @@ import (
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/metrics"
 
-	"github.com/opsramp/libtrace-go"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultTransmissionUpdatesUserAgentAdditionAfterStart(t *testing.T) {
 	transmission := &DefaultTransmission{
-		Config:     &config.MockConfig{},
-		Logger:     &logger.NullLogger{},
-		Metrics:    &metrics.NullMetrics{},
-		LibhClient: &libtrace.Client{},
-		Version:    "test",
+		Config:  &config.MockConfig{},
+		Logger:  &logger.NullLogger{},
+		Metrics: &metrics.NullMetrics{},
+		Client:  &libtrace.Client{},
+		Version: "test",
 	}
 
 	assert.Equal(t, libtrace.UserAgentAddition, "")

@@ -86,7 +86,7 @@ func (d *DetShard) String() string {
 
 // GetHashesFor generates a number of hashShards for a given DetShard by repeatedly hashing the
 // seed with itself. The intent is to generate a repeatable pseudo-random sequence.
-func (d *DetShard) GetHashesFor(index int, n int, seed uint64) []hashShard {
+func (d *DetShard) GetHashesFor(index, n int, seed uint64) []hashShard {
 	var hashes []hashShard
 	addr := d.GetAddress()
 	for i := 0; i < n; i++ {
@@ -128,17 +128,17 @@ func (d *DeterministicSharder) Start() error {
 
 	// this isn't runtime-reloadable because it would
 	// reassign nearly every trace to a new shard.
-	strat, err := d.Config.GetPeerManagementStrategy()
+	start, err := d.Config.GetPeerManagementStrategy()
 	if err != nil {
 		return fmt.Errorf("getting peer management strategy: %w", err)
 	}
-	switch strat {
+	switch start {
 	case "legacy", "":
 		d.shardFunc = d.WhichShardLegacy
 	case "hash":
 		d.shardFunc = d.WhichShardHashed
 	default:
-		return fmt.Errorf("unknown PeerManagementStrategy '%s'", strat)
+		return fmt.Errorf("unknown PeerManagementStrategy '%s'", start)
 	}
 
 	// Try up to 5 times to find myself in the peer list before giving up

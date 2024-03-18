@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"sync"
 	"time"
+
+	"github.com/opsramp/tracing-proxy/pkg/retry"
 )
 
 // MockConfig will respond with whatever config it's set to do during
@@ -124,6 +126,7 @@ func (m *MockConfig) GetLogsEndpoint() string {
 func (m *MockConfig) GetSendEvents() bool {
 	return false
 }
+
 func (m *MockConfig) GetLogrusConfig() (*LogrusLoggerConfig, error) {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
@@ -186,11 +189,11 @@ func (m *MockConfig) GetAuthConfig() AuthConfiguration {
 	return AuthConfiguration{}
 }
 
-func (m *MockConfig) GetRetryConfig() *RetryConfiguration {
+func (m *MockConfig) GetRetryConfig() *retry.Config {
 	m.Mux.RLock()
 	defer m.Mux.RUnlock()
 
-	return &RetryConfiguration{}
+	return &retry.Config{}
 }
 
 func (m *MockConfig) GetTenantId() (string, error) {

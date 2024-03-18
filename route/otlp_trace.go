@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/opsramp/libtrace-go/proto/proxypb"
-	"github.com/opsramp/libtrace-go/transmission"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/proto/proxypb"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/transmission"
 
 	"github.com/opsramp/tracing-proxy/pkg/convert"
 	"github.com/opsramp/tracing-proxy/types"
@@ -64,7 +64,7 @@ func (r *Router) Export(ctx context.Context, req *coltracepb.ExportTraceServiceR
 }
 
 // processTraceRequest - process requests from peers
-func processTraceRequest(ctx context.Context, router *Router, batches []convert.Batch, token string, tenantID string) error {
+func processTraceRequest(ctx context.Context, router *Router, batches []convert.Batch, token, tenantID string) error {
 	var requestID types.RequestIDContextKey
 	apiHost, err := router.Config.GetOpsrampAPI()
 	if err != nil {
