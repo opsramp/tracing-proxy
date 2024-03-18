@@ -62,7 +62,6 @@ func main() {
 
 	systemctl := exec.Command("systemctl", "--version").Run()
 	if systemctl == nil { // checking os type here
-
 		_ = exec.Command("cp", "/opt/opsramp/service_files/tracing-proxy.service", "/etc/systemd/system/tracing-proxy.service").Run()
 		_ = exec.Command("chmod", "0644", "/etc/systemd/system/tracing-proxy").Run()
 		_ = exec.Command("rm", "-rf", "/opt/opsramp/service_files").Run()

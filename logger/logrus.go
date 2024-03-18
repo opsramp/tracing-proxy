@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/opsramp/tracing-proxy/config"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -16,7 +15,14 @@ import (
 // LogrusLogger is a Logger implementation that sends all logs to stdout using
 // the Logrus package to get nice formatting
 type LogrusLogger struct {
-	Config config.Config `inject:""`
+	LogFormatter string
+	LogOutput    string
+	File         struct {
+		FileName   string
+		MaxSize    int
+		MaxBackups int
+		Compress   bool
+	}
 
 	logger *logrus.Logger
 	level  logrus.Level
@@ -34,26 +40,21 @@ func (l *LogrusLogger) Start() error {
 	l.logger.SetReportCaller(false) //nolint:all
 	l.logger.AddHook(&CallerHook{})
 
-	logrusConfig, err := l.Config.GetLogrusConfig()
-	if err != nil {
-		return err
-	}
-
-	switch logrusConfig.LogOutput {
+	switch l.LogOutput {
 	case "stdout":
 		l.logger.SetOutput(os.Stdout)
 	case "stderr":
 		l.logger.SetOutput(os.Stderr)
 	case "file":
 		l.logger.SetOutput(&lumberjack.Logger{
-			Filename:   logrusConfig.File.FileName,
-			MaxSize:    logrusConfig.File.MaxSize,
-			MaxBackups: logrusConfig.File.MaxBackups,
-			Compress:   logrusConfig.File.Compress,
+			Filename:   l.File.FileName,
+			MaxSize:    l.File.MaxSize,
+			MaxBackups: l.File.MaxBackups,
+			Compress:   l.File.Compress,
 		})
 	}
 
-	switch logrusConfig.LogFormatter {
+	switch l.LogFormatter {
 	case "logfmt":
 		l.logger.SetFormatter(&logrus.TextFormatter{ //nolint:all
 			DisableColors:          true,
@@ -84,6 +85,9 @@ func (l *LogrusLogger) Start() error {
 }
 
 func (l *LogrusLogger) Init() *logrus.Logger {
+	if l.logger != nil {
+		return l.logger
+	}
 	l.logger = logrus.New()
 	return l.logger
 }
@@ -185,7 +189,7 @@ func (l *LogrusEntry) WithField(key string, value interface{}) Entry {
 	}
 }
 
-func (l *LogrusEntry) WithString(key string, value string) Entry {
+func (l *LogrusEntry) WithString(key, value string) Entry {
 	return &LogrusEntry{
 		entry: l.entry.WithField(key, value),
 		level: l.level,
@@ -248,7 +252,7 @@ func (h *CallerHook) Levels() []logrus.Level {
 	}
 }
 
-func (h *CallerHook) caller() (function string, file string) {
+func (h *CallerHook) caller() (function, file string) {
 	callerInitOnce.Do(func() {
 		presentProjectRoot, _ = os.Getwd()
 		presentProjectRoot = path.Join(presentProjectRoot, "../")

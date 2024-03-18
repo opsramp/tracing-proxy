@@ -591,7 +591,7 @@ func (i *InMemCollector) processSpan(sp *types.Span) {
 // dealWithSentTrace handles a span that has arrived after the sampling decision
 // on the trace has already been made, and it obeys that decision by either
 // sending the span immediately or dropping it.
-func (i *InMemCollector) dealWithSentTrace(keep bool, sampleRate uint, spanCount uint, sp *types.Span) {
+func (i *InMemCollector) dealWithSentTrace(keep bool, sampleRate, spanCount uint, sp *types.Span) {
 	if i.Config.GetIsDryRun() {
 		field := i.Config.GetDryRunFieldName()
 		// if dry run mode is enabled, we keep all traces and mark the spans with the sampling decision
