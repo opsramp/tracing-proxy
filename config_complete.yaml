@@ -165,7 +165,7 @@ RetryConfiguration:
 #########################
 ## Proxy Configuration ##
 #########################
-ProxyConfiguration:
+ProxyConfiguration: # multiple proxy configurations can be given by delimiting the values by '|'
   # Protocol accepts http and https
   Protocol: "http"
   # Host takes the proxy server address
