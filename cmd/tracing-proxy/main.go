@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,14 +12,17 @@ import (
 	"github.com/facebookgo/inject"
 	"github.com/facebookgo/startstop"
 	flag "github.com/jessevdk/go-flags"
-	"github.com/opsramp/libtrace-go"
-	"github.com/opsramp/libtrace-go/transmission"
 	"github.com/opsramp/tracing-proxy/app"
 	"github.com/opsramp/tracing-proxy/collect"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/internal/peer"
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/constants"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/transmission"
+	"github.com/opsramp/tracing-proxy/pkg/retry"
+	"github.com/opsramp/tracing-proxy/proxy"
 	"github.com/opsramp/tracing-proxy/sample"
 	"github.com/opsramp/tracing-proxy/service/debug"
 	"github.com/opsramp/tracing-proxy/sharder"
@@ -87,7 +89,18 @@ func main() {
 	}
 
 	// get desired implementation for each dependency to inject
-	lgr := logger.GetLoggerImplementation()
+	lc, err := c.GetLogrusConfig()
+	if err != nil {
+		fmt.Printf("unable to load config: %+v\n", err)
+		os.Exit(1)
+	}
+	lgr := logger.GetLoggerImplementation(
+		lc.LogFormatter,
+		lc.LogOutput,
+		lc.File.FileName,
+		lc.File.MaxSize,
+		lc.File.MaxBackups,
+		lc.File.Compress)
 	collector := collect.GetCollectorImplementation(c)
 	metricsConfig := metrics.GetMetricsImplementation("")
 	shrdr := sharder.GetSharderImplementation(c)
@@ -103,38 +116,6 @@ func main() {
 	if err := lgr.SetLevel(logLevel); err != nil {
 		fmt.Printf("unable to set logging level: %v\n", err)
 		os.Exit(1)
-	}
-
-	// set proxy details
-	proxyConfig := c.GetProxyConfig()
-	proxyUrl := ""
-	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
-		logrusLogger.Info("Proxy Configuration found, setting up proxy for Traces")
-		proxyUrl = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
-		if proxyConfig.Username != "" && proxyConfig.Password != "" {
-			proxyUrl = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
-			logrusLogger.Info("Using Authentication for ProxyConfiguration Communication for Traces")
-		}
-		os.Setenv("HTTPS_PROXY", proxyUrl)
-		os.Setenv("HTTP_PROXY", proxyUrl)
-	}
-
-	// upstreamTransport is the http transport used to send things on to OpsRamp
-	upstreamTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout: 10 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout: 15 * time.Second,
-	}
-
-	// peerTransport is the http transport used to send things to a local peer
-	peerTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout: 3 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout: 1200 * time.Millisecond,
 	}
 
 	upstreamMetricsConfig := metrics.GetMetricsImplementation("upstream")
@@ -153,16 +134,23 @@ func main() {
 	logsEndpoint := c.GetLogsEndpoint()
 	sendEvents := c.GetSendEvents()
 
+	// set proxy details
+	prxy := proxy.NewProxy(c.GetProxyConfig(), opsrampAPI, logsEndpoint, authConfig.Endpoint, c.GetMetricsConfig().OpsRampAPI)
+	prxy.Logger = lgr
+	// connect to working proxy at start-up
+	_ = prxy.SwitchProxy()
+
+	lgr.Info().Logf("valid proxy config received: %d", prxy.Len())
+
 	userAgentAddition := "tracing-proxy/" + CollectorVersion
 	upstreamClient, err := libtrace.NewClient(libtrace.ClientConfig{ // nolint:all
-		Logger: logrusLogger,
+		Logger: lgr,
 		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          c.GetBatchTimeout(),
-			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
+			MaxConcurrentBatches:  constants.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetUpstreamBufferSize()),
 			UserAgentAddition:     userAgentAddition,
-			Transport:             upstreamTransport,
 			BlockOnSend:           true,
 			EnableMsgpackEncoding: false,
 			Metrics:               upstreamMetricsConfig,
@@ -172,19 +160,20 @@ func main() {
 			AuthTokenEndpoint:     authConfig.Endpoint,
 			AuthTokenKey:          authConfig.Key,
 			AuthTokenSecret:       authConfig.Secret,
-			ApiHost:               opsrampAPI,
+			TraceEndpoint:         opsrampAPI,
 			TenantId:              authConfig.TenantId,
 			Dataset:               dataset,
-			RetrySettings: &transmission.RetrySettings{
+			RetrySettings: &retry.Config{
 				InitialInterval:     retryConfig.InitialInterval,
 				RandomizationFactor: retryConfig.RandomizationFactor,
 				Multiplier:          retryConfig.Multiplier,
 				MaxInterval:         retryConfig.MaxInterval,
 				MaxElapsedTime:      retryConfig.MaxElapsedTime,
 			},
-			Logger:       logrusLogger,
+			Logger:       lgr,
 			LogsEndpoint: logsEndpoint,
 			SendEvents:   sendEvents,
+			Proxy:        prxy,
 		},
 	})
 	if err != nil {
@@ -193,14 +182,13 @@ func main() {
 	}
 
 	peerClient, err := libtrace.NewClient(libtrace.ClientConfig{ // nolint:all
-		Logger: logrusLogger,
+		Logger: lgr,
 		Transmission: &transmission.TraceProxy{
 			MaxBatchSize:          c.GetMaxBatchSize(),
 			BatchTimeout:          c.GetBatchTimeout(),
-			MaxConcurrentBatches:  libtrace.DefaultMaxConcurrentBatches,
+			MaxConcurrentBatches:  constants.DefaultMaxConcurrentBatches,
 			PendingWorkCapacity:   uint(c.GetPeerBufferSize()),
 			UserAgentAddition:     userAgentAddition,
-			Transport:             peerTransport,
 			DisableCompression:    !c.GetCompressPeerCommunication(),
 			EnableMsgpackEncoding: false,
 			Metrics:               peerMetricsConfig,
@@ -208,19 +196,20 @@ func main() {
 			AuthTokenEndpoint:     authConfig.Endpoint,
 			AuthTokenKey:          authConfig.Key,
 			AuthTokenSecret:       authConfig.Secret,
-			ApiHost:               opsrampAPI,
+			TraceEndpoint:         opsrampAPI,
 			TenantId:              authConfig.TenantId,
 			Dataset:               dataset,
-			RetrySettings: &transmission.RetrySettings{
+			RetrySettings: &retry.Config{
 				InitialInterval:     retryConfig.InitialInterval,
 				RandomizationFactor: retryConfig.RandomizationFactor,
 				Multiplier:          retryConfig.Multiplier,
 				MaxInterval:         retryConfig.MaxInterval,
 				MaxElapsedTime:      retryConfig.MaxElapsedTime,
 			},
-			Logger:       logrusLogger,
+			Logger:       lgr,
 			LogsEndpoint: logsEndpoint,
 			SendEvents:   sendEvents,
+			Proxy:        prxy,
 		},
 	})
 	if err != nil {
@@ -242,10 +231,21 @@ func main() {
 		&inject.Object{Value: c},
 		&inject.Object{Value: peers},
 		&inject.Object{Value: lgr},
-		&inject.Object{Value: upstreamTransport, Name: "upstreamTransport"},
-		&inject.Object{Value: peerTransport, Name: "peerTransport"},
-		&inject.Object{Value: &transmit.DefaultTransmission{LibhClient: upstreamClient, Name: "upstream_"}, Name: "upstreamTransmission"},
-		&inject.Object{Value: &transmit.DefaultTransmission{LibhClient: peerClient, Name: "peer_"}, Name: "peerTransmission"},
+		&inject.Object{Value: prxy, Name: "proxyConfig"},
+		&inject.Object{
+			Name: "upstreamTransmission",
+			Value: &transmit.DefaultTransmission{
+				Name:   "upstream_",
+				Client: upstreamClient,
+			},
+		},
+		&inject.Object{
+			Name: "peerTransmission",
+			Value: &transmit.DefaultTransmission{
+				Name:   "peer_",
+				Client: peerClient,
+			},
+		},
 		&inject.Object{Value: shrdr},
 		&inject.Object{Value: collector},
 		&inject.Object{Value: metricsConfig, Name: "metrics"},

@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/opsramp/libtrace-go"
-	"github.com/opsramp/libtrace-go/transmission"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/transmission"
 
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
@@ -29,11 +29,11 @@ const (
 )
 
 type DefaultTransmission struct {
-	Config     config.Config   `inject:""`
-	Logger     logger.Logger   `inject:""`
-	Metrics    metrics.Metrics `inject:"metrics"`
-	Version    string          `inject:"version"`
-	LibhClient *libtrace.Client
+	Config  config.Config   `inject:""`
+	Logger  logger.Logger   `inject:""`
+	Metrics metrics.Metrics `inject:"metrics"`
+	Version string          `inject:"version"`
+	Client  *libtrace.Client
 
 	// Type is peer or upstream, and used only for naming metrics
 	Name string
@@ -58,16 +58,16 @@ func (d *DefaultTransmission) Start() error {
 	if d.Config.GetAddHostMetadataToTrace() {
 		if hostname, err := os.Hostname(); err == nil && hostname != "" {
 			// add hostname to spans
-			d.LibhClient.AddResourceField("meta.local_hostname", hostname)
+			d.Client.AddResourceField("meta.local_hostname", hostname)
 		}
 	}
 	for key, value := range d.Config.GetAddAdditionalMetadata() {
-		if !d.LibhClient.CheckResourceField(key) {
-			d.LibhClient.AddResourceField(key, value)
+		if !d.Client.CheckResourceField(key) {
+			d.Client.AddResourceField(key, value)
 		}
 	}
 
-	d.builder = d.LibhClient.NewBuilder()
+	d.builder = d.Client.NewBuilder()
 	d.builder.APIHost = upstreamAPI
 
 	once.Do(func() {
@@ -80,7 +80,7 @@ func (d *DefaultTransmission) Start() error {
 
 	processCtx, canceler := context.WithCancel(context.Background())
 	d.responseCanceler = canceler
-	go d.processResponses(processCtx, d.LibhClient.TxResponses())
+	go d.processResponses(processCtx, d.Client.TxResponses())
 
 	// listen for config reloads
 	d.Config.RegisterReloadCallback(d.reloadTransmissionBuilder)
@@ -94,7 +94,7 @@ func (d *DefaultTransmission) reloadTransmissionBuilder() {
 		// log and skip reload
 		d.Logger.Error().Logf("Failed to reload Opsramp API when reloading configs:", err)
 	}
-	builder := d.LibhClient.NewBuilder()
+	builder := d.Client.NewBuilder()
 	builder.APIHost = upstreamAPI
 }
 
@@ -104,13 +104,13 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 		WithString("api_host", ev.APIHost).
 		WithString("dataset", ev.Dataset).
 		Logf("transmit sending event")
-	libhEv := d.builder.NewEvent()
-	libhEv.APIHost = ev.APIHost
-	libhEv.Dataset = ev.Dataset
-	libhEv.SampleRate = ev.SampleRate
-	libhEv.Timestamp = ev.Timestamp
-	libhEv.APIToken = ev.APIToken
-	libhEv.APITenantId = ev.APITenantId
+	libtEv := d.builder.NewEvent()
+	libtEv.APIHost = ev.APIHost
+	libtEv.Dataset = ev.Dataset
+	libtEv.SampleRate = ev.SampleRate
+	libtEv.Timestamp = ev.Timestamp
+	libtEv.APIToken = ev.APIToken
+	libtEv.APITenantId = ev.APITenantId
 	var libtraceSpanEvents []libtrace.SpanEvent
 	for _, spanEvent := range ev.SpanEvents {
 		libtraceSpanEvent := libtrace.SpanEvent{
@@ -120,7 +120,7 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 		}
 		libtraceSpanEvents = append(libtraceSpanEvents, libtraceSpanEvent)
 	}
-	libhEv.SpanEvents = libtraceSpanEvents
+	libtEv.SpanEvents = libtraceSpanEvents
 	// metadata is used to make error logs more helpful when processing responses
 	metadata := map[string]any{
 		"api_host":    ev.APIHost,
@@ -133,13 +133,13 @@ func (d *DefaultTransmission) EnqueueEvent(ev *types.Event) {
 			metadata[k] = v
 		}
 	}
-	libhEv.Metadata = metadata
+	libtEv.Metadata = metadata
 
 	for k, v := range ev.Data {
-		libhEv.AddField(k, v)
+		libtEv.AddField(k, v)
 	}
 
-	err := libhEv.SendPresampled()
+	err := libtEv.SendPresampled()
 	if err != nil {
 		d.Metrics.Increment(d.Name + counterEnqueueErrors)
 		d.Logger.Error().
@@ -158,7 +158,7 @@ func (d *DefaultTransmission) EnqueueSpan(sp *types.Span) {
 }
 
 func (d *DefaultTransmission) Flush() {
-	d.LibhClient.Flush()
+	d.Client.Flush()
 }
 
 func (d *DefaultTransmission) Stop() error {
@@ -167,7 +167,7 @@ func (d *DefaultTransmission) Stop() error {
 		d.responseCanceler()
 	}
 	// purge the queue of any in-flight events
-	d.LibhClient.Flush()
+	d.Client.Flush()
 	return nil
 }
 

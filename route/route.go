@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	proxypb "github.com/opsramp/libtrace-go/proto/proxypb"
+	"github.com/opsramp/tracing-proxy/pkg/libtrace/proto/proxypb"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/gorilla/mux"
@@ -36,6 +36,7 @@ import (
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/metrics"
+	"github.com/opsramp/tracing-proxy/proxy"
 	"github.com/opsramp/tracing-proxy/sharder"
 	"github.com/opsramp/tracing-proxy/transmit"
 	"github.com/opsramp/tracing-proxy/types"
@@ -56,8 +57,8 @@ const (
 
 type Router struct {
 	Config               config.Config         `inject:""`
+	Proxy                *proxy.Proxy          `inject:"proxyConfig"`
 	Logger               logger.Logger         `inject:""`
-	HTTPTransport        *http.Transport       `inject:"upstreamTransport"`
 	UpstreamTransmission transmit.Transmission `inject:"upstreamTransmission"`
 	PeerTransmission     transmit.Transmission `inject:"peerTransmission"`
 	Sharder              sharder.Sharder       `inject:""`
@@ -125,10 +126,6 @@ func (r *Router) LnS(incomingOrPeer string) {
 		incomingOrPeer: incomingOrPeer,
 	}
 
-	r.proxyClient = &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: r.HTTPTransport,
-	}
 	r.environmentCache = newEnvironmentCache(r.Config.GetEnvironmentCacheTTL(), r.lookupEnvironment)
 
 	var err error
@@ -180,9 +177,6 @@ func (r *Router) LnS(incomingOrPeer string) {
 	otlpMuxxer.HandleFunc("/traces", r.postOTLP).Name("otlp")
 	otlpMuxxer.HandleFunc("/log-traces", r.postOTLP).Name("otlp")
 
-	// pass everything else through unmolested
-	muxxer.PathPrefix("/").HandlerFunc(r.proxy).Name("proxy")
-
 	var listenAddr, grpcAddr, grpcPeerAddr string
 	if r.incomingOrPeer == "incoming" {
 		listenAddr, err = r.Config.GetListenAddr()
@@ -209,7 +203,6 @@ func (r *Router) LnS(incomingOrPeer string) {
 			r.iopLogger.Error().Logf("failed to get grpc listen addr config: %s", err)
 			return
 		}
-
 	}
 
 	r.iopLogger.Info().Logf("Listening on %s", listenAddr)
@@ -663,7 +656,7 @@ func (r *Router) getMaybeCompressedBody(req *http.Request) (io.Reader, error) {
 	return reader, nil
 }
 
-func (r *Router) batchedEventToEvent(req *http.Request, bev batchedEvent, apiKey string, environment string) (*types.Event, error) {
+func (r *Router) batchedEventToEvent(req *http.Request, bev batchedEvent, apiKey, environment string) (*types.Event, error) {
 	sampleRate := bev.SampleRate
 	if sampleRate == 0 {
 		sampleRate = 1
@@ -734,7 +727,6 @@ func getEventTime(etHeader string) time.Time {
 						sec, dec := math.Modf(epochFloat)
 						eventTime = time.Unix(int64(sec), int64(dec*(1e9)))
 					}
-
 				}
 			} else {
 				epochFloat, err := strconv.ParseFloat(etHeader, 64)
@@ -811,7 +803,7 @@ func (c *environmentCache) get(key string) (string, error) {
 	}
 
 	// get write lock early so we don't execute getFn in parallel so the
-	// the result will be cached before the next lock is aquired to prevent
+	// the result will be cached before the next lock is acquired to prevent
 	// subsequent calls to getFn for the same key
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -834,7 +826,7 @@ func (c *environmentCache) get(key string) (string, error) {
 
 // addItem create a new cache entry in the environment cache.
 // This is not thread-safe, and should only be used in tests
-func (c *environmentCache) addItem(key string, value string, ttl time.Duration) {
+func (c *environmentCache) addItem(key, value string, ttl time.Duration) {
 	c.items[key] = &cacheItem{
 		expiresAt: time.Now().Add(ttl),
 		value:     value,

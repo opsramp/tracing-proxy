@@ -6,12 +6,12 @@ import (
 
 type Metrics interface {
 	// Register declares a metric; metricType should be one of counter, gauge, histogram
-	Register(name string, metricType string)
+	Register(name, metricType string)
 	Increment(name string)
 	Gauge(name string, val interface{})
 	Count(name string, n interface{})
 	Histogram(name string, obs interface{})
-	RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string)
+	RegisterWithDescriptionLabels(name, metricType, desc string, labels []string)
 	RegisterGauge(name string, labels []string, desc string)
 	RegisterCounter(name string, labels []string, desc string)
 	RegisterHistogram(name string, labels []string, desc string, buckets []float64)

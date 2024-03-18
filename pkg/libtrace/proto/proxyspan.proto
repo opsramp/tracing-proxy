@@ -1,0 +1,172 @@
+syntax = "proto3";
+package proto;
+option go_package = "./proxypb";
+import "google/api/annotations.proto";
+
+service TraceProxyService {
+  // For performance reasons, it is recommended to keep this RPC
+  // alive for the entire life of the application.
+  rpc ExportTraceProxy(ExportTraceProxyServiceRequest) returns (ExportTraceProxyServiceResponse) {
+    option (google.api.http) = {
+      post: "/trace-proxy/api/v7/tenants/{tenantId}/traces",
+      body: "*",
+    };
+  }
+
+  rpc ExportLogTraceProxy(ExportLogTraceProxyServiceRequest) returns (ExportTraceProxyServiceResponse) {
+    option (google.api.http) = {
+      post: "/trace-proxy/api/v7/tenants/{tenantId}/log-traces",
+      body: "*",
+    };
+  }
+
+  rpc Status(StatusRequest) returns(StatusResponse) {
+
+  }
+}
+
+message StatusRequest {}
+
+message StatusResponse {
+  bool peerActive = 1;
+}
+
+message ExportTraceProxyServiceRequest {
+  repeated ProxySpan items = 1;
+  string tenantId = 2;
+}
+
+message ExportLogTraceProxyServiceRequest {
+  repeated ProxyLogSpan items = 1;
+  string tenantId = 2;
+}
+
+message ProxySpan {
+  Data data = 1;
+  string timestamp = 2;
+}
+
+message ProxyLogSpan {
+  LogTraceData data = 1;
+  string timestamp = 2;
+}
+
+message Data {
+  double durationMs = 1;
+  string type = 4;
+  string spanName = 5;
+  string parentName = 6;
+  string spanKind = 8;
+  int64 spanNumEvents = 9;
+  int64 spanNumLinks = 10;
+  int64 statusCode = 11;
+  bool fromProxy = 12;
+  string traceParentID = 13;
+  string traceSpanID = 14;
+  string traceTraceID = 15;
+  string traceLinkSpanID = 16;
+  string traceLinkTraceID = 17;
+  bool error = 18;
+  string statusMessage = 19;
+  int64 time = 20;
+  string metaType = 21;
+
+  // The OpenTelemetry API specification further restricts the allowed value types:
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/common/common.md#attributes
+  // Attribute keys MUST be unique (it is not allowed to have more than one
+  // attribute with the same key).
+  repeated KeyValue resourceAttributes = 22;
+  repeated KeyValue spanAttributes = 23;
+  repeated KeyValue eventAttributes = 24;
+  int64 startTime = 25;
+  int64 endTime = 26;
+}
+
+message LogTraceData {
+  double durationMs = 1;
+  string type = 4;
+  string spanName = 5;
+  string parentName = 6;
+  string spanKind = 8;
+  int64 spanNumEvents = 9;
+  int64 spanNumLinks = 10;
+  int64 statusCode = 11;
+  bool fromProxy = 12;
+  string traceParentID = 13;
+  string traceSpanID = 14;
+  string traceTraceID = 15;
+  string traceLinkSpanID = 16;
+  string traceLinkTraceID = 17;
+  bool error = 18;
+  string statusMessage = 19;
+  int64 time = 20;
+  string metaType = 21;
+
+  // The OpenTelemetry API specification further restricts the allowed value types:
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/common/common.md#attributes
+  // Attribute keys MUST be unique (it is not allowed to have more than one
+  // attribute with the same key).
+  repeated KeyValue resourceAttributes = 22;
+  repeated KeyValue spanAttributes = 23;
+  repeated KeyValue eventAttributes = 24;
+  repeated SpanEvent spanEvents = 25;
+  int64 startTime = 26;
+  int64 endTime = 27;
+}
+
+
+message SpanEvent {
+  string name = 1;
+  uint64 timeStamp = 2;
+  repeated KeyValue spanEventAttributes = 3;
+}
+
+// AnyValue is used to represent any type of attribute value. AnyValue may contain a
+// primitive value such as a string or integer or it may contain an arbitrary nested
+// object containing arrays, key-value lists and primitives.
+message AnyValue {
+  // The value is one of the listed fields. It is valid for all values to be unspecified
+  // in which case this AnyValue is considered to be "empty".
+  oneof value {
+    string string_value = 1;
+    bool bool_value = 2;
+    int64 int_value = 3;
+    double double_value = 4;
+    ArrayValue array_value = 5;
+    KeyValueList kvlist_value = 6;
+    bytes bytes_value = 7;
+  }
+}
+
+// ArrayValue is a list of AnyValue messages. We need ArrayValue as a message
+// since oneof in AnyValue does not allow repeated fields.
+message ArrayValue {
+  // Array of values. The array may be empty (contain 0 elements).
+  repeated AnyValue values = 1;
+}
+
+// KeyValueList is a list of KeyValue messages. We need KeyValueList as a message
+// since `oneof` in AnyValue does not allow repeated fields. Everywhere else where we need
+// a list of KeyValue messages (e.g. in Span) we use `repeated KeyValue` directly to
+// avoid unnecessary extra wrapping (which slows down the protocol). The 2 approaches
+// are semantically equivalent.
+message KeyValueList {
+  // A collection of key/value pairs of key-value pairs. The list may be empty (may
+  // contain 0 elements).
+  // The keys MUST be unique (it is not allowed to have more than one
+  // value with the same key).
+  repeated KeyValue values = 1;
+}
+
+// KeyValue is a key-value pair that is used to store Span attributes, Link
+// attributes, etc.
+message KeyValue {
+  string key = 1;
+  AnyValue value = 2;
+}
+
+// The response message
+message ExportTraceProxyServiceResponse {
+  string message = 1;
+  string status = 2;
+}
