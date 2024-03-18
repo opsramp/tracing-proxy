@@ -2,13 +2,13 @@ package cache
 
 import (
 	"fmt"
+	"math/rand"
+	"testing"
+	"time"
+
 	"github.com/dgryski/go-wyhash"
 	"github.com/opsramp/tracing-proxy/metrics"
 	"github.com/sourcegraph/conc/pool"
-	"math/rand"
-
-	"testing"
-	"time"
 )
 
 // genID returns a random hex string of length numChars

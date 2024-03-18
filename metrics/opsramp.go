@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -19,6 +18,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/gorilla/mux"
 	"github.com/opsramp/tracing-proxy/pkg/utils"
+	"github.com/opsramp/tracing-proxy/proxy"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	io_prometheus_client "github.com/prometheus/client_model/go"
@@ -77,6 +77,7 @@ type OpsRampMetrics struct {
 	lock sync.RWMutex
 
 	Client http.Client
+	Proxy  *proxy.Proxy `inject:"proxyConfig"`
 
 	apiEndpoint string
 	tenantID    string
@@ -173,7 +174,7 @@ func (p *OpsRampMetrics) Start() error {
 
 // Register takes a name and a metric type. The type should be one of "counter",
 // "gauge", or "histogram"
-func (p *OpsRampMetrics) Register(name string, metricType string) {
+func (p *OpsRampMetrics) Register(name, metricType string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -227,7 +228,7 @@ func (p *OpsRampMetrics) Register(name string, metricType string) {
 
 // RegisterWithDescriptionLabels takes a name, a metric type, description, labels. The type should be one of "counter",
 // "gauge", or "histogram"
-func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
+func (p *OpsRampMetrics) RegisterWithDescriptionLabels(name, metricType, desc string, labels []string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -521,7 +522,6 @@ type OpsRampAuthTokenResponse struct {
 func (p *OpsRampMetrics) Populate() {
 	metricsConfig := p.Config.GetMetricsConfig()
 	authConfig := p.Config.GetAuthConfig()
-	proxyConfig := p.Config.GetProxyConfig()
 
 	p.apiEndpoint = metricsConfig.OpsRampAPI
 
@@ -540,41 +540,9 @@ func (p *OpsRampMetrics) Populate() {
 	}
 	p.re = regexp.MustCompile(regexString)
 
-	proxyURL := ""
-	if proxyConfig.Host != "" && proxyConfig.Protocol != "" {
-		p.Logger.Info().Logf("Proxy Configuration found, setting up proxy for Metrics")
-		proxyURL = fmt.Sprintf("%s://%s:%d/", proxyConfig.Protocol, proxyConfig.Host, proxyConfig.Port)
-		if proxyConfig.Username != "" && proxyConfig.Password != "" {
-			proxyURL = fmt.Sprintf("%s://%s:%s@%s:%d", proxyConfig.Protocol, proxyConfig.Username, proxyConfig.Password, proxyConfig.Host, proxyConfig.Port)
-			p.Logger.Info().Logf("Using Authentication for ProxyConfiguration Communication for Metrics")
-		}
-	}
+	_ = p.Proxy.UpdateProxyEnvVars()
 
-	p.Client = http.Client{
-		Transport: &http.Transport{
-			Proxy:           http.ProxyFromEnvironment,
-			MaxIdleConns:    10,
-			MaxConnsPerHost: 10,
-			IdleConnTimeout: 5 * time.Minute,
-		},
-		Timeout: time.Duration(240) * time.Second,
-	}
-	if proxyURL != "" {
-		proxyURL, err := url.Parse(proxyURL)
-		if err != nil {
-			p.Logger.Error().Logf("skipping proxy err: %v", err)
-		} else {
-			p.Client = http.Client{
-				Transport: &http.Transport{
-					Proxy:           http.ProxyURL(proxyURL),
-					MaxIdleConns:    10,
-					MaxConnsPerHost: 10,
-					IdleConnTimeout: 5 * time.Minute,
-				},
-				Timeout: time.Duration(240) * time.Second,
-			}
-		}
-	}
+	p.RenewClient()
 }
 
 func ConvertLabelsToMap(labels []prompb.Label) map[string]string {
@@ -634,7 +602,6 @@ func (p *OpsRampMetrics) Push() (int, error) {
 
 	for metricName, metData := range p.metrics {
 		for labelValStr, t := range metData.LabelValues.Copy() {
-
 			timeDiff := time.Now().UTC().Sub(t)
 			if timeDiff < time.Duration(metricsConfig.ReportingInterval)*time.Second*2 {
 				continue
@@ -683,7 +650,6 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	var timeSeries []prompb.TimeSeries
 
 	for _, metricFamily := range metricFamilySlice {
-
 		if !p.re.MatchString(metricFamily.GetName()) {
 			continue
 		}
@@ -878,9 +844,21 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		return resp.StatusCode, fmt.Errorf("unexpected status code %d while pushing: %s", resp.StatusCode, body)
 	}
-	p.Logger.Debug().Logf("metrics push response: %v", string(body))
+	p.Logger.Debug().Logf("metrics %s push response: %v", p.prefix, string(body))
 
 	return resp.StatusCode, nil
+}
+
+func (p *OpsRampMetrics) RenewClient() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.Client.CloseIdleConnections()
+
+	p.Client = http.Client{
+		Transport: utils.CreateNewHTTPTransport(),
+		Timeout:   time.Duration(240) * time.Second,
+	}
 }
 
 func (p *OpsRampMetrics) RenewOAuthToken() error {
@@ -900,7 +878,24 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 
 	resp, err := p.Client.Do(req)
 	if err != nil {
-		return err
+		retry := false
+		if strings.Contains(err.Error(), "connection refused") ||
+			strings.Contains(err.Error(), "unreachable") {
+			if p.Proxy.Enabled() {
+				_ = p.Proxy.SwitchProxy()
+				p.RenewClient()
+				retry = true
+			}
+		}
+
+		if retry {
+			resp, err = p.Client.Do(req)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -918,10 +913,24 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 }
 
 func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
+	retry := false
 	response, err := p.Client.Do(request)
 	if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 		return response, nil
 	}
+	if err != nil &&
+		(strings.Contains(err.Error(), "connection refused") ||
+			strings.Contains(err.Error(), "unreachable")) {
+		if p.Proxy.Enabled() {
+			_ = p.Proxy.SwitchProxy()
+			p.RenewClient()
+			retry = true
+		}
+	}
+	if retry {
+		response, err = p.Client.Do(request)
+	}
+
 	if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
 		err := p.RenewOAuthToken()
 		if err != nil {

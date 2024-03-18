@@ -303,7 +303,7 @@ func getValue(value *commonpb.AnyValue) (result interface{}, truncatedBytes int)
 	return nil, 0
 }
 
-func parseOtlpRequestBody(body io.ReadCloser, contentType string, contentEncoding string, request protoreflect.ProtoMessage) error {
+func parseOtlpRequestBody(body io.ReadCloser, contentType, contentEncoding string, request protoreflect.ProtoMessage) error {
 	defer body.Close()
 	bodyBytes, err := io.ReadAll(body)
 	if err != nil {

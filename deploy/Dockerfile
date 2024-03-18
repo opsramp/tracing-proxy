@@ -1,4 +1,4 @@
-FROM --platform=$TARGETPLATFORM golang:1.21.6-bullseye as builder
+FROM --platform=$TARGETPLATFORM golang:1.22.1-bullseye as builder
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -27,7 +27,7 @@ RUN set -eux; \
     echo "${ESUM}  /usr/local/bin/tini" | sha256sum -c -; \
     chmod +x /usr/local/bin/tini
 
-ARG BUILD_ID="17.0.2"
+ARG BUILD_ID="17.0.4"
 WORKDIR /app
 
 ADD ../go.mod ../go.sum ./

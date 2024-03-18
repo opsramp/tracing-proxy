@@ -13,7 +13,7 @@ type MockMetrics struct {
 	lock sync.Mutex
 }
 
-func (m *MockMetrics) RegisterWithDescriptionLabels(name string, metricType string, desc string, labels []string) {
+func (m *MockMetrics) RegisterWithDescriptionLabels(name, metricType, desc string, labels []string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -63,7 +63,7 @@ func (m *MockMetrics) Start() {
 	m.Histograms = make(map[string][]float64)
 }
 
-func (m *MockMetrics) Register(name string, metricType string) {
+func (m *MockMetrics) Register(name, metricType string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
