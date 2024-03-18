@@ -95,15 +95,6 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 
 		for _, librarySpan := range resourceSpan.ScopeSpans {
 			scopeAttrs := getScopeAttributes(librarySpan.Scope)
-			library := librarySpan.Scope
-			if library != nil {
-				if len(library.Name) > 0 {
-					traceAttributes["resourceAttributes"]["library.name"] = library.Name
-				}
-				if len(library.Version) > 0 {
-					traceAttributes["resourceAttributes"]["library.version"] = library.Version
-				}
-			}
 
 			// update classification attrs with scope attributes
 			_scopeClassificationAttrs := _classificationAttributes
@@ -124,7 +115,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				var isError bool
 
 				for key, attributeValue := range span.Attributes {
-					if attributeValue.GetKey() == "http.status_code" {
+					if attributeValue.GetKey() == "http.status_code" || attributeValue.GetKey() == "http.response.status_code" {
 						statusCodeType := fmt.Sprintf("%v", span.Attributes[key].Value)
 						if strings.Contains(statusCodeType, "int") {
 							spanStatusCode = span.Attributes[key].Value.GetIntValue()
@@ -227,6 +218,10 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 					if stillUnknownInstance {
 						traceAttributes["spanAttributes"]["instance"] = _unknown
 					}
+				}
+
+				for key, value := range scopeAttrs {
+					traceAttributes["spanAttributes"][key] = value
 				}
 
 				// Copy span attributes
