@@ -1,11 +1,11 @@
-FROM --platform=$BUILDPLATFORM golang:1.21.6-alpine3.19 as builder
+FROM --platform=$BUILDPLATFORM golang:1.22.1-alpine3.19 as builder
 
 ARG TARGETOS
 ARG TARGETARCH
 
 RUN apk update && apk add --no-cache git bash ca-certificates && update-ca-certificates
 
-ARG BUILD_ID="17.0.2"
+ARG BUILD_ID="17.0.4"
 
 WORKDIR /app
 

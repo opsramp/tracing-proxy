@@ -1,6 +1,10 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/opsramp/tracing-proxy/pkg/retry"
+)
 
 // Config defines the interface the rest of the code uses to get items from the
 // config. There are different implementations of the config using different
@@ -171,7 +175,7 @@ type Config interface {
 	// GetAuthConfig return the authentication configuration
 	GetAuthConfig() AuthConfiguration
 
-	GetRetryConfig() *RetryConfiguration
+	GetRetryConfig() *retry.Config
 
 	GetTenantId() (string, error)
 
