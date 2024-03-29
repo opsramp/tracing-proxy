@@ -188,7 +188,7 @@ func (i *InMemCollector) Start() error {
 
 	i.Metrics.RegisterHistogram(
 		"trace_apdex_latency",
-		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language", "apdex_threshold", "error", "previous_service"},
+		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language", "apdex_threshold", "error"},
 		"span latency in milliseconds by service, operation and app",
 		thresholdBuckets,
 	)
@@ -671,7 +671,6 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 		i.Metrics.Increment("trace_send_no_root")
 	}
 
-	previousService := ""
 	// Add metrics for latency/duration per operation
 	for _, span := range trace.GetSpans() {
 		if span.Data == nil {
@@ -745,8 +744,6 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 			apdexLabels := map[string]string{}
 			maps.Copy(apdexLabels, labels)
 			apdexLabels["apdex_threshold"] = fmt.Sprintf("%v", 4*Threshold)
-			apdexLabels["previos_service"] = previousService
-			previousService = labels["service_name"]
 
 			errorStatus, ok := span.Data["error"]
 			if ok && errorStatus != nil && errorStatus.(bool) {
