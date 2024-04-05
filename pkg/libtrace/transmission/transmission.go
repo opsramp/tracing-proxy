@@ -350,7 +350,7 @@ func (h *TraceProxy) SendResponse(r Response) bool {
 type batchAgg struct {
 	// map of batch keys to a list of events destined for that batch
 	batches map[string][]*Event
-	// Used to reenque events when an initial batch is too large
+	// Used to re-enqueue events when an initial batch is too large
 	overflowBatches       map[string][]*Event
 	blockOnResponse       bool
 	userAgentAddition     string
@@ -396,7 +396,7 @@ func (b *batchAgg) enqueueResponse(resp Response) {
 	}
 }
 
-func (b *batchAgg) reenqueueEvents(events []*Event) {
+func (b *batchAgg) reEnqueueEvents(events []*Event) {
 	if b.overflowBatches == nil {
 		b.overflowBatches = make(map[string][]*Event)
 	}
@@ -430,7 +430,7 @@ func (b *batchAgg) Fire(notifier muster.Notifier) {
 			}
 			overflowCount++
 			// fetch the keys in this map - we can't range over the map
-			// because it's possible that fireBatch will reenqueue more overflow
+			// because it's possible that fireBatch will re-enqueue more overflow
 			// events
 			keys := make([]string, len(b.overflowBatches))
 			i := 0
@@ -475,6 +475,9 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 	var resourceLogs []*v1.ResourceLogs
 	var LogRecords []*v1.LogRecord
 	for _, ev := range events {
+		if ev == nil {
+			continue
+		}
 		apiHost = ev.APIHost
 
 		traceData := proxypb.ProxySpan{
@@ -759,7 +762,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 		}
 		apiHost = fmt.Sprintf("%s:%s", apiHostURL.Hostname(), apiPort)
 
-		peerConn, err := grpc.Dial(apiHost, opts...)
+		peerConn, err := grpc.NewClient(apiHost, opts...)
 		if err != nil {
 			sendDirect = true
 			b.logger.Error().Logf("sending directly, unable to establish connection to %s error: %v", apiHost, err)
@@ -905,9 +908,9 @@ func (b *batchAgg) encodeBatchProtoBuf(events []*Event) ([]byte, int) {
 		}
 
 		bytesTotal += len(evByt)
-		// count for the trailing ]
+		// count for the trailing
 		if bytesTotal+1 > apiMaxBatchSize {
-			b.reenqueueEvents(events[i:])
+			b.reEnqueueEvents(events[i:])
 			break
 		}
 
