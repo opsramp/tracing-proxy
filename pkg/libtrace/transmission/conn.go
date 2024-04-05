@@ -67,13 +67,13 @@ func NewConnection(c ConnConfig) (*Connection, error) {
 		c.LOpts = append(c.LOpts, proxyDialer)
 	}
 
-	tConn, err := grpc.Dial(c.TAddr, c.TOpts...)
+	tConn, err := grpc.NewClient(c.TAddr, c.TOpts...)
 	if err != nil {
 		return nil, err
 	}
 	tClient := proxypb.NewTraceProxyServiceClient(tConn)
 
-	lConn, err := grpc.Dial(c.LAddr, c.LOpts...)
+	lConn, err := grpc.NewClient(c.LAddr, c.LOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,14 +107,14 @@ func (c *Connection) RenewConnection() error {
 		_ = c.p.UpdateProxyEnvVars()
 	}
 
-	tConn, err := grpc.Dial(c.tAddr, c.tOpts...)
+	tConn, err := grpc.NewClient(c.tAddr, c.tOpts...)
 	if err != nil {
 		return err
 	}
 	c.tConn = tConn
 	c.tClient = proxypb.NewTraceProxyServiceClient(tConn)
 
-	lConn, err := grpc.Dial(c.lAddr, c.lOpts...)
+	lConn, err := grpc.NewClient(c.lAddr, c.lOpts...)
 	if err != nil {
 		return err
 	}

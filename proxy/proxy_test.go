@@ -427,7 +427,7 @@ func TestProxy_SwitchProxy(t *testing.T) {
 			}
 			checkConnectivity = tt.dummyConnectivityCheck
 
-			err := p.SwitchProxy()
+			err := p.SwitchProxy("")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SwitchProxy() error = %v, wantErr %v", err, tt.wantErr)
 			}

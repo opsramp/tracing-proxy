@@ -293,6 +293,10 @@ func ConvertKeyValueSliceToMap(kvSlice []*proxypb.KeyValue) map[string]interface
 		// Get the key and value from the KeyValue message
 		key := kv.GetKey()
 		value := kv.GetValue()
+		if value == nil {
+			kvMap[key] = ""
+			continue
+		}
 
 		// Convert the value to an interface{} based on the type of the AnyValue message
 		var valueInterface interface{}
@@ -303,9 +307,11 @@ func ConvertKeyValueSliceToMap(kvSlice []*proxypb.KeyValue) map[string]interface
 			valueInterface = v.BoolValue
 		case *proxypb.AnyValue_IntValue:
 			valueInterface = v.IntValue
+		case *proxypb.AnyValue_DoubleValue:
+			valueInterface = v.DoubleValue
 		default:
 			// If the value is unknown, use nil
-			valueInterface = nil
+			valueInterface = ""
 		}
 
 		// Add the key and value to the map

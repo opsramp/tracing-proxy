@@ -1,6 +1,10 @@
 package metrics
 
 import (
+	"net/http"
+	"time"
+
+	"github.com/opsramp/tracing-proxy/pkg/utils"
 	"github.com/opsramp/tracing-proxy/types"
 )
 
@@ -23,7 +27,13 @@ type Metrics interface {
 }
 
 func GetMetricsImplementation(prefix string) Metrics {
-	return &OpsRampMetrics{prefix: prefix}
+	return &OpsRampMetrics{
+		Client: &http.Client{
+			Transport: utils.CreateNewHTTPTransport(),
+			Timeout:   time.Duration(240) * time.Second,
+		},
+		prefix: prefix,
+	}
 }
 
 func ConvertNumeric(val interface{}) float64 {
