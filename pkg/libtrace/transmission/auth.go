@@ -240,7 +240,7 @@ func (oauth *Auth) UnaryClientInterceptor(c context.Context,
 			if status.Code(err) == codes.Unavailable || status.Code(err) == codes.DeadlineExceeded {
 				// check if the active proxy is working
 				if oauth.Proxy.Enabled() {
-					_ = oauth.Proxy.SwitchProxy()
+					_ = oauth.Proxy.SwitchProxy("GRPC")
 					if err := oauth.conn.RenewConnection(); err == nil {
 						// updating the present connection
 						if strings.Contains(method, "LogsService") {

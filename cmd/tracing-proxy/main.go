@@ -139,7 +139,7 @@ func main() {
 	prxy.Logger = lgr
 	// connect to working proxy at start-up
 	if prxy.Enabled() {
-		_ = prxy.SwitchProxy()
+		_ = prxy.SwitchProxy("")
 		lgr.Info().Logf("valid proxy config received: %d", prxy.Len())
 	}
 
