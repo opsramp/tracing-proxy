@@ -179,7 +179,7 @@ func (p *Proxy) allowUpdate() bool {
 	return presentTime.Sub(p.lastUpdated) > time.Minute
 }
 
-func (p *Proxy) SwitchProxy() error {
+func (p *Proxy) SwitchProxy(moduleName string) error {
 	if !p.allowUpdate() {
 		return nil
 	}
@@ -197,7 +197,12 @@ func (p *Proxy) SwitchProxy() error {
 
 	p.lastUpdated = time.Now().UTC()
 
-	p.Logger.Info().Logf("active proxy set to index: %d", p.activeProxyIndex)
+	if moduleName != "" {
+		p.Logger.Debug().Logf("active proxy set to index: %d by %s", p.activeProxyIndex, moduleName)
+	} else {
+		p.Logger.Debug().Logf("active proxy set to index: %d", p.activeProxyIndex)
+	}
+
 	return p.UpdateProxyEnvVars()
 }
 

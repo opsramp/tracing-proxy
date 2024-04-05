@@ -21,9 +21,9 @@ type filePeers struct {
 	peerLock  sync.Mutex
 }
 
-var firstOccurancesOfGetPeers bool = false
+var firstOccurrencesOfGetPeers = false
 
-// NewFilePeers returns a peers collection backed by the config file
+// NewFilePeers returns a peer collection backed by the config file
 func newFilePeers(c config.Config) Peers {
 	p := &filePeers{
 		c:         c,
@@ -37,8 +37,8 @@ func newFilePeers(c config.Config) Peers {
 }
 
 func (p *filePeers) GetPeers() ([]string, error) {
-	if !firstOccurancesOfGetPeers {
-		firstOccurancesOfGetPeers = true
+	if !firstOccurrencesOfGetPeers {
+		firstOccurrencesOfGetPeers = true
 		return p.c.GetPeers()
 	}
 	p.peerLock.Lock()
@@ -78,14 +78,14 @@ func (p *filePeers) watchFilePeers() {
 }
 
 func (p *filePeers) RegisterUpdatedPeersCallback(callback func()) {
-	// do nothing, file based peers are not reloaded
+	// do nothing, file-based peers are not reloaded
 	p.callbacks = append(p.callbacks, callback)
 }
 
-func getPeerMembers(originalPeerlist []string) []string {
+func getPeerMembers(originalPeersList []string) []string {
 	var workingPeers []string
 	var wg sync.WaitGroup
-	for _, peer := range originalPeerlist {
+	for _, peer := range originalPeersList {
 		wg.Add(1)
 		go func(goPeer string) {
 			opened := isOpen(goPeer)
@@ -108,11 +108,13 @@ func isOpen(peerURL string) bool {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), opts...)
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), opts...)
 	if err != nil {
 		return false
 	}
-	defer conn.Close()
+	defer func(conn *grpc.ClientConn) {
+		_ = conn.Close()
+	}(conn)
 	client := proxypb.NewTraceProxyServiceClient(conn)
 
 	resp, err := client.Status(context.TODO(), &proxypb.StatusRequest{})
@@ -123,7 +125,7 @@ func isOpen(peerURL string) bool {
 }
 
 func checkConnection(addr string) bool {
-	grpcConn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcConn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return false
 	}

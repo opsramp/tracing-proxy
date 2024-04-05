@@ -76,7 +76,7 @@ type OpsRampMetrics struct {
 
 	lock sync.RWMutex
 
-	Client http.Client
+	Client *http.Client
 	Proxy  *proxy.Proxy `inject:"proxyConfig"`
 
 	apiEndpoint string
@@ -855,7 +855,7 @@ func (p *OpsRampMetrics) RenewClient() {
 
 	p.Client.CloseIdleConnections()
 
-	p.Client = http.Client{
+	p.Client = &http.Client{
 		Transport: utils.CreateNewHTTPTransport(),
 		Timeout:   time.Duration(240) * time.Second,
 	}
@@ -882,7 +882,7 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 		if strings.Contains(err.Error(), "connection refused") ||
 			strings.Contains(err.Error(), "unreachable") {
 			if p.Proxy.Enabled() {
-				_ = p.Proxy.SwitchProxy()
+				_ = p.Proxy.SwitchProxy(p.prefix)
 				p.RenewClient()
 				retry = true
 			}
@@ -922,7 +922,7 @@ func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
 		(strings.Contains(err.Error(), "connection refused") ||
 			strings.Contains(err.Error(), "unreachable")) {
 		if p.Proxy.Enabled() {
-			_ = p.Proxy.SwitchProxy()
+			_ = p.Proxy.SwitchProxy(p.prefix)
 			p.RenewClient()
 			retry = true
 		}
