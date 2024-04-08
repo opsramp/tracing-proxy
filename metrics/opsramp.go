@@ -562,7 +562,7 @@ func (p *OpsRampMetrics) calculateTraceOperationError(metricFamilySlice []*io_pr
 		if !p.re.MatchString(metricFamily.GetName()) {
 			continue
 		}
-		if metricFamily.GetName() == "trace_operations_failed" || metricFamily.GetName() == "trace_spans_count" {
+		if metricFamily.GetName() == "trace_operations_failed" {
 			for _, metric := range metricFamily.GetMetric() {
 				var labels []prompb.Label
 				for _, label := range metric.GetLabel() {
@@ -571,7 +571,7 @@ func (p *OpsRampMetrics) calculateTraceOperationError(metricFamilySlice []*io_pr
 						Value: label.GetValue(),
 					})
 				}
-				key := "trace_operations_failed&trace_spans_count&"
+				key := "trace_operations_failed&"
 				labelSlice := metric.GetLabel()
 				sort.Slice(labelSlice, func(i, j int) bool {
 					return labelSlice[i].GetName()+labelSlice[i].GetValue() > labelSlice[j].GetName()+labelSlice[i].GetValue()
@@ -579,11 +579,7 @@ func (p *OpsRampMetrics) calculateTraceOperationError(metricFamilySlice []*io_pr
 				for _, label := range labelSlice {
 					key += label.GetName() + label.GetValue()
 				}
-				if metricFamily.GetName() == "trace_operations_failed" {
-					uniqueFailedMap[key] = *metric.Counter.Value
-				} else {
-					uniqueSpansMap[key] = *metric.Counter.Value
-				}
+				uniqueFailedMap[key] = *metric.Counter.Value
 				uniqueLabelsMap[key] = labels
 			}
 		}

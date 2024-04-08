@@ -107,9 +107,6 @@ func (i *InMemCollector) Start() error {
 	// listen for config reloads
 	i.Config.RegisterReloadCallback(i.sendReloadSignal)
 
-	i.Metrics.Register("trace_duration_ms", "histogram")
-	i.Metrics.Register("trace_spans_count_total", "histogram")
-	i.Metrics.Register("collector_tosend_queue", "histogram")
 	i.Metrics.Register("collector_incoming_queue", "histogram")
 	i.Metrics.Register("collector_peer_queue", "histogram")
 	i.Metrics.Register("collector_cache_size", "gauge")
@@ -126,12 +123,6 @@ func (i *InMemCollector) Start() error {
 	i.Metrics.Register(TraceSendEjectedMemsize, "counter")
 
 	i.Metrics.RegisterWithDescriptionLabels(
-		"trace_operations_latency_ms",
-		"gauge",
-		"Trace latency wrt each trace operation",
-		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
-	)
-	i.Metrics.RegisterWithDescriptionLabels(
 		"trace_operations_failed",
 		"counter",
 		"Number of Error events in spans wrt each trace operation",
@@ -147,24 +138,6 @@ func (i *InMemCollector) Start() error {
 		"trace_operations_total",
 		"counter",
 		"Total Number of events in spans wrt each trace operation",
-		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
-	)
-	i.Metrics.RegisterWithDescriptionLabels(
-		"trace_root_span",
-		"counter",
-		"Number of root spans in an operation",
-		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
-	)
-	i.Metrics.RegisterWithDescriptionLabels(
-		"trace_spans_count",
-		"counter",
-		"Number of spans in an operation",
-		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
-	)
-	i.Metrics.RegisterWithDescriptionLabels(
-		"trace_root_operation_latency_ms",
-		"gauge",
-		"Trace latency wrt each root trace operation",
 		[]string{"service_name", "operation", "app", "instance", "transaction_type", "transaction_category", "transaction_sub_category", "language"},
 	)
 	i.Metrics.RegisterWithDescriptionLabels(
@@ -662,9 +635,6 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 	}
 	trace.Sent = true
 
-	traceDur := time.Since(trace.ArrivalTime)
-	i.Metrics.Histogram("trace_duration_ms", float64(traceDur.Milliseconds()))
-	i.Metrics.Histogram("trace_spans_count_total", float64(trace.DescendantCount()))
 	if trace.RootSpan != nil {
 		i.Metrics.Increment("trace_send_has_root")
 	} else {
@@ -732,7 +702,6 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 
 		durationMsString, ok := span.Data["durationMs"]
 		if ok && durationMsString != nil {
-			i.Metrics.GaugeWithLabels("trace_operations_latency_ms", labels, metrics.ConvertNumeric(durationMsString))
 
 			// getting the latency from end and start time
 			i.Metrics.HistogramWithLabels(
@@ -766,11 +735,7 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 				(metrics.ConvertNumeric(span.Data["endTime"])-metrics.ConvertNumeric(span.Data["startTime"]))/float64(time.Millisecond),
 			)
 
-			i.Metrics.GaugeWithLabels("trace_root_operation_latency_ms", labels, metrics.ConvertNumeric(durationMsString))
-			i.Metrics.IncrementWithLabels("trace_root_span", labels)
 		}
-		i.Metrics.IncrementWithLabels("trace_spans_count", labels)
-
 		errorStatus, ok := span.Data["error"]
 		if ok && errorStatus != nil && errorStatus.(bool) {
 			i.Metrics.IncrementWithLabels("trace_operations_failed", labels)

@@ -290,10 +290,8 @@ func (h *TraceProxy) Flush() (err error) {
 // work can be enqueued.
 func (h *TraceProxy) Add(ev *Event) {
 	if h.tryAdd(ev) {
-		h.Metrics.Increment("messages_queued")
 		return
 	}
-	h.Metrics.Increment("queue_overflow")
 	r := Response{
 		Err:      errors.New("queue overflow"),
 		Metadata: ev.Metadata,
@@ -308,12 +306,6 @@ func (h *TraceProxy) Add(ev *Event) {
 func (h *TraceProxy) tryAdd(ev *Event) bool {
 	h.musterLock.RLock()
 	defer h.musterLock.RUnlock()
-
-	// Even though this queue is locked against changing h.Muster, the Work queue length
-	// could change due to actions on the worker side, so make sure we only measure it once.
-	qlen := len(h.muster.Work)
-	h.Logger.Debug().Logf("adding event to transmission; queue length %d", qlen)
-	h.Metrics.Gauge("queue_length", qlen)
 
 	if h.BlockOnSend {
 		h.muster.Work <- ev
@@ -774,9 +766,6 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 			if st, ok := status.FromError(err); ok {
 				if st.Code() != codes.OK {
 					b.logger.Error().Logf("sending failed. error: %s", st.String())
-					b.metrics.Increment("send_errors")
-				} else {
-					b.metrics.Increment("batches_sent")
 				}
 			}
 
@@ -793,15 +782,12 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 			if st, ok := status.FromError(err); ok {
 				if st.Code() != codes.OK {
 					b.logger.Error().Logf("sending failed. error: %s", st.String())
-					b.metrics.Increment("send_errors")
 					if strings.Contains(strings.ToUpper(err.Error()), "TRACE MANAGEMENT WAS NOT ENABLED") {
 						b.logger.Error().Logf("Enable Trace Management For Tenant and Restart Tracing Proxy")
 						m.Lock()
 						SendTraces = false
 						m.Unlock()
 					}
-				} else {
-					b.metrics.Increment("batches_sent")
 				}
 			}
 			b.logger.Debug().Logf("trace proxy response msg: %s", r.GetMessage())
