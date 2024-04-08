@@ -702,7 +702,6 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 
 		durationMsString, ok := span.Data["durationMs"]
 		if ok && durationMsString != nil {
-
 			// getting the latency from end and start time
 			i.Metrics.HistogramWithLabels(
 				"trace_operations_latency",
@@ -734,7 +733,6 @@ func (i *InMemCollector) send(trace *types.Trace, reason string) {
 				labels,
 				(metrics.ConvertNumeric(span.Data["endTime"])-metrics.ConvertNumeric(span.Data["startTime"]))/float64(time.Millisecond),
 			)
-
 		}
 		errorStatus, ok := span.Data["error"]
 		if ok && errorStatus != nil && errorStatus.(bool) {
