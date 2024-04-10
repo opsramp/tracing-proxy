@@ -584,12 +584,11 @@ func (p *OpsRampMetrics) Push() (int, error) {
 
 	p.lock.Unlock()
 
-	metricFamilySlice, err := p.promRegistry.Gather()
-	if err != nil {
+	if _, err := p.promRegistry.Gather(); err != nil {
 		return -1, err
 	}
 
-	metricFamilySlice, err = p.promRegistry.Gather()
+	metricFamilySlice, err := p.promRegistry.Gather()
 	if err != nil {
 		return -1, err
 	}
