@@ -135,7 +135,6 @@ func (r *Router) LnS(incomingOrPeer string) {
 		return
 	}
 
-	r.Metrics.Register(r.incomingOrPeer+"_router_proxied", "counter")
 	r.Metrics.Register(r.incomingOrPeer+"_router_event", "counter")
 	r.Metrics.Register(r.incomingOrPeer+"_router_batch", "counter")
 	r.Metrics.Register(r.incomingOrPeer+"_router_nonspan", "counter")
