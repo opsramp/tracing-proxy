@@ -307,6 +307,8 @@ func (h *TraceProxy) tryAdd(ev *Event) bool {
 	h.musterLock.RLock()
 	defer h.musterLock.RUnlock()
 
+	h.Logger.Debug().Logf("adding event to transmission; queue length %d", len(h.muster.Work))
+
 	if h.BlockOnSend {
 		h.muster.Work <- ev
 		return true
