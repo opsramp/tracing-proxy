@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"net/url"
 	"os"
 	"strings"
@@ -50,6 +51,8 @@ const (
 	maxOverflowBatches int = 10
 	// Default start-to-finish timeout for batch to send HTTP requests.
 	defaultSendTimeout = time.Second * 60
+	// Maximum BatchSize for a api payload
+	maxApiSize int = 1000000
 )
 
 type TraceProxy struct {
@@ -457,11 +460,8 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 		// we managed to create a batch with no events. 🤔️ that's odd, let's move on.
 		return
 	}
-	_, numEncoded := b.encodeBatchProtoBuf(events)
-	b.logger.Debug().Logf("num encoded: %d", numEncoded)
-	if numEncoded == 0 {
-		return
-	}
+	//_, numEncoded := b.encodeBatchProtoBuf(events)
+	//b.logger.Debug().Logf("num encoded: %d", numEncoded)
 
 	logTraceReq := proxypb.ExportLogTraceProxyServiceRequest{
 		TenantId: b.tenantId,
@@ -789,23 +789,12 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 	if sendDirect || !b.isPeer {
 		if SendTraces {
-			r, err := b.conn.GetTraceClient().ExportTraceProxy(ctx, &traceReq)
-			if st, ok := status.FromError(err); ok {
-				if st.Code() != codes.OK {
-					b.logger.Error().Logf("sending failed. error: %s", st.String())
-					b.metrics.Increment("send_errors")
-					if strings.Contains(strings.ToUpper(err.Error()), "TRACE MANAGEMENT WAS NOT ENABLED") {
-						b.logger.Error().Logf("Enable Trace Management For Tenant and Restart Tracing Proxy")
-						m.Lock()
-						SendTraces = false
-						m.Unlock()
-					}
-				} else {
-					b.metrics.Increment("batches_sent")
-				}
+			traceBatches := b.SendTraceBatches(traceReq, ctx)
+
+			for _, batch := range traceBatches {
+				traceReq.Items = batch
+				b.ExportTraces(traceReq, ctx)
 			}
-			b.logger.Debug().Logf("trace proxy response msg: %s", r.GetMessage())
-			b.logger.Debug().Logf("trace proxy response status: %s", r.GetStatus())
 		}
 
 		if len(LogRecords) > 0 {
@@ -925,4 +914,54 @@ func (b *batchAgg) encodeBatchProtoBuf(events []*Event) ([]byte, int) {
 	}
 	buf.WriteByte(']')
 	return buf.Bytes(), numEncoded
+}
+
+func (b *batchAgg) SendTraceBatches(traceReq proxypb.ExportTraceProxyServiceRequest, ctx context.Context) [][]*proxypb.ProxySpan {
+	splittingTraces := traceReq.Items
+	traceReq.Items = []*proxypb.ProxySpan{}
+	batchTraces := [][]*proxypb.ProxySpan{}
+	batchSize := 0
+	for i, span := range splittingTraces {
+		spanSize := proto.Size(span)
+		if spanSize > maxApiSize {
+			// OOPS! your larger than my tummy(1mb), so cant handle you
+			b.logger.Info().Logf("Span size is greater than 1mb, so dropping")
+			continue
+		}
+		if spanSize+batchSize > maxApiSize {
+			batchTraces = append(batchTraces, traceReq.Items)
+			//b.ExportTraces(traceReq, ctx)
+			batchSize = 0
+			traceReq.Items = []*proxypb.ProxySpan{}
+		}
+		traceReq.Items = append(traceReq.Items, span)
+		batchSize = batchSize + spanSize
+		if i == len(splittingTraces)-1 {
+			batchTraces = append(batchTraces, traceReq.Items)
+			//b.ExportTraces(traceReq, ctx)
+			batchSize = 0
+			traceReq.Items = []*proxypb.ProxySpan{}
+		}
+	}
+	return batchTraces
+}
+
+func (b *batchAgg) ExportTraces(traceReq proxypb.ExportTraceProxyServiceRequest, ctx context.Context) {
+	r, err := b.conn.GetTraceClient().ExportTraceProxy(ctx, &traceReq)
+	if st, ok := status.FromError(err); ok {
+		if st.Code() != codes.OK {
+			b.logger.Error().Logf("sending failed. error: %s", st.String())
+			b.metrics.Increment("send_errors")
+			if strings.Contains(strings.ToUpper(err.Error()), "TRACE MANAGEMENT WAS NOT ENABLED") {
+				b.logger.Error().Logf("Enable Trace Management For Tenant and Restart Tracing Proxy")
+				m.Lock()
+				SendTraces = false
+				m.Unlock()
+			}
+		} else {
+			b.metrics.Increment("batches_sent")
+		}
+	}
+	b.logger.Debug().Logf("trace proxy response msg: %s", r.GetMessage())
+	b.logger.Debug().Logf("trace proxy response status: %s", r.GetStatus())
 }
