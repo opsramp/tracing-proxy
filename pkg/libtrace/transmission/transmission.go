@@ -514,7 +514,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Error().Logf("resource attribute value is nil") // here v has type interface{}
+				b.logger.Error().Logf("resource attribute value is nil for key: ", key) // here v has type interface{}
 			case string:
 				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -538,7 +538,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Error().Logf("span attribute value is nil") // here v has type interface{}
+				b.logger.Error().Logf("span attribute value is nil for key: ", key) // here v has type interface{}
 			case string:
 				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -564,7 +564,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Error().Logf("event attribute value is nil") // here v has type interface{}
+				b.logger.Error().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
 			case string:
 				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -587,7 +587,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 				spanEventAttrKeyVal.Key = key
 				switch v := val.(type) {
 				case nil:
-					b.logger.Error().Logf("event attribute value is nil") // here v has type interface{}
+					b.logger.Error().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
 				case string:
 					spanEventAttrKeyVal.Value = &v11.AnyValue{Value: &v11.AnyValue_StringValue{StringValue: v}} // here v has type string
 				case bool:
@@ -652,7 +652,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Error().Logf("resource attribute value is nil") // here v has type interface{}
+				b.logger.Error().Logf("resource attribute value is nil for key: ", key) // here v has type interface{}
 			case string:
 				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -672,7 +672,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Error().Logf("span attribute value is nil") // here v has type interface{}
+				b.logger.Error().Logf("span attribute value is nil for key: ", key) // here v has type interface{}
 			case string:
 				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -698,7 +698,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Error().Logf("event attribute value is nil") // here v has type interface{}
+				b.logger.Error().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
 			case string:
 				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -721,7 +721,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 				spanEventAttrKeyVal.Key = key
 				switch v := val.(type) {
 				case nil:
-					b.logger.Error().Logf("event attribute value is nil") // here v has type interface{}
+					b.logger.Error().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
 				case string:
 					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type string
 				case bool:
@@ -790,6 +790,8 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 	if sendDirect || !b.isPeer {
 		if SendTraces {
 			traceBatches := b.SendTraceBatches(traceReq, ctx)
+
+			b.logger.Debug().Logf("numer of batches: %v", (len(traceBatches)))
 
 			for _, batch := range traceBatches {
 				traceReq.Items = batch
@@ -947,6 +949,9 @@ func (b *batchAgg) SendTraceBatches(traceReq proxypb.ExportTraceProxyServiceRequ
 }
 
 func (b *batchAgg) ExportTraces(traceReq proxypb.ExportTraceProxyServiceRequest, ctx context.Context) {
+
+	b.logger.Debug().Logf("Hitting the ExportTraceProxy function")
+	b.logger.Debug().Logf("if you didnt receive success msg in some time try to ping apiHost once")
 	r, err := b.conn.GetTraceClient().ExportTraceProxy(ctx, &traceReq)
 	if st, ok := status.FromError(err); ok {
 		if st.Code() != codes.OK {
