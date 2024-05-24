@@ -92,6 +92,9 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				break
 			}
 		}
+		if isUnknownInstance {
+			traceAttributes["resourceAttributes"]["instance"] = _unknown
+		}
 
 		for _, librarySpan := range resourceSpan.ScopeSpans {
 			scopeAttrs := getScopeAttributes(librarySpan.Scope)
@@ -239,7 +242,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 						traceAttributes["spanEventAttributes"]["traceId"] = traceID
 						traceAttributes["spanEventAttributes"]["spanId"] = spanID
 						traceAttributes["spanEventAttributes"]["trace_operation"] = span.Name
-						traceAttributes["spanEventAttributes"]["trace_instance"] = traceAttributes["resourceAttributes"]["instance"]
+						traceAttributes["spanEventAttributes"]["trace_instance"] = traceAttributes["spanAttributes"]["instance"]
 						traceAttributes["spanEventAttributes"]["trace_service"] = traceAttributes["resourceAttributes"]["service_name"]
 						spanEvents = append(spanEvents, SpanEvent{
 							Name:       sevent.GetName(),
