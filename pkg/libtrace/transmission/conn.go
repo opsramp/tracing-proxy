@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/opsramp/tracing-proxy/pkg/libtrace/proto/proxypb"
 	"github.com/opsramp/tracing-proxy/proxy"
@@ -12,6 +13,7 @@ import (
 	"golang.org/x/net/http/httpproxy"
 	xproxy "golang.org/x/net/proxy"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 type ConnConfig struct {
@@ -66,6 +68,14 @@ func NewConnection(c ConnConfig) (*Connection, error) {
 		c.TOpts = append(c.TOpts, proxyDialer)
 		c.LOpts = append(c.LOpts, proxyDialer)
 	}
+
+	clientKeepAlive := grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:    time.Minute * 2,
+		Timeout: time.Second * 5,
+	})
+
+	c.TOpts = append(c.TOpts, clientKeepAlive)
+	c.LOpts = append(c.LOpts, clientKeepAlive)
 
 	tConn, err := grpc.NewClient(c.TAddr, c.TOpts...)
 	if err != nil {
