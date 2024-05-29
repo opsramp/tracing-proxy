@@ -11,18 +11,17 @@ package transmission
 // Ensure Stop() is called to flush all in-flight messages.
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/pkg/retry"
@@ -44,10 +43,6 @@ import (
 )
 
 const (
-	// Size limit for a serialized request body sent for a batch.
-	apiMaxBatchSize int = 5000000 // 5MB
-	// Size limit for a single serialized event within a batch.
-	apiEventSizeMax    int = 100000 // 100KB
 	maxOverflowBatches int = 10
 	// Default start-to-finish timeout for batch to send HTTP requests.
 	defaultSendTimeout = time.Second * 60
@@ -101,7 +96,7 @@ type TraceProxy struct {
 	DisableCompression bool
 
 	// Deprecated, synonymous with DisableCompression
-	DisableGzipCompression bool //nolint:all
+	DisableGzipCompression bool // nolint:all
 
 	// set true to send events with msgpack encoding
 	EnableMsgpackEncoding bool
@@ -314,9 +309,9 @@ func (h *TraceProxy) tryAdd(ev *Event) bool {
 
 	// Even though this queue is locked against changing h.Muster, the Work queue length
 	// could change due to actions on the worker side, so make sure we only measure it once.
-	qlen := len(h.muster.Work)
-	h.Logger.Debug().Logf("adding event to transmission; queue length %d", qlen)
-	h.Metrics.Gauge("queue_length", qlen)
+	qLen := len(h.muster.Work)
+	h.Logger.Debug().Logf("adding event to transmission; queue length %d", qLen)
+	h.Metrics.Gauge("queue_length", qLen)
 
 	if h.BlockOnSend {
 		h.muster.Work <- ev
@@ -460,14 +455,12 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 		// we managed to create a batch with no events. 🤔️ that's odd, let's move on.
 		return
 	}
-	//_, numEncoded := b.encodeBatchProtoBuf(events)
-	//b.logger.Debug().Logf("num encoded: %d", numEncoded)
 
 	logTraceReq := proxypb.ExportLogTraceProxyServiceRequest{
 		TenantId: b.tenantId,
 	}
 
-	traceReq := proxypb.ExportTraceProxyServiceRequest{
+	traceReq := &proxypb.ExportTraceProxyServiceRequest{
 		TenantId: b.tenantId,
 	}
 
@@ -514,7 +507,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Debug().Logf("resource attribute value is nil for key: ", key) // here v has type interface{}
+				b.logger.Debug().Logf("resource attribute value is nil for key: %v", key) // here v has type interface{}
 			case string:
 				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -534,11 +527,10 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 		for key, val := range spanAttr {
 			var spanAttrKeyVal proxypb.KeyValue
 			spanAttrKeyVal.Key = key
-			// spanAttrKeyVal.Value = val.(*proxypb.AnyValue)
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Debug().Logf("span attribute value is nil for key: ", key) // here v has type interface{}
+				b.logger.Debug().Logf("span attribute value is nil for key: %v", key) // here v has type interface{}
 			case string:
 				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -560,11 +552,10 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 		for key, val := range eventAttr {
 			var eventAttrKeyVal proxypb.KeyValue
 			eventAttrKeyVal.Key = key
-			// spanAttrKeyVal.Value = val.(*proxypb.AnyValue)
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Debug().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
+				b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
 			case string:
 				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -587,7 +578,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 				spanEventAttrKeyVal.Key = key
 				switch v := val.(type) {
 				case nil:
-					b.logger.Debug().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
+					b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
 				case string:
 					spanEventAttrKeyVal.Value = &v11.AnyValue{Value: &v11.AnyValue_StringValue{StringValue: v}} // here v has type string
 				case bool:
@@ -618,31 +609,31 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 			}
 			LogRecords = append(LogRecords, LogRecord)
 		}
-		logtraceData := proxypb.ProxyLogSpan{
+		logTraceData := proxypb.ProxyLogSpan{
 			Data:      &proxypb.LogTraceData{},
 			Timestamp: ev.Timestamp.Format(time.RFC3339Nano),
 		}
 
-		logtraceData.Data.TraceTraceID, _ = ev.Data["traceTraceID"].(string)
-		logtraceData.Data.TraceParentID, _ = ev.Data["traceParentID"].(string)
-		logtraceData.Data.TraceSpanID, _ = ev.Data["traceSpanID"].(string)
-		logtraceData.Data.TraceLinkTraceID, _ = ev.Data["traceLinkTraceID"].(string)
-		logtraceData.Data.TraceLinkSpanID, _ = ev.Data["traceLinkSpanID"].(string)
-		logtraceData.Data.Type, _ = ev.Data["type"].(string)
-		logtraceData.Data.MetaType, _ = ev.Data["metaType"].(string)
-		logtraceData.Data.SpanName, _ = ev.Data["spanName"].(string)
-		logtraceData.Data.SpanKind, _ = ev.Data["spanKind"].(string)
-		logtraceData.Data.SpanNumEvents, _ = ev.Data["spanNumEvents"].(int64)
-		logtraceData.Data.SpanNumLinks, _ = ev.Data["spanNumLinks"].(int64)
-		logtraceData.Data.StatusCode, _ = ev.Data["statusCode"].(int64)
-		logtraceData.Data.StatusMessage, _ = ev.Data["statusMessage"].(string)
-		logtraceData.Data.Time, _ = ev.Data["time"].(int64)
-		logtraceData.Data.DurationMs, _ = ev.Data["durationMs"].(float64)
-		logtraceData.Data.StartTime, _ = ev.Data["startTime"].(int64)
-		logtraceData.Data.EndTime, _ = ev.Data["endTime"].(int64)
-		logtraceData.Data.Error, _ = ev.Data["error"].(bool)
-		logtraceData.Data.FromProxy, _ = ev.Data["fromProxy"].(bool)
-		logtraceData.Data.ParentName, _ = ev.Data["parentName"].(string)
+		logTraceData.Data.TraceTraceID, _ = ev.Data["traceTraceID"].(string)
+		logTraceData.Data.TraceParentID, _ = ev.Data["traceParentID"].(string)
+		logTraceData.Data.TraceSpanID, _ = ev.Data["traceSpanID"].(string)
+		logTraceData.Data.TraceLinkTraceID, _ = ev.Data["traceLinkTraceID"].(string)
+		logTraceData.Data.TraceLinkSpanID, _ = ev.Data["traceLinkSpanID"].(string)
+		logTraceData.Data.Type, _ = ev.Data["type"].(string)
+		logTraceData.Data.MetaType, _ = ev.Data["metaType"].(string)
+		logTraceData.Data.SpanName, _ = ev.Data["spanName"].(string)
+		logTraceData.Data.SpanKind, _ = ev.Data["spanKind"].(string)
+		logTraceData.Data.SpanNumEvents, _ = ev.Data["spanNumEvents"].(int64)
+		logTraceData.Data.SpanNumLinks, _ = ev.Data["spanNumLinks"].(int64)
+		logTraceData.Data.StatusCode, _ = ev.Data["statusCode"].(int64)
+		logTraceData.Data.StatusMessage, _ = ev.Data["statusMessage"].(string)
+		logTraceData.Data.Time, _ = ev.Data["time"].(int64)
+		logTraceData.Data.DurationMs, _ = ev.Data["durationMs"].(float64)
+		logTraceData.Data.StartTime, _ = ev.Data["startTime"].(int64)
+		logTraceData.Data.EndTime, _ = ev.Data["endTime"].(int64)
+		logTraceData.Data.Error, _ = ev.Data["error"].(bool)
+		logTraceData.Data.FromProxy, _ = ev.Data["fromProxy"].(bool)
+		logTraceData.Data.ParentName, _ = ev.Data["parentName"].(string)
 
 		logTraceResourceAttr, _ := ev.Data["resourceAttributes"].(map[string]interface{})
 
@@ -652,7 +643,7 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Debug().Logf("resource attribute value is nil for key: ", key) // here v has type interface{}
+				b.logger.Debug().Logf("resource attribute value is nil for key: %v", key) // here v has type interface{}
 			case string:
 				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -662,17 +653,16 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 			default:
 				b.logger.Debug().Logf("resource attribute type unknown: %v", v) // here v has type interface{}
 			}
-			logtraceData.Data.ResourceAttributes = append(logtraceData.Data.ResourceAttributes, &resourceAttrKeyVal)
+			logTraceData.Data.ResourceAttributes = append(logTraceData.Data.ResourceAttributes, &resourceAttrKeyVal)
 		}
 		logTraceSpanAttr, _ := ev.Data["spanAttributes"].(map[string]interface{})
 		for key, val := range logTraceSpanAttr {
 			var spanAttrKeyVal proxypb.KeyValue
 			spanAttrKeyVal.Key = key
-			// spanAttrKeyVal.Value = val.(*proxypb.AnyValue)
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Debug().Logf("span attribute value is nil for key: ", key) // here v has type interface{}
+				b.logger.Debug().Logf("span attribute value is nil for key: %v", key) // here v has type interface{}
 			case string:
 				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -683,22 +673,21 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 				b.logger.Debug().Logf("span attribute type unknown: %v", v) // here v has type interface{}
 			}
 
-			logtraceData.Data.SpanAttributes = append(logtraceData.Data.SpanAttributes, &spanAttrKeyVal)
+			logTraceData.Data.SpanAttributes = append(logTraceData.Data.SpanAttributes, &spanAttrKeyVal)
 		}
-		logtraceData.Data.SpanAttributes = append(logtraceData.Data.SpanAttributes, &proxypb.KeyValue{
+		logTraceData.Data.SpanAttributes = append(logTraceData.Data.SpanAttributes, &proxypb.KeyValue{
 			Key:   "kind",
-			Value: &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: logtraceData.Data.SpanKind}},
+			Value: &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: logTraceData.Data.SpanKind}},
 		})
 
 		logTraceEventAttr, _ := ev.Data["eventAttributes"].(map[string]interface{})
 		for key, val := range logTraceEventAttr {
 			var eventAttrKeyVal proxypb.KeyValue
 			eventAttrKeyVal.Key = key
-			// spanAttrKeyVal.Value = val.(*proxypb.AnyValue)
 
 			switch v := val.(type) {
 			case nil:
-				b.logger.Debug().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
+				b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
 			case string:
 				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
 			case bool:
@@ -709,19 +698,19 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 				b.logger.Debug().Logf("event attribute type unknown: %v", v) // here v has type interface{}
 			}
 
-			logtraceData.Data.EventAttributes = append(logtraceData.Data.EventAttributes, &eventAttrKeyVal)
+			logTraceData.Data.EventAttributes = append(logTraceData.Data.EventAttributes, &eventAttrKeyVal)
 		}
 
 		for _, spanEvent := range ev.SpanEvents {
-			var proxypbSpanEvent proxypb.SpanEvent
-			proxypbSpanEvent.Name = spanEvent.Name
-			proxypbSpanEvent.TimeStamp = spanEvent.Timestamp
+			var proxySpanEvent proxypb.SpanEvent
+			proxySpanEvent.Name = spanEvent.Name
+			proxySpanEvent.TimeStamp = spanEvent.Timestamp
 			for key, val := range spanEvent.Attributes {
 				spanEventAttrKeyVal := &proxypb.KeyValue{}
 				spanEventAttrKeyVal.Key = key
 				switch v := val.(type) {
 				case nil:
-					b.logger.Debug().Logf("event attribute value is nil for key: ", key) // here v has type interface{}
+					b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
 				case string:
 					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type string
 				case bool:
@@ -731,11 +720,11 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 				default:
 					b.logger.Debug().Logf("event attribute type unknown: %v", v) // here v has type interface{}
 				}
-				proxypbSpanEvent.SpanEventAttributes = append(proxypbSpanEvent.SpanEventAttributes, spanEventAttrKeyVal)
+				proxySpanEvent.SpanEventAttributes = append(proxySpanEvent.SpanEventAttributes, spanEventAttrKeyVal)
 			}
-			logtraceData.Data.SpanEvents = append(logtraceData.Data.SpanEvents, &proxypbSpanEvent)
+			logTraceData.Data.SpanEvents = append(logTraceData.Data.SpanEvents, &proxySpanEvent)
 		}
-		logTraceReq.Items = append(logTraceReq.Items, &logtraceData)
+		logTraceReq.Items = append(logTraceReq.Items, &logTraceData)
 	}
 
 	ctx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
@@ -789,11 +778,14 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 	if sendDirect || !b.isPeer {
 		if SendTraces {
-			traceBatches := b.SendTraceBatches(traceReq, ctx)
+			traceBatches := b.SendTraceBatches(traceReq)
 
 			for _, batch := range traceBatches {
-				traceReq.Items = batch
-				b.ExportTraces(traceReq, ctx)
+				req := &proxypb.ExportTraceProxyServiceRequest{
+					Items:    batch,
+					TenantId: b.tenantId,
+				}
+				b.ExportTraces(req, ctx)
 			}
 		}
 
@@ -861,65 +853,10 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 	}
 }
 
-// create the JSON for this event list manually so that we can send
-// responses down the response queue for any that fail to marshal
-func (b *batchAgg) encodeBatchProtoBuf(events []*Event) ([]byte, int) {
-	// track first vs. rest events for commas
-
-	first := true
-	// track how many we successfully encode for later bookkeeping
-	var numEncoded int
-	var buf bytes.Buffer
-	buf.WriteByte('[')
-	bytesTotal := 1
-	// ok, we've got our array, let's populate it with JSON events
-	for i, ev := range events {
-		evByt, err := json.Marshal(ev)
-		// check all our errors first in case we need to skip batching this event
-		if err != nil {
-			b.enqueueResponse(Response{
-				Err:      err,
-				Metadata: ev.Metadata,
-			})
-			// nil out the invalid Event, so we can line up sent Events with server
-			// responses if needed. don't delete to preserve slice length.
-			events[i] = nil
-			continue
-		}
-		// if the event is too large to ever send, add an error to the queue
-		if len(evByt) > apiEventSizeMax {
-			b.enqueueResponse(Response{
-				Err:      fmt.Errorf("event exceeds max event size of %d bytes, API will not accept this event", apiEventSizeMax),
-				Metadata: ev.Metadata,
-			})
-			events[i] = nil
-			continue
-		}
-
-		bytesTotal += len(evByt)
-		// count for the trailing
-		if bytesTotal+1 > apiMaxBatchSize {
-			b.reEnqueueEvents(events[i:])
-			break
-		}
-
-		// ok, we have valid JSON, and it'll fit in this batch; add ourselves a comma and the next value
-		if !first {
-			buf.WriteByte(',')
-			bytesTotal++
-		}
-		first = false
-		buf.Write(evByt)
-		numEncoded++
-	}
-	buf.WriteByte(']')
-	return buf.Bytes(), numEncoded
-}
-
-func (b *batchAgg) SendTraceBatches(traceReq proxypb.ExportTraceProxyServiceRequest, ctx context.Context) [][]*proxypb.ProxySpan {
+func (b *batchAgg) SendTraceBatches(traceReq *proxypb.ExportTraceProxyServiceRequest) [][]*proxypb.ProxySpan {
 	splittingTraces := traceReq.Items
 	traceReq.Items = []*proxypb.ProxySpan{}
-	batchTraces := [][]*proxypb.ProxySpan{}
+	var batchTraces [][]*proxypb.ProxySpan
 	batchSize := 0
 	for i, span := range splittingTraces {
 		spanSize := proto.Size(span)
@@ -930,15 +867,13 @@ func (b *batchAgg) SendTraceBatches(traceReq proxypb.ExportTraceProxyServiceRequ
 		}
 		if spanSize+batchSize > maxApiSize {
 			batchTraces = append(batchTraces, traceReq.Items)
-			//b.ExportTraces(traceReq, ctx)
 			batchSize = 0
 			traceReq.Items = []*proxypb.ProxySpan{}
 		}
 		traceReq.Items = append(traceReq.Items, span)
-		batchSize = batchSize + spanSize
+		batchSize += spanSize
 		if i == len(splittingTraces)-1 {
 			batchTraces = append(batchTraces, traceReq.Items)
-			//b.ExportTraces(traceReq, ctx)
 			batchSize = 0
 			traceReq.Items = []*proxypb.ProxySpan{}
 		}
@@ -946,9 +881,8 @@ func (b *batchAgg) SendTraceBatches(traceReq proxypb.ExportTraceProxyServiceRequ
 	return batchTraces
 }
 
-func (b *batchAgg) ExportTraces(traceReq proxypb.ExportTraceProxyServiceRequest, ctx context.Context) {
-
-	r, err := b.conn.GetTraceClient().ExportTraceProxy(ctx, &traceReq)
+func (b *batchAgg) ExportTraces(traceReq *proxypb.ExportTraceProxyServiceRequest, ctx context.Context) {
+	r, err := b.conn.GetTraceClient().ExportTraceProxy(ctx, traceReq)
 	if st, ok := status.FromError(err); ok {
 		if st.Code() != codes.OK {
 			b.logger.Error().Logf("sending failed. error: %s", st.String())
