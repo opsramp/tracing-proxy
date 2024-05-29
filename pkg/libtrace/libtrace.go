@@ -54,7 +54,7 @@ type Config struct {
 	// WriteKey is the deprecated name for the Opsramp authentication token.
 	//
 	// Deprecated: Use APIKey instead. If both are set, APIKey takes precedence.
-	//WriteKey string
+	// WriteKey string
 
 	// Dataset is the name of the Opsramp dataset to which to send these events.
 	// If it is specified during libtrace initialization, it will be used as the
@@ -401,7 +401,7 @@ func (e *Event) SendPresampled() (err error) {
 		if e.APIHost == "" {
 			return errors.New("no APIHost for TraceProxy. Can't send to the Great Unknown")
 		}
-		//if e.WriteKey == "" {
+		// if e.WriteKey == "" {
 		//	return errors.New("No WriteKey specified. Can't send event.")
 		//}
 	}
