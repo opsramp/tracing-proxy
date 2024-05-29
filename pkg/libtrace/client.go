@@ -177,7 +177,7 @@ func (c *Client) TxResponses() chan transmission.Response {
 // for that metric. The function is called once every time a NewEvent() is
 // created and added as a field (with name as the key) to the newly created
 // event.
-//func (c *Client) AddDynamicField(name string, fn func() interface{}) error {
+// func (c *Client) AddDynamicField(name string, fn func() interface{}) error {
 //	c.ensureTransmission()
 //	c.ensureBuilder()
 //	return c.builder.AddDynamicField(name, fn)
@@ -236,7 +236,7 @@ func (c *Client) CheckEventField(key string) bool {
 // Add adds its data to the Client's scope. It adds all fields in a struct or
 // all keys in a map as individual Fields. These metrics will be inherited by
 // all builders and events.
-//func (c *Client) Add(data interface{}) error {
+// func (c *Client) Add(data interface{}) error {
 //	c.ensureTransmission()
 //	c.ensureBuilder()
 //	return c.builder.Add(data)
@@ -259,7 +259,7 @@ func (c *Client) NewBuilder() *Builder {
 }
 
 // sendResponse sends a dropped event response down the response channel
-//func (c *Client) sendDroppedResponse(e *Event, message string) {
+// func (c *Client) sendDroppedResponse(e *Event, message string) {
 //	c.ensureTransmission()
 //	r := transmission.Response{
 //		Err:      errors.New(message),

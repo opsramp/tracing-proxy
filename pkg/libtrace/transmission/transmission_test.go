@@ -1,20 +1,17 @@
 package transmission
 
 import (
-	"context"
+	"sync"
+	"testing"
+
 	"github.com/opsramp/tracing-proxy/logger"
 	"github.com/opsramp/tracing-proxy/pkg/libtrace/proto/proxypb"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
-	"sync"
-	"testing"
 )
 
 func Test_batchAgg_SendTraceBatches(t *testing.T) {
-
-	//lgr := logger.GetLoggerImplementation("json", "stdout", "", 0, 0, false)
-
-	traceReq := proxypb.ExportTraceProxyServiceRequest{
+	traceReq := &proxypb.ExportTraceProxyServiceRequest{
 		Items: []*proxypb.ProxySpan{
 			// Add sample spans here...
 		},
@@ -37,8 +34,7 @@ func Test_batchAgg_SendTraceBatches(t *testing.T) {
 		conn                  *Connection
 	}
 	type args struct {
-		traceReq proxypb.ExportTraceProxyServiceRequest
-		ctx      context.Context
+		traceReq *proxypb.ExportTraceProxyServiceRequest
 	}
 	tests := []struct {
 		name   string
@@ -49,26 +45,26 @@ func Test_batchAgg_SendTraceBatches(t *testing.T) {
 		{
 			name:   "empty records",
 			fields: fields{},
-			args:   args{ctx: context.Background(), traceReq: traceReq},
-			want:   SendTraceBatches(traceReq, context.Background()),
+			args:   args{traceReq: traceReq},
+			want:   SendTraceBatches(traceReq),
 		},
 		{
 			name:   "greater than 1mb record",
 			fields: fields{logger: &logger.NullLogger{}},
-			args:   args{ctx: context.Background(), traceReq: frameSpans(1)},
-			want:   SendTraceBatches(frameSpans(1), context.Background()),
+			args:   args{traceReq: frameSpans(1)},
+			want:   SendTraceBatches(frameSpans(1)),
 		},
 		{
 			name:   "Here each span has 0.5mb so it has batch length of 3",
 			fields: fields{},
-			args:   args{ctx: context.Background(), traceReq: frameSpans(2)},
-			want:   SendTraceBatches(frameSpans(2), context.Background()),
+			args:   args{traceReq: frameSpans(2)},
+			want:   SendTraceBatches(frameSpans(2)),
 		},
 		{
 			name:   "Here each span has 66028bytes so it has batch length of 7",
 			fields: fields{},
-			args:   args{ctx: context.Background(), traceReq: frameSpans(3)},
-			want:   SendTraceBatches(frameSpans(3), context.Background()),
+			args:   args{traceReq: frameSpans(3)},
+			want:   SendTraceBatches(frameSpans(3)),
 		},
 	}
 	for _, tt := range tests {
@@ -89,14 +85,15 @@ func Test_batchAgg_SendTraceBatches(t *testing.T) {
 				tenantId:              tt.fields.tenantId,
 				conn:                  tt.fields.conn,
 			}
-			assert.Equalf(t, tt.want, b.SendTraceBatches(tt.args.traceReq, tt.args.ctx), "SendTraceBatches(%v, %v)", tt.args.traceReq, tt.args.ctx)
+			assert.Equalf(t, tt.want, b.SendTraceBatches(tt.args.traceReq), "SendTraceBatches(%v)", tt.args.traceReq)
 		})
 	}
 }
 
-func frameSpans(i int) proxypb.ExportTraceProxyServiceRequest {
-	traceReq := proxypb.ExportTraceProxyServiceRequest{}
-	if i == 1 {
+func frameSpans(i int) *proxypb.ExportTraceProxyServiceRequest {
+	traceReq := &proxypb.ExportTraceProxyServiceRequest{}
+	switch {
+	case i == 1:
 		data := proxypb.Data{
 			DurationMs: 0.097834,
 			Type:       "internal",
@@ -107,13 +104,12 @@ func frameSpans(i int) proxypb.ExportTraceProxyServiceRequest {
 			TraceTraceID:  "3ac01094ad3d1d33d8f6d0a3a8f64129",
 			Time:          1715748029689702000,
 		}
-
 		item := &proxypb.ProxySpan{
 			Data:      &data,
 			Timestamp: "2024-05-15T04:40:29.689702Z",
 		}
 		traceReq.Items = append(traceReq.Items, item)
-	} else if i == 2 {
+	case i == 2:
 		j := 0
 		for j < 3 {
 			data := proxypb.Data{
@@ -132,9 +128,9 @@ func frameSpans(i int) proxypb.ExportTraceProxyServiceRequest {
 				Timestamp: "2024-05-15T04:40:29.689702Z",
 			}
 			traceReq.Items = append(traceReq.Items, item)
-			j = j + 1
+			j++
 		}
-	} else if i == 3 {
+	case i == 3:
 		j := 0
 		for j < 100 {
 			data := proxypb.Data{
@@ -153,23 +149,23 @@ func frameSpans(i int) proxypb.ExportTraceProxyServiceRequest {
 				Timestamp: "2024-05-15T04:40:29.689702Z",
 			}
 			traceReq.Items = append(traceReq.Items, item)
-			j = j + 1
+			j++
 		}
 	}
 
 	return traceReq
 }
 
-func SendTraceBatches(traceReq proxypb.ExportTraceProxyServiceRequest, ctx context.Context) [][]*proxypb.ProxySpan {
+func SendTraceBatches(traceReq *proxypb.ExportTraceProxyServiceRequest) [][]*proxypb.ProxySpan {
 	splittingTraces := traceReq.Items
 	traceReq.Items = []*proxypb.ProxySpan{}
-	batchTraces := [][]*proxypb.ProxySpan{}
+	var batchTraces [][]*proxypb.ProxySpan
 	batchSize := 0
 	for i, span := range splittingTraces {
 		spanSize := proto.Size(span)
 		if spanSize > maxApiSize {
 			// OOPS! your larger than my tummy(1mb), so cant handle you
-			//b.logger.Info().Logf("Span size is greater than 1mb, so dropping")
+			// b.logger.Info().Logf("Span size is greater than 1mb, so dropping")
 			continue
 		}
 		if spanSize+batchSize > maxApiSize {
@@ -178,7 +174,7 @@ func SendTraceBatches(traceReq proxypb.ExportTraceProxyServiceRequest, ctx conte
 			traceReq.Items = []*proxypb.ProxySpan{}
 		}
 		traceReq.Items = append(traceReq.Items, span)
-		batchSize = batchSize + spanSize
+		batchSize += spanSize
 		if i == len(splittingTraces)-1 {
 			batchTraces = append(batchTraces, traceReq.Items)
 			batchSize = 0
