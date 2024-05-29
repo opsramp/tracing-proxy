@@ -759,18 +759,25 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 
 		if !sendDirect {
 			peerClient := proxypb.NewTraceProxyServiceClient(peerConn)
-			r, err := peerClient.ExportLogTraceProxy(ctx, &logTraceReq)
-			if st, ok := status.FromError(err); ok {
-				if st.Code() != codes.OK {
-					b.logger.Error().Logf("sending failed. error: %s", st.String())
-					b.metrics.Increment("send_errors")
-				} else {
-					b.metrics.Increment("batches_sent")
+			logTraceBatches := b.SendlogTraceBatches(&logTraceReq)
+			for _, record := range logTraceBatches {
+				logTraceReq := &proxypb.ExportLogTraceProxyServiceRequest{
+					Items:    record,
+					TenantId: b.tenantId,
 				}
-			}
+				r, err := peerClient.ExportLogTraceProxy(ctx, logTraceReq)
+				if st, ok := status.FromError(err); ok {
+					if st.Code() != codes.OK {
+						b.logger.Error().Logf("sending failed. error: %s", st.String())
+						b.metrics.Increment("send_errors")
+					} else {
+						b.metrics.Increment("batches_sent")
+					}
+				}
 
-			b.logger.Debug().Logf("trace proxy response msg: %s", r.GetMessage())
-			b.logger.Debug().Logf("trace proxy response status: %s", r.GetStatus())
+				b.logger.Debug().Logf("trace proxy response msg from peer: %s", r.GetMessage())
+				b.logger.Debug().Logf("trace proxy response status from peer: %s", r.GetStatus())
+			}
 
 			return
 		}
@@ -790,66 +797,74 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 		}
 
 		if len(LogRecords) > 0 {
-			var scopeLogs []*v1.ScopeLogs
-			scopeLog := &v1.ScopeLogs{
-				Scope:      nil,
-				LogRecords: LogRecords,
-				SchemaUrl:  "",
-			}
-			scopeLogs = append(scopeLogs, scopeLog)
-			resourceAttributes := []*commonpb.KeyValue{
-				{
-					Key:   "source",
-					Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "trace"}},
-				},
-				{
-					Key:   "type",
-					Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "event"}},
-				},
-			}
+			logBatches := b.sendLogBatches(LogRecords)
 
-			resourceLog := &v1.ResourceLogs{
-				Resource: &resourcepb.Resource{
-					Attributes:             resourceAttributes,
-					DroppedAttributesCount: 0,
-				},
-				ScopeLogs: scopeLogs,
-			}
-			resourceLogs = append(resourceLogs, resourceLog)
-		}
+			for _, batch := range logBatches {
 
-		if SendEvents && len(resourceLogs) > 0 {
-			eventsReq := collogspb.ExportLogsServiceRequest{
-				ResourceLogs: resourceLogs,
-			}
-
-			hostName, err := os.Hostname()
-			if err != nil || hostName == "" {
-				b.logger.Error().Logf("error Getting Hostname: %v", err)
-				hostName = "ErrorHostname"
-			}
-
-			logsCtx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
-				"tenantId": b.tenantId,
-				"hostname": hostName,
-			}))
-			logsResponse, logsError := b.conn.GetLogClient().Export(logsCtx, &eventsReq)
-
-			if st, ok := status.FromError(logsError); ok {
-				if st.Code() != codes.OK {
-					b.logger.Error().Logf("sending event log failed. error: %s", st.String())
-					if strings.Contains(logsError.Error(), "LOG MANAGEMENT WAS NOT ENABLED") {
-						b.logger.Error().Logf("Enable Log Management For Tenant and Restart Tracing Proxy")
-						m.Lock()
-						SendEvents = false
-						m.Unlock()
-					}
+				var scopeLogs []*v1.ScopeLogs
+				scopeLog := &v1.ScopeLogs{
+					Scope:      nil,
+					LogRecords: batch,
+					SchemaUrl:  "",
 				}
+				scopeLogs = append(scopeLogs, scopeLog)
+				resourceAttributes := []*commonpb.KeyValue{
+					{
+						Key:   "source",
+						Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "trace"}},
+					},
+					{
+						Key:   "type",
+						Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "event"}},
+					},
+				}
+
+				resourceLog := &v1.ResourceLogs{
+					Resource: &resourcepb.Resource{
+						Attributes:             resourceAttributes,
+						DroppedAttributesCount: 0,
+					},
+					ScopeLogs: scopeLogs,
+				}
+				resourceLogs = append(resourceLogs, resourceLog)
+
+				if SendEvents && len(resourceLogs) > 0 {
+					eventsReq := collogspb.ExportLogsServiceRequest{
+						ResourceLogs: resourceLogs,
+					}
+
+					hostName, err := os.Hostname()
+					if err != nil || hostName == "" {
+						b.logger.Error().Logf("error Getting Hostname: %v", err)
+						hostName = "ErrorHostname"
+					}
+
+					logsCtx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
+						"tenantId": b.tenantId,
+						"hostname": hostName,
+					}))
+					logsResponse, logsError := b.conn.GetLogClient().Export(logsCtx, &eventsReq)
+
+					if st, ok := status.FromError(logsError); ok {
+						if st.Code() != codes.OK {
+							b.logger.Error().Logf("sending event log failed. error: %s", st.String())
+							if strings.Contains(logsError.Error(), "LOG MANAGEMENT WAS NOT ENABLED") {
+								b.logger.Error().Logf("Enable Log Management For Tenant and Restart Tracing Proxy")
+								m.Lock()
+								SendEvents = false
+								m.Unlock()
+							}
+						}
+					}
+					b.logger.Debug().Logf("Sending Event Log response: %v", logsResponse.String())
+				} else {
+					b.logger.Debug().Logf("Unable to Process the logs exporting because SendEvents was: %v or len(resourcelogs) %v", SendEvents, len(resourceLogs))
+				}
+
 			}
-			b.logger.Debug().Logf("Sending Event Log response: %v", logsResponse.String())
-		} else {
-			b.logger.Debug().Logf("Unable to Process the logs exporting because SendEvents was: %v or len(resourcelogs) %v", SendEvents, len(resourceLogs))
+
 		}
+
 	}
 }
 
@@ -899,4 +914,61 @@ func (b *batchAgg) ExportTraces(traceReq *proxypb.ExportTraceProxyServiceRequest
 	}
 	b.logger.Debug().Logf("trace proxy response msg: %s", r.GetMessage())
 	b.logger.Debug().Logf("trace proxy response status: %s", r.GetStatus())
+}
+
+func (b *batchAgg) SendlogTraceBatches(logTraceReq *proxypb.ExportLogTraceProxyServiceRequest) [][]*proxypb.ProxyLogSpan {
+
+	splittingLogTraces := logTraceReq.Items
+	logTraceReq.Items = []*proxypb.ProxyLogSpan{}
+	var batchLogTraces [][]*proxypb.ProxyLogSpan
+	batchSize := 0
+	for i, span := range splittingLogTraces {
+		spanSize := proto.Size(span)
+		if spanSize > maxApiSize {
+			// OOPS! your larger than my tummy(1mb), so cant handle you
+			b.logger.Info().Logf("Span with Events size is greater than 1mb, so dropping")
+			continue
+		}
+		if spanSize+batchSize > maxApiSize {
+			batchLogTraces = append(batchLogTraces, logTraceReq.Items)
+			batchSize = 0
+			logTraceReq.Items = []*proxypb.ProxyLogSpan{}
+		}
+		logTraceReq.Items = append(logTraceReq.Items, span)
+		batchSize += spanSize
+		if i == len(splittingLogTraces)-1 {
+			batchLogTraces = append(batchLogTraces, logTraceReq.Items)
+			batchSize = 0
+			logTraceReq.Items = []*proxypb.ProxyLogSpan{}
+		}
+	}
+	return batchLogTraces
+}
+
+func (b batchAgg) sendLogBatches(logRecords []*v1.LogRecord) [][]*v1.LogRecord {
+
+	var logs []*v1.LogRecord
+	var batchLogs [][]*v1.LogRecord
+	batchSize := 0
+	for i, log := range logRecords {
+		logSize := proto.Size(log)
+		if logSize > maxApiSize {
+			// OOPS! your larger than my tummy(1mb), so cant handle you
+			b.logger.Info().Logf("Log size is greater than 1mb, so dropping")
+			continue
+		}
+		if logSize+batchSize > maxApiSize {
+			batchLogs = append(batchLogs, logs)
+			batchSize = 0
+			logs = []*v1.LogRecord{}
+		}
+		logs = append(logs, log)
+		batchSize += logSize
+		if i == len(logRecords)-1 {
+			batchLogs = append(batchLogs, logs)
+			batchSize = 0
+			logs = []*v1.LogRecord{}
+		}
+	}
+	return batchLogs
 }
