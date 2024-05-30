@@ -835,11 +835,11 @@ func (p *OpsRampMetrics) Push() (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	defer func(Body io.ReadCloser) {
-		if Body != nil {
-			_ = Body.Close()
+	defer func() {
+		if resp.Body != nil {
+			_ = resp.Body.Close()
 		}
-	}(resp.Body)
+	}()
 	// Depending on the version and configuration of the PGW, StatusOK or StatusAccepted may be returned.
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
