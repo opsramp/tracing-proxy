@@ -233,6 +233,7 @@ func TranslateTraceRequest(request *coltracepb.ExportTraceServiceRequest, ri Req
 				// Check for event attributes and add them
 
 				if sendEvents {
+					spanEvents = []SpanEvent{}
 					for _, sevent := range span.Events {
 						traceAttributes["spanEventAttributes"] = make(map[string]interface{})
 						if sevent.Attributes != nil {
