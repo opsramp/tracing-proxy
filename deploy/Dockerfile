@@ -27,7 +27,7 @@ RUN set -eux; \
     echo "${ESUM}  /usr/local/bin/tini" | sha256sum -c -; \
     chmod +x /usr/local/bin/tini
 
-ARG BUILD_ID="17.0.4"
+ARG BUILD_ID="17.1.6"
 WORKDIR /app
 
 ADD ../go.mod ../go.sum ./
