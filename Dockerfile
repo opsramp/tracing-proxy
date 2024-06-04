@@ -5,7 +5,7 @@ ARG TARGETARCH
 
 RUN apk update && apk add --no-cache git bash ca-certificates && update-ca-certificates
 
-ARG BUILD_ID="17.0.12"
+ARG BUILD_ID="17..1.6"
 
 WORKDIR /app
 
