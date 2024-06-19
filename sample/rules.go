@@ -42,13 +42,14 @@ func (s *RulesBasedSampler) Start() error {
 		}
 		if rule.Sampler != nil {
 			var sampler Sampler
-			if rule.Sampler.DynamicSampler != nil {
+			switch {
+			case rule.Sampler.DynamicSampler != nil:
 				sampler = &DynamicSampler{Config: rule.Sampler.DynamicSampler, Logger: s.Logger, Metrics: s.Metrics}
-			} else if rule.Sampler.EMADynamicSampler != nil {
+			case rule.Sampler.EMADynamicSampler != nil:
 				sampler = &EMADynamicSampler{Config: rule.Sampler.EMADynamicSampler, Logger: s.Logger, Metrics: s.Metrics}
-			} else if rule.Sampler.TotalThroughputSampler != nil {
+			case rule.Sampler.TotalThroughputSampler != nil:
 				sampler = &TotalThroughputSampler{Config: rule.Sampler.TotalThroughputSampler, Logger: s.Logger, Metrics: s.Metrics}
-			} else {
+			default:
 				s.Logger.Debug().WithFields(map[string]interface{}{
 					"rule_name": rule.Name,
 				}).Logf("invalid or missing downstream sampler")
@@ -233,33 +234,26 @@ func conditionMatchesValue(condition *config.RulesBasedSamplerCondition, value i
 				match = comparison == less || comparison == equal
 			}
 		case "starts-with":
-			switch a := value.(type) {
-			case string:
-				switch b := condition.Value.(type) {
-				case string:
+			if a, ok := value.(string); ok {
+				if b, ok := condition.Value.(string); ok {
 					match = strings.HasPrefix(a, b)
 				}
 			}
 		case "contains":
-			switch a := value.(type) {
-			case string:
-				switch b := condition.Value.(type) {
-				case string:
+			if a, ok := value.(string); ok {
+				if b, ok := condition.Value.(string); ok {
 					match = strings.Contains(a, b)
 				}
 			}
 		case "does-not-contain":
-			switch a := value.(type) {
-			case string:
-				switch b := condition.Value.(type) {
-				case string:
+			if a, ok := value.(string); ok {
+				if b, ok := condition.Value.(string); ok {
 					match = !strings.Contains(a, b)
 				}
 			}
 		}
 	case false:
-		switch condition.Operator {
-		case "not-exists":
+		if condition.Operator == "not-exists" {
 			match = !exists
 		}
 	}
@@ -356,8 +350,7 @@ func compare(a, b interface{}) (int, bool) {
 			}
 		}
 	case bool:
-		switch bt := b.(type) {
-		case bool:
+		if bt, ok := b.(bool); ok {
 			switch {
 			case !at && bt:
 				return less, true
@@ -368,8 +361,7 @@ func compare(a, b interface{}) (int, bool) {
 			}
 		}
 	case string:
-		switch bt := b.(type) {
-		case string:
+		if bt, ok := b.(string); ok {
 			return strings.Compare(at, bt), true
 		}
 	}
