@@ -224,7 +224,7 @@ func main() {
 	peers, err := peer.NewPeers(ctx, c, done)
 	if err != nil {
 		fmt.Printf("unable to load peers: %+v\n", err)
-		os.Exit(1)
+		os.Exit(1) // nolint:all
 	}
 
 	var g inject.Graph

@@ -95,7 +95,7 @@ type TraceProxy struct {
 	// toggles compression when sending batches of events
 	DisableCompression bool
 
-	// Deprecated, synonymous with DisableCompression
+	// Deprecated: synonymous with DisableCompression
 	DisableGzipCompression bool // nolint:all
 
 	// set true to send events with msgpack encoding
@@ -384,24 +384,6 @@ func (b *batchAgg) Add(ev interface{}) {
 	// collect separate buckets of events to send based on apiHost and dataset
 	key := fmt.Sprintf("%s_%s", e.APIHost, e.Dataset)
 	b.batches[key] = append(b.batches[key], e)
-}
-
-func (b *batchAgg) enqueueResponse(resp Response) {
-	if writeToResponse(b.responses, resp, b.blockOnResponse) {
-		if b.testBlocker != nil {
-			b.testBlocker.Done()
-		}
-	}
-}
-
-func (b *batchAgg) reEnqueueEvents(events []*Event) {
-	if b.overflowBatches == nil {
-		b.overflowBatches = make(map[string][]*Event)
-	}
-	for _, e := range events {
-		key := fmt.Sprintf("%s_%s", e.APIHost, e.Dataset)
-		b.overflowBatches[key] = append(b.overflowBatches[key], e)
-	}
 }
 
 func (b *batchAgg) Fire(notifier muster.Notifier) {
@@ -800,7 +782,6 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 			logBatches := b.sendLogBatches(LogRecords)
 
 			for _, batch := range logBatches {
-
 				var scopeLogs []*v1.ScopeLogs
 				scopeLog := &v1.ScopeLogs{
 					Scope:      nil,
@@ -860,11 +841,8 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 				} else {
 					b.logger.Debug().Logf("Unable to Process the logs exporting because SendEvents was: %v or len(resourcelogs) %v", SendEvents, len(resourceLogs))
 				}
-
 			}
-
 		}
-
 	}
 }
 
@@ -917,7 +895,6 @@ func (b *batchAgg) ExportTraces(traceReq *proxypb.ExportTraceProxyServiceRequest
 }
 
 func (b *batchAgg) SendlogTraceBatches(logTraceReq *proxypb.ExportLogTraceProxyServiceRequest) [][]*proxypb.ProxyLogSpan {
-
 	splittingLogTraces := logTraceReq.Items
 	logTraceReq.Items = []*proxypb.ProxyLogSpan{}
 	var batchLogTraces [][]*proxypb.ProxyLogSpan
@@ -946,7 +923,6 @@ func (b *batchAgg) SendlogTraceBatches(logTraceReq *proxypb.ExportLogTraceProxyS
 }
 
 func (b batchAgg) sendLogBatches(logRecords []*v1.LogRecord) [][]*v1.LogRecord {
-
 	var logs []*v1.LogRecord
 	var batchLogs [][]*v1.LogRecord
 	batchSize := 0
