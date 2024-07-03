@@ -17,7 +17,6 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/opsramp/tracing-proxy/config"
 	"github.com/opsramp/tracing-proxy/internal/redimem"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -104,13 +103,15 @@ func newRedisPeers(ctx context.Context, c config.Config, done chan struct{}) (Pe
 	// register myself once
 	if !c.IsTest() {
 		for !transmission.DefaultAvailability.Status() {
-			logrus.Info("peer is not available yet")
+			Logger.Info().Logf("peer is not available yet")
+			// logrus.Info("peer is not available yet")
 			time.Sleep(5 * time.Second)
 		}
 	}
 	err = peers.store.Register(ctx, address, peerEntryTimeout)
 	if err != nil {
-		logrus.WithError(err).Errorf("failed to register self with redis peer store")
+		Logger.Error().WithField("error", err).Logf("failed to register self with redis peer store")
+		// logrus.WithError(err).Errorf("failed to register self with redis peer store")
 		return nil, err
 	}
 
@@ -155,10 +156,13 @@ func (p *redisPeers) registerSelf(done chan struct{}) {
 
 			err := p.store.Register(ctx, p.publicAddr, peerEntryTimeout)
 			if err != nil {
-				logrus.WithField("name", p.publicAddr).
+				Logger.Error().WithField("name", p.publicAddr).
 					WithField("timeoutSec", peerEntryTimeout).
-					WithField("err", err).
-					Error("registration failed")
+					WithField("err", err).Logf("registration failed")
+				// logrus.WithField("name", p.publicAddr).
+				//	WithField("timeoutSec", peerEntryTimeout).
+				//	WithField("err", err).
+				//	Error("registration failed")
 			}
 			cancel()
 		case <-done:
@@ -166,9 +170,11 @@ func (p *redisPeers) registerSelf(done chan struct{}) {
 			ctx, cancel := context.WithTimeout(context.Background(), p.c.GetPeerTimeout())
 			err := p.store.Unregister(ctx, p.publicAddr)
 			if err != nil {
-				logrus.WithField("name", p.publicAddr).
-					WithField("err", err).
-					Error("unregister failed")
+				Logger.Error().WithField("name", p.publicAddr).
+					WithField("err", err).Logf("unregister failed")
+				// logrus.WithField("name", p.publicAddr).
+				//	WithField("err", err).
+				//	Error("unregister failed")
 			}
 			cancel()
 			return
@@ -182,12 +188,14 @@ func (p *redisPeers) updatePeerListOnce() {
 
 	currentPeers, err := p.store.GetMembers(ctx)
 	if err != nil {
-		logrus.WithError(err).
-			WithFields(logrus.Fields{
-				"name":    p.publicAddr,
-				"timeout": p.c.GetPeerTimeout().String(),
-			}).
-			Error("get members failed")
+		Logger.Error().WithField("name", p.publicAddr).
+			WithField("timeout", p.c.GetPeerTimeout().String()).Logf("get members failed")
+		// logrus.WithError(err).
+		//	WithFields(logrus.Fields{
+		//		"name":    p.publicAddr,
+		//		"timeout": p.c.GetPeerTimeout().String(),
+		//	}).
+		//	Error("get members failed")
 		return
 	}
 	sort.Strings(currentPeers)
@@ -210,13 +218,16 @@ func (p *redisPeers) watchPeers(done chan struct{}) {
 			cancel()
 
 			if err != nil {
-				logrus.WithError(err).
-					WithFields(logrus.Fields{
-						"name":     p.publicAddr,
-						"timeout":  p.c.GetPeerTimeout().String(),
-						"oldPeers": oldPeerList,
-					}).
-					Error("get members failed during watch")
+				Logger.Error().WithField("name", p.publicAddr).
+					WithField("timeout", p.c.GetPeerTimeout().String()).
+					WithField("oldPeers", oldPeerList).Logf("get members failed during watch")
+				// logrus.WithError(err).
+				//	WithFields(logrus.Fields{
+				//		"name":     p.publicAddr,
+				//		"timeout":  p.c.GetPeerTimeout().String(),
+				//		"oldPeers": oldPeerList,
+				//	}).
+				//	Error("get members failed during watch")
 				continue
 			}
 
@@ -290,7 +301,8 @@ func publicAddr(c config.Config) (string, error) {
 	// If RedisIdentifier is set, use as identifier.
 	if redisIdentifier, _ := c.GetRedisIdentifier(); redisIdentifier != "" {
 		myIdentifier = redisIdentifier
-		logrus.WithField("identifier", myIdentifier).Info("using specified RedisIdentifier from config")
+		Logger.Info().WithField("identifier", myIdentifier).Logf("using specified RedisIdentifier from config")
+		// logrus.WithField("identifier", myIdentifier).Info("using specified RedisIdentifier from config")
 	} else {
 		// Otherwise, determine idenntifier from network interface.
 		myIdentifier, err = getIdentifierFromInterfaces(c)
@@ -312,14 +324,17 @@ func getIdentifierFromInterfaces(c config.Config) (string, error) {
 	if identifierInterfaceName != "" {
 		ifc, err := net.InterfaceByName(identifierInterfaceName)
 		if err != nil {
-			logrus.WithError(err).WithField("interface", identifierInterfaceName).
-				Error("IdentifierInterfaceName set but couldn't find interface by that name")
+			Logger.Error().WithField("Error", err).WithField("interface", identifierInterfaceName).
+				Logf("IdentifierInterfaceName set but couldn't find interface by that name")
+			// logrus.WithError(err).WithField("interface", identifierInterfaceName).
+			//	Error("IdentifierInterfaceName set but couldn't find interface by that name")
 			return "", err
 		}
 		addrs, err := ifc.Addrs()
 		if err != nil {
-			logrus.WithError(err).WithField("interface", identifierInterfaceName).
-				Error("IdentifierInterfaceName set but couldn't list addresses")
+			Logger.Error().WithField("interface", identifierInterfaceName).Logf("IdentifierInterfaceName set but couldn't list addresses")
+			// logrus.WithError(err).WithField("interface", identifierInterfaceName).
+			//	Error("IdentifierInterfaceName set but couldn't list addresses")
 			return "", err
 		}
 		var ipStr string
@@ -338,11 +353,13 @@ func getIdentifierFromInterfaces(c config.Config) (string, error) {
 		}
 		if ipStr == "" {
 			err = errors.New("could not find a valid IP to use from interface")
-			logrus.WithField("interface", ifc.Name).WithError(err)
+			Logger.Error().WithField("interface", ifc.Name).Logf("could not find a valid IP to use from interface")
+			// logrus.WithField("interface", ifc.Name).WithError(err)
 			return "", err
 		}
 		myIdentifier = ipStr
-		logrus.WithField("identifier", myIdentifier).WithField("interface", ifc.Name).Info("using identifier from interface")
+		Logger.Info().WithField("identifier", myIdentifier).WithField("interface", ifc.Name).Logf("using identifier from interface")
+		// logrus.WithField("identifier", myIdentifier).WithField("interface", ifc.Name).Info("using identifier from interface")
 	}
 
 	return myIdentifier, nil

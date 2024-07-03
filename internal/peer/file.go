@@ -21,7 +21,10 @@ type filePeers struct {
 	peerLock  sync.Mutex
 }
 
-var firstOccurrencesOfGetPeers = false
+var (
+	firstOccurrencesOfGetPeers = false
+	m                          sync.Mutex
+)
 
 // NewFilePeers returns a peer collection backed by the config file
 func newFilePeers(c config.Config) Peers {
@@ -90,7 +93,9 @@ func getPeerMembers(originalPeersList []string) []string {
 		go func(goPeer string) {
 			opened := isOpen(goPeer)
 			if opened {
+				m.Lock()
 				workingPeers = append(workingPeers, goPeer)
+				m.Unlock()
 			}
 			wg.Done()
 		}(peer)

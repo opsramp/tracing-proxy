@@ -77,7 +77,7 @@ func (e *ExponentialBackOff) Start() {
 
 				// calculate the next retry time
 				elapsed := e.GetElapseTime()
-				next := getRandomValueFromInterval(e.retrySettings.RandomizationFactor, rand.Float64(), presentInterval)
+				next := getRandomValueFromInterval(e.retrySettings.RandomizationFactor, rand.Float64(), presentInterval) // #nosec G404
 				// Check for overflow, if overflow is detected set the present interval to the max interval.
 				if float64(presentInterval) >= float64(e.retrySettings.MaxInterval)/e.retrySettings.Multiplier {
 					presentInterval = e.retrySettings.MaxInterval

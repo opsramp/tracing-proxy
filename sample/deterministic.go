@@ -1,7 +1,7 @@
 package sample
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // #nosec
 	"encoding/binary"
 	"math"
 
@@ -39,7 +39,7 @@ func (d *DeterministicSampler) GetSampleRate(trace *types.Trace) (rate uint, kee
 	if d.sampleRate <= 1 {
 		return 1, true, "deterministic/always"
 	}
-	sum := sha1.Sum([]byte(trace.TraceID + shardingSalt))
+	sum := sha1.Sum([]byte(trace.TraceID + shardingSalt)) // #nosec
 	v := binary.BigEndian.Uint32(sum[:4])
 	return uint(d.sampleRate), v <= d.upperBound, "deterministic/chance"
 }

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"crypto/md5"
+	"crypto/md5" // #nosec
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -1053,7 +1053,7 @@ func calcMD5For(filename string) string {
 	if err != nil {
 		return err.Error()
 	}
-	h := md5.New()
+	h := md5.New() // #nosec
 	if _, err := h.Write(data); err != nil {
 		return err.Error()
 	}

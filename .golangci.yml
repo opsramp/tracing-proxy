@@ -5,6 +5,11 @@ linters:
     - misspell
     - gofumpt
     - gocritic
+    - gosec
+    - goimports
+#    - revive
+#    - nilerr
+#    - bodyclose
 
 linters-settings:
   gofumpt:
