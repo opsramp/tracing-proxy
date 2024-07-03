@@ -836,7 +836,7 @@ func (p *OpsRampMetrics) Push() (int, error) {
 		return -1, err
 	}
 	defer func() {
-		if resp.Body != nil {
+		if resp != nil && resp.Body != nil {
 			_ = resp.Body.Close()
 		}
 	}()
@@ -917,8 +917,10 @@ func (p *OpsRampMetrics) RenewOAuthToken() error {
 }
 
 func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
+	var err error
+	var response *http.Response
 	retry := false
-	response, err := p.Client.Do(request)
+	response, err = p.Client.Do(request)
 	if err == nil && response != nil && (response.StatusCode == http.StatusOK || response.StatusCode == http.StatusAccepted) {
 		return response, nil
 	}
@@ -936,7 +938,7 @@ func (p *OpsRampMetrics) Send(request *http.Request) (*http.Response, error) {
 	}
 
 	if response != nil && response.StatusCode == http.StatusProxyAuthRequired { // OpsRamp uses this for bad auth token
-		err := p.RenewOAuthToken()
+		err = p.RenewOAuthToken()
 		if err != nil {
 			return nil, err
 		}

@@ -346,7 +346,7 @@ func getSampleRate(attrs map[string]interface{}) int32 {
 	sampleRateVal := attrs[sampleRateKey]
 	switch v := sampleRateVal.(type) {
 	case string:
-		if i, err := strconv.Atoi(v); err == nil {
+		if i, err := strconv.ParseInt(v, 10, 32); err == nil {
 			if i < math.MaxInt32 {
 				sampleRate = int32(i)
 			} else {

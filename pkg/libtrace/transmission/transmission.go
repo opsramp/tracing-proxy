@@ -95,7 +95,7 @@ type TraceProxy struct {
 	// toggles compression when sending batches of events
 	DisableCompression bool
 
-	// Deprecated: synonymous with DisableCompression
+	// Deprecated, synonymous with DisableCompression
 	DisableGzipCompression bool // nolint:all
 
 	// set true to send events with msgpack encoding
@@ -172,7 +172,7 @@ func (h *TraceProxy) Start() error {
 	// establish initial connection
 	var opts []grpc.DialOption
 	if h.UseTls {
-		tlsCfg := &tls.Config{InsecureSkipVerify: h.UseTlsInsecure}
+		tlsCfg := &tls.Config{InsecureSkipVerify: h.UseTlsInsecure} // #nosec G402
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -438,22 +438,370 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 		return
 	}
 
-	logTraceReq := proxypb.ExportLogTraceProxyServiceRequest{
-		TenantId: b.tenantId,
-	}
-
-	traceReq := &proxypb.ExportTraceProxyServiceRequest{
-		TenantId: b.tenantId,
-	}
-
-	var apiHost, appName string
+	var apiHost string
 	var resourceLogs []*v1.ResourceLogs
-	var LogRecords []*v1.LogRecord
+
 	for _, ev := range events {
 		if ev == nil {
 			continue
 		}
 		apiHost = ev.APIHost
+		break
+	}
+
+	ctx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
+		"tenantId": b.tenantId,
+		"dataset":  b.dataset,
+	}))
+
+	sendDirect, peerConn := b.checkPeerConnection(apiHost)
+	if !sendDirect {
+		peerClient := proxypb.NewTraceProxyServiceClient(peerConn)
+		logTraceReq := b.payloadToSendPeer(events)
+		logTraceBatches := b.SendLogTraceBatches(logTraceReq)
+		for _, record := range logTraceBatches {
+			logTraceReq := &proxypb.ExportLogTraceProxyServiceRequest{
+				Items:    record,
+				TenantId: b.tenantId,
+			}
+			r, err := peerClient.ExportLogTraceProxy(ctx, logTraceReq)
+			if st, ok := status.FromError(err); ok {
+				if st.Code() != codes.OK {
+					b.logger.Error().Logf("sending failed. error: %s", st.String())
+					b.metrics.Increment("send_errors")
+				} else {
+					b.metrics.Increment("batches_sent")
+				}
+			}
+			b.logger.Debug().Logf("trace proxy response msg from peer: %s", r.GetMessage())
+			b.logger.Debug().Logf("trace proxy response status from peer: %s", r.GetStatus())
+		}
+		return
+	}
+
+	if sendDirect || !b.isPeer {
+		if SendTraces {
+			traceReq, logRecords := b.payloadToUpstream(events)
+			traceBatches := b.SendTraceBatches(traceReq)
+
+			for _, batch := range traceBatches {
+				req := &proxypb.ExportTraceProxyServiceRequest{
+					Items:    batch,
+					TenantId: b.tenantId,
+				}
+				b.ExportTraces(req, ctx)
+			}
+
+			if len(logRecords) > 0 {
+				logBatches := b.sendLogBatches(logRecords)
+
+				for _, batch := range logBatches {
+					var scopeLogs []*v1.ScopeLogs
+					scopeLog := &v1.ScopeLogs{
+						Scope:      nil,
+						LogRecords: batch,
+						SchemaUrl:  "",
+					}
+					scopeLogs = append(scopeLogs, scopeLog)
+					resourceAttributes := []*commonpb.KeyValue{
+						{
+							Key:   "source",
+							Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "trace"}},
+						},
+						{
+							Key:   "type",
+							Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "event"}},
+						},
+					}
+
+					resourceLog := &v1.ResourceLogs{
+						Resource: &resourcepb.Resource{
+							Attributes:             resourceAttributes,
+							DroppedAttributesCount: 0,
+						},
+						ScopeLogs: scopeLogs,
+					}
+					resourceLogs = append(resourceLogs, resourceLog)
+
+					if SendEvents && len(resourceLogs) > 0 {
+						eventsReq := collogspb.ExportLogsServiceRequest{
+							ResourceLogs: resourceLogs,
+						}
+
+						hostName, err := os.Hostname()
+						if err != nil || hostName == "" {
+							b.logger.Error().Logf("error Getting Hostname: %v", err)
+							hostName = "ErrorHostname"
+						}
+
+						logsCtx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
+							"tenantId": b.tenantId,
+							"hostname": hostName,
+						}))
+						logsResponse, logsError := b.conn.GetLogClient().Export(logsCtx, &eventsReq)
+
+						if st, ok := status.FromError(logsError); ok {
+							if st.Code() != codes.OK {
+								b.logger.Error().Logf("sending event log failed. error: %s", st.String())
+								if strings.Contains(logsError.Error(), "LOG MANAGEMENT WAS NOT ENABLED") {
+									b.logger.Error().Logf("Enable Log Management For Tenant and Restart Tracing Proxy")
+									m.Lock()
+									SendEvents = false
+									m.Unlock()
+								}
+							}
+						}
+						b.logger.Debug().Logf("Sending Event Log response: %v", logsResponse.String())
+					} else {
+						b.logger.Debug().Logf("Unable to Process the logs exporting because SendEvents was: %v or len(resourcelogs) %v", SendEvents, len(resourceLogs))
+					}
+				}
+			}
+		}
+	}
+}
+
+func (b *batchAgg) SendTraceBatches(traceReq *proxypb.ExportTraceProxyServiceRequest) [][]*proxypb.ProxySpan {
+	splittingTraces := traceReq.Items
+	traceReq.Items = []*proxypb.ProxySpan{}
+	var batchTraces [][]*proxypb.ProxySpan
+	batchSize := 0
+	for i, span := range splittingTraces {
+		spanSize := proto.Size(span)
+		if spanSize > maxApiSize {
+			// OOPS! your larger than my tummy(1mb), so cant handle you
+			b.logger.Info().Logf("Span size is greater than 1mb, so dropping the span: %v", span.Data.SpanName)
+			continue
+		}
+		if spanSize+batchSize > maxApiSize {
+			batchTraces = append(batchTraces, traceReq.Items)
+			batchSize = 0
+			traceReq.Items = []*proxypb.ProxySpan{}
+		}
+		traceReq.Items = append(traceReq.Items, span)
+		batchSize += spanSize
+		if i == len(splittingTraces)-1 {
+			batchTraces = append(batchTraces, traceReq.Items)
+			batchSize = 0
+			traceReq.Items = []*proxypb.ProxySpan{}
+		}
+	}
+	return batchTraces
+}
+
+func (b *batchAgg) ExportTraces(traceReq *proxypb.ExportTraceProxyServiceRequest, ctx context.Context) {
+	r, err := b.conn.GetTraceClient().ExportTraceProxy(ctx, traceReq)
+	if st, ok := status.FromError(err); ok {
+		if st.Code() != codes.OK {
+			b.logger.Error().Logf("sending failed. error: %s", st.String())
+			b.metrics.Increment("send_errors")
+			if strings.Contains(strings.ToUpper(err.Error()), "TRACE MANAGEMENT WAS NOT ENABLED") {
+				b.logger.Error().Logf("Enable Trace Management For Tenant and Restart Tracing Proxy")
+				m.Lock()
+				SendTraces = false
+				m.Unlock()
+			}
+		} else {
+			b.metrics.Increment("batches_sent")
+		}
+	}
+	b.logger.Debug().Logf("trace proxy response msg: %s", r.GetMessage())
+	b.logger.Debug().Logf("trace proxy response status: %s", r.GetStatus())
+}
+
+func (b *batchAgg) SendLogTraceBatches(logTraceReq *proxypb.ExportLogTraceProxyServiceRequest) [][]*proxypb.ProxyLogSpan {
+	splittingLogTraces := logTraceReq.Items
+	logTraceReq.Items = []*proxypb.ProxyLogSpan{}
+	var batchLogTraces [][]*proxypb.ProxyLogSpan
+	batchSize := 0
+	for i, span := range splittingLogTraces {
+		spanSize := proto.Size(span)
+		if spanSize > maxApiSize {
+			// OOPS! your larger than my tummy(1mb), so cant handle you
+			b.logger.Info().Logf("Span with Events size is greater than 1mb, so dropping")
+			continue
+		}
+		if spanSize+batchSize > maxApiSize {
+			batchLogTraces = append(batchLogTraces, logTraceReq.Items)
+			batchSize = 0
+			logTraceReq.Items = []*proxypb.ProxyLogSpan{}
+		}
+		logTraceReq.Items = append(logTraceReq.Items, span)
+		batchSize += spanSize
+		if i == len(splittingLogTraces)-1 {
+			batchLogTraces = append(batchLogTraces, logTraceReq.Items)
+			batchSize = 0
+			logTraceReq.Items = []*proxypb.ProxyLogSpan{}
+		}
+	}
+	return batchLogTraces
+}
+
+func (b batchAgg) sendLogBatches(logRecords []*v1.LogRecord) [][]*v1.LogRecord {
+	var logs []*v1.LogRecord
+	var batchLogs [][]*v1.LogRecord
+	batchSize := 0
+	for i, log := range logRecords {
+		logSize := proto.Size(log)
+		if logSize > maxApiSize {
+			// OOPS! your larger than my tummy(1mb), so cant handle you
+			b.logger.Info().Logf("Log size is greater than 1mb, so dropping")
+			continue
+		}
+		if logSize+batchSize > maxApiSize {
+			batchLogs = append(batchLogs, logs)
+			batchSize = 0
+			logs = []*v1.LogRecord{}
+		}
+		logs = append(logs, log)
+		batchSize += logSize
+		if i == len(logRecords)-1 {
+			batchLogs = append(batchLogs, logs)
+			batchSize = 0
+			logs = []*v1.LogRecord{}
+		}
+	}
+	return batchLogs
+}
+
+func (b batchAgg) payloadToSendPeer(events []*Event) *proxypb.ExportLogTraceProxyServiceRequest {
+	logTraceReq := &proxypb.ExportLogTraceProxyServiceRequest{
+		TenantId: b.tenantId,
+	}
+
+	for _, ev := range events {
+		logTraceData := proxypb.ProxyLogSpan{
+			Data:      &proxypb.LogTraceData{},
+			Timestamp: ev.Timestamp.Format(time.RFC3339Nano),
+		}
+
+		logTraceData.Data.TraceTraceID, _ = ev.Data["traceTraceID"].(string)
+		logTraceData.Data.TraceParentID, _ = ev.Data["traceParentID"].(string)
+		logTraceData.Data.TraceSpanID, _ = ev.Data["traceSpanID"].(string)
+		logTraceData.Data.TraceLinkTraceID, _ = ev.Data["traceLinkTraceID"].(string)
+		logTraceData.Data.TraceLinkSpanID, _ = ev.Data["traceLinkSpanID"].(string)
+		logTraceData.Data.Type, _ = ev.Data["type"].(string)
+		logTraceData.Data.MetaType, _ = ev.Data["metaType"].(string)
+		logTraceData.Data.SpanName, _ = ev.Data["spanName"].(string)
+		logTraceData.Data.SpanKind, _ = ev.Data["spanKind"].(string)
+		logTraceData.Data.SpanNumEvents, _ = ev.Data["spanNumEvents"].(int64)
+		logTraceData.Data.SpanNumLinks, _ = ev.Data["spanNumLinks"].(int64)
+		logTraceData.Data.StatusCode, _ = ev.Data["statusCode"].(int64)
+		logTraceData.Data.StatusMessage, _ = ev.Data["statusMessage"].(string)
+		logTraceData.Data.Time, _ = ev.Data["time"].(int64)
+		logTraceData.Data.DurationMs, _ = ev.Data["durationMs"].(float64)
+		logTraceData.Data.StartTime, _ = ev.Data["startTime"].(int64)
+		logTraceData.Data.EndTime, _ = ev.Data["endTime"].(int64)
+		logTraceData.Data.Error, _ = ev.Data["error"].(bool)
+		logTraceData.Data.FromProxy, _ = ev.Data["fromProxy"].(bool)
+		logTraceData.Data.ParentName, _ = ev.Data["parentName"].(string)
+
+		logTraceResourceAttr, _ := ev.Data["resourceAttributes"].(map[string]interface{})
+
+		for key, val := range logTraceResourceAttr {
+			var resourceAttrKeyVal proxypb.KeyValue
+			resourceAttrKeyVal.Key = key
+
+			switch v := val.(type) {
+			case nil:
+				b.logger.Debug().Logf("resource attribute value is nil for key: %v", key) // here v has type interface{}
+			case string:
+				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
+			case bool:
+				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
+			case int64:
+				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
+			default:
+				b.logger.Debug().Logf("resource attribute type unknown: %v", v) // here v has type interface{}
+			}
+			logTraceData.Data.ResourceAttributes = append(logTraceData.Data.ResourceAttributes, &resourceAttrKeyVal)
+		}
+		logTraceSpanAttr, _ := ev.Data["spanAttributes"].(map[string]interface{})
+		for key, val := range logTraceSpanAttr {
+			var spanAttrKeyVal proxypb.KeyValue
+			spanAttrKeyVal.Key = key
+
+			switch v := val.(type) {
+			case nil:
+				b.logger.Debug().Logf("span attribute value is nil for key: %v", key) // here v has type interface{}
+			case string:
+				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
+			case bool:
+				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
+			case int64:
+				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
+			default:
+				b.logger.Debug().Logf("span attribute type unknown: %v", v) // here v has type interface{}
+			}
+
+			logTraceData.Data.SpanAttributes = append(logTraceData.Data.SpanAttributes, &spanAttrKeyVal)
+		}
+		logTraceData.Data.SpanAttributes = append(logTraceData.Data.SpanAttributes, &proxypb.KeyValue{
+			Key:   "kind",
+			Value: &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: logTraceData.Data.SpanKind}},
+		})
+
+		logTraceEventAttr, _ := ev.Data["eventAttributes"].(map[string]interface{})
+		for key, val := range logTraceEventAttr {
+			var eventAttrKeyVal proxypb.KeyValue
+			eventAttrKeyVal.Key = key
+
+			switch v := val.(type) {
+			case nil:
+				b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
+			case string:
+				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
+			case bool:
+				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
+			case int64:
+				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
+			default:
+				b.logger.Debug().Logf("event attribute type unknown: %v", v) // here v has type interface{}
+			}
+
+			logTraceData.Data.EventAttributes = append(logTraceData.Data.EventAttributes, &eventAttrKeyVal)
+		}
+
+		for _, spanEvent := range ev.SpanEvents {
+			var proxySpanEvent proxypb.SpanEvent
+			proxySpanEvent.Name = spanEvent.Name
+			proxySpanEvent.TimeStamp = spanEvent.Timestamp
+			for key, val := range spanEvent.Attributes {
+				spanEventAttrKeyVal := &proxypb.KeyValue{}
+				spanEventAttrKeyVal.Key = key
+				switch v := val.(type) {
+				case nil:
+					b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
+				case string:
+					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type string
+				case bool:
+					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
+				case int64:
+					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
+				default:
+					b.logger.Debug().Logf("event attribute type unknown: %v", v) // here v has type interface{}
+				}
+				proxySpanEvent.SpanEventAttributes = append(proxySpanEvent.SpanEventAttributes, spanEventAttrKeyVal)
+			}
+			logTraceData.Data.SpanEvents = append(logTraceData.Data.SpanEvents, &proxySpanEvent)
+		}
+		logTraceReq.Items = append(logTraceReq.Items, &logTraceData)
+	}
+	return logTraceReq
+}
+
+func (b batchAgg) payloadToUpstream(events []*Event) (*proxypb.ExportTraceProxyServiceRequest, []*v1.LogRecord) {
+	traceReq := &proxypb.ExportTraceProxyServiceRequest{
+		TenantId: b.tenantId,
+	}
+
+	var appName string
+	var LogRecords []*v1.LogRecord
+
+	for _, ev := range events {
+		if ev == nil {
+			continue
+		}
 
 		traceData := proxypb.ProxySpan{
 			Data:      &proxypb.Data{},
@@ -591,360 +939,34 @@ func (b *batchAgg) exportProtoMsgBatch(events []*Event) {
 			}
 			LogRecords = append(LogRecords, LogRecord)
 		}
-		logTraceData := proxypb.ProxyLogSpan{
-			Data:      &proxypb.LogTraceData{},
-			Timestamp: ev.Timestamp.Format(time.RFC3339Nano),
-		}
-
-		logTraceData.Data.TraceTraceID, _ = ev.Data["traceTraceID"].(string)
-		logTraceData.Data.TraceParentID, _ = ev.Data["traceParentID"].(string)
-		logTraceData.Data.TraceSpanID, _ = ev.Data["traceSpanID"].(string)
-		logTraceData.Data.TraceLinkTraceID, _ = ev.Data["traceLinkTraceID"].(string)
-		logTraceData.Data.TraceLinkSpanID, _ = ev.Data["traceLinkSpanID"].(string)
-		logTraceData.Data.Type, _ = ev.Data["type"].(string)
-		logTraceData.Data.MetaType, _ = ev.Data["metaType"].(string)
-		logTraceData.Data.SpanName, _ = ev.Data["spanName"].(string)
-		logTraceData.Data.SpanKind, _ = ev.Data["spanKind"].(string)
-		logTraceData.Data.SpanNumEvents, _ = ev.Data["spanNumEvents"].(int64)
-		logTraceData.Data.SpanNumLinks, _ = ev.Data["spanNumLinks"].(int64)
-		logTraceData.Data.StatusCode, _ = ev.Data["statusCode"].(int64)
-		logTraceData.Data.StatusMessage, _ = ev.Data["statusMessage"].(string)
-		logTraceData.Data.Time, _ = ev.Data["time"].(int64)
-		logTraceData.Data.DurationMs, _ = ev.Data["durationMs"].(float64)
-		logTraceData.Data.StartTime, _ = ev.Data["startTime"].(int64)
-		logTraceData.Data.EndTime, _ = ev.Data["endTime"].(int64)
-		logTraceData.Data.Error, _ = ev.Data["error"].(bool)
-		logTraceData.Data.FromProxy, _ = ev.Data["fromProxy"].(bool)
-		logTraceData.Data.ParentName, _ = ev.Data["parentName"].(string)
-
-		logTraceResourceAttr, _ := ev.Data["resourceAttributes"].(map[string]interface{})
-
-		for key, val := range logTraceResourceAttr {
-			var resourceAttrKeyVal proxypb.KeyValue
-			resourceAttrKeyVal.Key = key
-
-			switch v := val.(type) {
-			case nil:
-				b.logger.Debug().Logf("resource attribute value is nil for key: %v", key) // here v has type interface{}
-			case string:
-				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
-			case bool:
-				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
-			case int64:
-				resourceAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
-			default:
-				b.logger.Debug().Logf("resource attribute type unknown: %v", v) // here v has type interface{}
-			}
-			logTraceData.Data.ResourceAttributes = append(logTraceData.Data.ResourceAttributes, &resourceAttrKeyVal)
-		}
-		logTraceSpanAttr, _ := ev.Data["spanAttributes"].(map[string]interface{})
-		for key, val := range logTraceSpanAttr {
-			var spanAttrKeyVal proxypb.KeyValue
-			spanAttrKeyVal.Key = key
-
-			switch v := val.(type) {
-			case nil:
-				b.logger.Debug().Logf("span attribute value is nil for key: %v", key) // here v has type interface{}
-			case string:
-				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
-			case bool:
-				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
-			case int64:
-				spanAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
-			default:
-				b.logger.Debug().Logf("span attribute type unknown: %v", v) // here v has type interface{}
-			}
-
-			logTraceData.Data.SpanAttributes = append(logTraceData.Data.SpanAttributes, &spanAttrKeyVal)
-		}
-		logTraceData.Data.SpanAttributes = append(logTraceData.Data.SpanAttributes, &proxypb.KeyValue{
-			Key:   "kind",
-			Value: &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: logTraceData.Data.SpanKind}},
-		})
-
-		logTraceEventAttr, _ := ev.Data["eventAttributes"].(map[string]interface{})
-		for key, val := range logTraceEventAttr {
-			var eventAttrKeyVal proxypb.KeyValue
-			eventAttrKeyVal.Key = key
-
-			switch v := val.(type) {
-			case nil:
-				b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
-			case string:
-				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type int
-			case bool:
-				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
-			case int64:
-				eventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
-			default:
-				b.logger.Debug().Logf("event attribute type unknown: %v", v) // here v has type interface{}
-			}
-
-			logTraceData.Data.EventAttributes = append(logTraceData.Data.EventAttributes, &eventAttrKeyVal)
-		}
-
-		for _, spanEvent := range ev.SpanEvents {
-			var proxySpanEvent proxypb.SpanEvent
-			proxySpanEvent.Name = spanEvent.Name
-			proxySpanEvent.TimeStamp = spanEvent.Timestamp
-			for key, val := range spanEvent.Attributes {
-				spanEventAttrKeyVal := &proxypb.KeyValue{}
-				spanEventAttrKeyVal.Key = key
-				switch v := val.(type) {
-				case nil:
-					b.logger.Debug().Logf("event attribute value is nil for key: %v", key) // here v has type interface{}
-				case string:
-					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_StringValue{StringValue: v}} // here v has type string
-				case bool:
-					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_BoolValue{BoolValue: v}} // here v has type interface{}
-				case int64:
-					spanEventAttrKeyVal.Value = &proxypb.AnyValue{Value: &proxypb.AnyValue_IntValue{IntValue: v}} // here v has type interface{}
-				default:
-					b.logger.Debug().Logf("event attribute type unknown: %v", v) // here v has type interface{}
-				}
-				proxySpanEvent.SpanEventAttributes = append(proxySpanEvent.SpanEventAttributes, spanEventAttrKeyVal)
-			}
-			logTraceData.Data.SpanEvents = append(logTraceData.Data.SpanEvents, &proxySpanEvent)
-		}
-		logTraceReq.Items = append(logTraceReq.Items, &logTraceData)
 	}
-
-	ctx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
-		"tenantId": b.tenantId,
-		"dataset":  b.dataset,
-	}))
-
-	var sendDirect bool
-
-	if b.isPeer {
-		opts := []grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		}
-
-		apiHostURL, err := url.Parse(apiHost)
-		if err != nil {
-			sendDirect = true
-			b.logger.Error().Logf("sending directly, unable to parse peer url: %v", err)
-		}
-
-		apiPort := apiHostURL.Port()
-		if apiPort == "" {
-			apiPort = "80"
-		}
-		apiHost = fmt.Sprintf("%s:%s", apiHostURL.Hostname(), apiPort)
-
-		peerConn, err := grpc.NewClient(apiHost, opts...)
-		if err != nil {
-			sendDirect = true
-			b.logger.Error().Logf("sending directly, unable to establish connection to %s error: %v", apiHost, err)
-		}
-
-		if !sendDirect {
-			peerClient := proxypb.NewTraceProxyServiceClient(peerConn)
-			logTraceBatches := b.SendlogTraceBatches(&logTraceReq)
-			for _, record := range logTraceBatches {
-				logTraceReq := &proxypb.ExportLogTraceProxyServiceRequest{
-					Items:    record,
-					TenantId: b.tenantId,
-				}
-				r, err := peerClient.ExportLogTraceProxy(ctx, logTraceReq)
-				if st, ok := status.FromError(err); ok {
-					if st.Code() != codes.OK {
-						b.logger.Error().Logf("sending failed. error: %s", st.String())
-						b.metrics.Increment("send_errors")
-					} else {
-						b.metrics.Increment("batches_sent")
-					}
-				}
-
-				b.logger.Debug().Logf("trace proxy response msg from peer: %s", r.GetMessage())
-				b.logger.Debug().Logf("trace proxy response status from peer: %s", r.GetStatus())
-			}
-
-			return
-		}
-	}
-
-	if sendDirect || !b.isPeer {
-		if SendTraces {
-			traceBatches := b.SendTraceBatches(traceReq)
-
-			for _, batch := range traceBatches {
-				req := &proxypb.ExportTraceProxyServiceRequest{
-					Items:    batch,
-					TenantId: b.tenantId,
-				}
-				b.ExportTraces(req, ctx)
-			}
-		}
-
-		if len(LogRecords) > 0 {
-			logBatches := b.sendLogBatches(LogRecords)
-
-			for _, batch := range logBatches {
-				var scopeLogs []*v1.ScopeLogs
-				scopeLog := &v1.ScopeLogs{
-					Scope:      nil,
-					LogRecords: batch,
-					SchemaUrl:  "",
-				}
-				scopeLogs = append(scopeLogs, scopeLog)
-				resourceAttributes := []*commonpb.KeyValue{
-					{
-						Key:   "source",
-						Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "trace"}},
-					},
-					{
-						Key:   "type",
-						Value: &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "event"}},
-					},
-				}
-
-				resourceLog := &v1.ResourceLogs{
-					Resource: &resourcepb.Resource{
-						Attributes:             resourceAttributes,
-						DroppedAttributesCount: 0,
-					},
-					ScopeLogs: scopeLogs,
-				}
-				resourceLogs = append(resourceLogs, resourceLog)
-
-				if SendEvents && len(resourceLogs) > 0 {
-					eventsReq := collogspb.ExportLogsServiceRequest{
-						ResourceLogs: resourceLogs,
-					}
-
-					hostName, err := os.Hostname()
-					if err != nil || hostName == "" {
-						b.logger.Error().Logf("error Getting Hostname: %v", err)
-						hostName = "ErrorHostname"
-					}
-
-					logsCtx := metadata.NewOutgoingContext(context.Background(), metadata.New(map[string]string{
-						"tenantId": b.tenantId,
-						"hostname": hostName,
-					}))
-					logsResponse, logsError := b.conn.GetLogClient().Export(logsCtx, &eventsReq)
-
-					if st, ok := status.FromError(logsError); ok {
-						if st.Code() != codes.OK {
-							b.logger.Error().Logf("sending event log failed. error: %s", st.String())
-							if strings.Contains(logsError.Error(), "LOG MANAGEMENT WAS NOT ENABLED") {
-								b.logger.Error().Logf("Enable Log Management For Tenant and Restart Tracing Proxy")
-								m.Lock()
-								SendEvents = false
-								m.Unlock()
-							}
-						}
-					}
-					b.logger.Debug().Logf("Sending Event Log response: %v", logsResponse.String())
-				} else {
-					b.logger.Debug().Logf("Unable to Process the logs exporting because SendEvents was: %v or len(resourcelogs) %v", SendEvents, len(resourceLogs))
-				}
-			}
-		}
-	}
+	return traceReq, LogRecords
 }
 
-func (b *batchAgg) SendTraceBatches(traceReq *proxypb.ExportTraceProxyServiceRequest) [][]*proxypb.ProxySpan {
-	splittingTraces := traceReq.Items
-	traceReq.Items = []*proxypb.ProxySpan{}
-	var batchTraces [][]*proxypb.ProxySpan
-	batchSize := 0
-	for i, span := range splittingTraces {
-		spanSize := proto.Size(span)
-		if spanSize > maxApiSize {
-			// OOPS! your larger than my tummy(1mb), so cant handle you
-			b.logger.Info().Logf("Span size is greater than 1mb, so dropping")
-			continue
-		}
-		if spanSize+batchSize > maxApiSize {
-			batchTraces = append(batchTraces, traceReq.Items)
-			batchSize = 0
-			traceReq.Items = []*proxypb.ProxySpan{}
-		}
-		traceReq.Items = append(traceReq.Items, span)
-		batchSize += spanSize
-		if i == len(splittingTraces)-1 {
-			batchTraces = append(batchTraces, traceReq.Items)
-			batchSize = 0
-			traceReq.Items = []*proxypb.ProxySpan{}
-		}
+func (b batchAgg) checkPeerConnection(apiHost string) (bool, *grpc.ClientConn) {
+	if !b.isPeer {
+		return true, nil // decision is to send UpStream
 	}
-	return batchTraces
-}
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
 
-func (b *batchAgg) ExportTraces(traceReq *proxypb.ExportTraceProxyServiceRequest, ctx context.Context) {
-	r, err := b.conn.GetTraceClient().ExportTraceProxy(ctx, traceReq)
-	if st, ok := status.FromError(err); ok {
-		if st.Code() != codes.OK {
-			b.logger.Error().Logf("sending failed. error: %s", st.String())
-			b.metrics.Increment("send_errors")
-			if strings.Contains(strings.ToUpper(err.Error()), "TRACE MANAGEMENT WAS NOT ENABLED") {
-				b.logger.Error().Logf("Enable Trace Management For Tenant and Restart Tracing Proxy")
-				m.Lock()
-				SendTraces = false
-				m.Unlock()
-			}
-		} else {
-			b.metrics.Increment("batches_sent")
-		}
+	apiHostURL, err := url.Parse(apiHost)
+	if err != nil {
+		b.logger.Error().Logf("sending directly, unable to parse peer url: %v", err)
+		return true, nil
 	}
-	b.logger.Debug().Logf("trace proxy response msg: %s", r.GetMessage())
-	b.logger.Debug().Logf("trace proxy response status: %s", r.GetStatus())
-}
 
-func (b *batchAgg) SendlogTraceBatches(logTraceReq *proxypb.ExportLogTraceProxyServiceRequest) [][]*proxypb.ProxyLogSpan {
-	splittingLogTraces := logTraceReq.Items
-	logTraceReq.Items = []*proxypb.ProxyLogSpan{}
-	var batchLogTraces [][]*proxypb.ProxyLogSpan
-	batchSize := 0
-	for i, span := range splittingLogTraces {
-		spanSize := proto.Size(span)
-		if spanSize > maxApiSize {
-			// OOPS! your larger than my tummy(1mb), so cant handle you
-			b.logger.Info().Logf("Span with Events size is greater than 1mb, so dropping")
-			continue
-		}
-		if spanSize+batchSize > maxApiSize {
-			batchLogTraces = append(batchLogTraces, logTraceReq.Items)
-			batchSize = 0
-			logTraceReq.Items = []*proxypb.ProxyLogSpan{}
-		}
-		logTraceReq.Items = append(logTraceReq.Items, span)
-		batchSize += spanSize
-		if i == len(splittingLogTraces)-1 {
-			batchLogTraces = append(batchLogTraces, logTraceReq.Items)
-			batchSize = 0
-			logTraceReq.Items = []*proxypb.ProxyLogSpan{}
-		}
+	apiPort := apiHostURL.Port()
+	if apiPort == "" {
+		apiPort = "80"
 	}
-	return batchLogTraces
-}
+	apiHost = fmt.Sprintf("%s:%s", apiHostURL.Hostname(), apiPort)
 
-func (b batchAgg) sendLogBatches(logRecords []*v1.LogRecord) [][]*v1.LogRecord {
-	var logs []*v1.LogRecord
-	var batchLogs [][]*v1.LogRecord
-	batchSize := 0
-	for i, log := range logRecords {
-		logSize := proto.Size(log)
-		if logSize > maxApiSize {
-			// OOPS! your larger than my tummy(1mb), so cant handle you
-			b.logger.Info().Logf("Log size is greater than 1mb, so dropping")
-			continue
-		}
-		if logSize+batchSize > maxApiSize {
-			batchLogs = append(batchLogs, logs)
-			batchSize = 0
-			logs = []*v1.LogRecord{}
-		}
-		logs = append(logs, log)
-		batchSize += logSize
-		if i == len(logRecords)-1 {
-			batchLogs = append(batchLogs, logs)
-			batchSize = 0
-			logs = []*v1.LogRecord{}
-		}
+	peerConn, err := grpc.NewClient(apiHost, opts...)
+	if err != nil {
+		b.logger.Error().Logf("sending directly, unable to establish connection to %s error: %v", apiHost, err)
+		return true, nil
 	}
-	return batchLogs
+	return false, peerConn
 }

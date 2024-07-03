@@ -221,10 +221,10 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), c.GetPeerTimeout())
 	defer cancel()
 	done := make(chan struct{})
-	peers, err := peer.NewPeers(ctx, c, done)
+	peers, err := peer.NewPeers(ctx, c, done, lgr)
 	if err != nil {
 		fmt.Printf("unable to load peers: %+v\n", err)
-		os.Exit(1) // nolint:all
+		os.Exit(1)
 	}
 
 	var g inject.Graph

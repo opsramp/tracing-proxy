@@ -52,7 +52,7 @@ func BenchmarkCuckooTraceChecker_AddParallel(b *testing.B) {
 		case <-stop:
 			return
 		default:
-			rand.Intn(100)
+			rand.Intn(100) // nolint
 		}
 	})
 

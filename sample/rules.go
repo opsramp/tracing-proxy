@@ -42,14 +42,13 @@ func (s *RulesBasedSampler) Start() error {
 		}
 		if rule.Sampler != nil {
 			var sampler Sampler
-			switch {
-			case rule.Sampler.DynamicSampler != nil:
+			if rule.Sampler.DynamicSampler != nil {
 				sampler = &DynamicSampler{Config: rule.Sampler.DynamicSampler, Logger: s.Logger, Metrics: s.Metrics}
-			case rule.Sampler.EMADynamicSampler != nil:
+			} else if rule.Sampler.EMADynamicSampler != nil {
 				sampler = &EMADynamicSampler{Config: rule.Sampler.EMADynamicSampler, Logger: s.Logger, Metrics: s.Metrics}
-			case rule.Sampler.TotalThroughputSampler != nil:
+			} else if rule.Sampler.TotalThroughputSampler != nil {
 				sampler = &TotalThroughputSampler{Config: rule.Sampler.TotalThroughputSampler, Logger: s.Logger, Metrics: s.Metrics}
-			default:
+			} else {
 				s.Logger.Debug().WithFields(map[string]interface{}{
 					"rule_name": rule.Name,
 				}).Logf("invalid or missing downstream sampler")
@@ -112,7 +111,7 @@ func (s *RulesBasedSampler) GetSampleRate(trace *types.Trace) (rate uint, keep b
 				reason += rule.Name + ":" + samplerReason
 			} else {
 				rate = uint(rule.SampleRate)
-				keep = !rule.Drop && rule.SampleRate > 0 && rand.Intn(rule.SampleRate) == 0
+				keep = !rule.Drop && rule.SampleRate > 0 && rand.Intn(rule.SampleRate) == 0 // #nosec
 				reason += rule.Name
 			}
 
@@ -234,26 +233,33 @@ func conditionMatchesValue(condition *config.RulesBasedSamplerCondition, value i
 				match = comparison == less || comparison == equal
 			}
 		case "starts-with":
-			if a, ok := value.(string); ok {
-				if b, ok := condition.Value.(string); ok {
+			switch a := value.(type) {
+			case string:
+				switch b := condition.Value.(type) {
+				case string:
 					match = strings.HasPrefix(a, b)
 				}
 			}
 		case "contains":
-			if a, ok := value.(string); ok {
-				if b, ok := condition.Value.(string); ok {
+			switch a := value.(type) {
+			case string:
+				switch b := condition.Value.(type) {
+				case string:
 					match = strings.Contains(a, b)
 				}
 			}
 		case "does-not-contain":
-			if a, ok := value.(string); ok {
-				if b, ok := condition.Value.(string); ok {
+			switch a := value.(type) {
+			case string:
+				switch b := condition.Value.(type) {
+				case string:
 					match = !strings.Contains(a, b)
 				}
 			}
 		}
 	case false:
-		if condition.Operator == "not-exists" {
+		switch condition.Operator {
+		case "not-exists":
 			match = !exists
 		}
 	}
@@ -350,7 +356,8 @@ func compare(a, b interface{}) (int, bool) {
 			}
 		}
 	case bool:
-		if bt, ok := b.(bool); ok {
+		switch bt := b.(type) {
+		case bool:
 			switch {
 			case !at && bt:
 				return less, true
@@ -361,7 +368,8 @@ func compare(a, b interface{}) (int, bool) {
 			}
 		}
 	case string:
-		if bt, ok := b.(string); ok {
+		switch bt := b.(type) {
+		case string:
 			return strings.Compare(at, bt), true
 		}
 	}

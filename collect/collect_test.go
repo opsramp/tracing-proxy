@@ -21,7 +21,7 @@ import (
 	"github.com/opsramp/tracing-proxy/types"
 )
 
-const legacyAPIKey = "c9945edf5d245834089a1bd6cc9ad01e"
+const legacyAPIKey = "c9945edf5d245834089a1bd6cc9ad01e" // nolint
 
 // TestAddRootSpan tests that adding a root span winds up with a trace object in
 // the cache and that that trace gets sent
@@ -756,8 +756,8 @@ func TestStableMaxAlloc(t *testing.T) {
 		spandata[i] = map[string]interface{}{
 			"parentId": "unused",
 			"id":       i,
-			"str1":     strings.Repeat("abc", rand.Intn(100)+1),
-			"str2":     strings.Repeat("def", rand.Intn(100)+1),
+			"str1":     strings.Repeat("abc", rand.Intn(100)+1), // #nosec 404
+			"str2":     strings.Repeat("def", rand.Intn(100)+1), // #nosec 404
 		}
 	}
 

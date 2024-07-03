@@ -207,8 +207,9 @@ func (r *Router) LnS(incomingOrPeer string) {
 
 	r.iopLogger.Info().Logf("Listening on %s", listenAddr)
 	r.server = &http.Server{
-		Addr:    listenAddr,
-		Handler: muxxer,
+		Addr:              listenAddr,
+		Handler:           muxxer,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	if len(grpcAddr) > 0 {
@@ -626,7 +627,7 @@ func (r *Router) getMaybeCompressedBody(req *http.Request) (io.Reader, error) {
 		defer gzipReader.Close()
 
 		buf := &bytes.Buffer{}
-		if _, err := io.Copy(buf, gzipReader); err != nil {
+		if _, err := io.CopyN(buf, gzipReader, int64(buf.Len())); err != nil {
 			return nil, err
 		}
 		reader = buf

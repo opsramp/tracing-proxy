@@ -82,7 +82,7 @@ func BenchmarkCollect(b *testing.B) {
 		transmission.Flush()
 		for n := 0; n < b.N; n++ {
 			span := &types.Span{
-				TraceID: strconv.Itoa(rand.Int()),
+				TraceID: strconv.Itoa(rand.Int()), // #nosec G404
 				Event: types.Event{
 					Dataset: "aoeu",
 				},
@@ -99,7 +99,7 @@ func BenchmarkCollect(b *testing.B) {
 		transmission.Flush()
 		for n := 0; n < b.N; n++ {
 			span := &types.Span{
-				TraceID: strconv.Itoa(rand.Int()),
+				TraceID: strconv.Itoa(rand.Int()), // #nosec 404
 				Event: types.Event{
 					Dataset: "aoeu",
 				},

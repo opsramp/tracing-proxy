@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/opsramp/tracing-proxy/logger"
+
 	"github.com/opsramp/tracing-proxy/config"
 )
 
@@ -14,12 +16,15 @@ type Peers interface {
 	RegisterUpdatedPeersCallback(callback func())
 }
 
-func NewPeers(ctx context.Context, c config.Config, done chan struct{}) (Peers, error) {
+var Logger logger.Logger
+
+func NewPeers(ctx context.Context, c config.Config, done chan struct{}, lgr logger.Logger) (Peers, error) {
 	t, err := c.GetPeerManagementType()
 	if err != nil {
 		return nil, err
 	}
 
+	Logger = lgr
 	switch t {
 	case "file":
 		return newFilePeers(c), nil

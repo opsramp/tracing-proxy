@@ -62,7 +62,7 @@ func (d *TotalThroughputSampler) GetSampleRate(trace *types.Trace) (uint, bool, 
 	if rate < 1 { // protect against dynsampler being broken even though it shouldn't be
 		rate = 1
 	}
-	shouldKeep := rand.Intn(int(rate)) == 0
+	shouldKeep := rand.Intn(int(rate)) == 0 // #nosec
 	d.Logger.Debug().WithFields(map[string]interface{}{
 		"sample_key":  key,
 		"sample_rate": rate,
