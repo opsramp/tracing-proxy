@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/opsramp/tracing-proxy/config"
 	metrics "github.com/rcrowley/go-metrics"
@@ -56,7 +57,13 @@ func (s *DebugService) Start() error {
 			addr := net.JoinHostPort(host, portStr)
 			logrus.Infof("Debug service listening on %s", addr)
 
-			err := http.ListenAndServe(addr, s.mux)
+			server := &http.Server{
+				Addr:         addr,
+				Handler:      s.mux,
+				ReadTimeout:  5 * time.Second,
+				WriteTimeout: 10 * time.Second,
+			}
+			err := server.ListenAndServe()
 			logrus.WithError(err).Warn("debug http server error")
 		} else {
 			// Prefer to listen on addr, but will try to bind to the next 9 ports
@@ -69,7 +76,13 @@ func (s *DebugService) Start() error {
 
 				logrus.Infof("Debug service listening on %s", addr)
 
-				err := http.ListenAndServe(addr, s.mux)
+				server := &http.Server{
+					Addr:         addr,
+					Handler:      s.mux,
+					ReadTimeout:  5 * time.Second,
+					WriteTimeout: 10 * time.Second,
+				}
+				err := server.ListenAndServe()
 				logrus.WithError(err).Warn("debug http server error")
 
 				if err, ok := err.(*net.OpError); ok {

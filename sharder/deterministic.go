@@ -1,7 +1,7 @@
 package sharder
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // #nosec
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -333,7 +333,7 @@ func (d *DeterministicSharder) WhichShardLegacy(traceID string) Shard {
 
 	// add in the sharding salt to ensure the sh1sum is spread differently from
 	// others that use the same algorithm
-	sum := sha1.Sum([]byte(traceID + shardingSalt))
+	sum := sha1.Sum([]byte(traceID + shardingSalt)) // #nosec
 	v := binary.BigEndian.Uint32(sum[:4])
 
 	portion := math.MaxUint32 / len(d.peers)
