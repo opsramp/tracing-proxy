@@ -29,17 +29,17 @@ GRPCPeerListenAddr: 0.0.0.0:8084
 CompressPeerCommunication: true
 
 # OpsrampAPI is the URL for the upstream Opsramp API.
-OpsrampAPI: "http://0.0.0.0:8086"
+OpsrampAPI: "<OPSRAMP_TRACES_API>"
 
 # Dataset you want to use for sampling
 Dataset: "ds"
 
 #Tls Options
-UseTls: false
-UseTlsInsecure: true
+UseTls: true
+UseTlsInsecure: false
 
 # LoggingLevel valid options are "debug", "info", "error", and "panic".
-LoggingLevel: debug
+LoggingLevel: error
 
 # SendDelay is a short timer that will be triggered when a trace is complete.
 # Trace Proxy will wait for this duration before actually sending the trace.  The
@@ -95,7 +95,7 @@ AddAdditionalMetadata: { "app": "default" }
 Threshold: 500
 
 # Url to push events as logs
-LogsEndpoint: "***REMOVED***"
+LogsEndpoint: "<OPSRAMP_LOGS_API>"
 
 # If true trace proxy will send span events as logs
 SendEvents: true
@@ -181,13 +181,13 @@ ProxyConfiguration:
 ##################################
 AuthConfiguration:
   # Endpoint - the APIServer address provided in OpsRamp Portal to which auth token request is to be made
-  Endpoint: "***REMOVED***"
+  Endpoint: "<OPSRAMP_API>"
   # Key - authentication key provided in OpsRamp Portal
-  Key: "***REMOVED***"
+  Key: "<KEY>"
   # Secret - authentication Secret provided in OpsRamp Portal
-  Secret: "***REMOVED***"
+  Secret: "<SECRET>"
   # TenantId - tenant/client id to which the traces are to be posted
-  TenantId: "***REMOVED***"
+  TenantId: "<TENANT_ID>"
 
 ############################
 ## Implementation Choices ##
@@ -323,7 +323,7 @@ LogrusLogger:
   # LogFormatter specifies the log format. Accepted values are one of ["logfmt", "json"]
   LogFormatter: 'logfmt'
   # LogOutput specifies where the logs are supposed to be written. Accpets one of ["stdout", "stderr", "file"]
-  LogOutput: 'stdout'
+  LogOutput: 'file'
 
   # specifies configs for logs when LogOutput is set to "file"
   File:
@@ -339,7 +339,7 @@ LogrusLogger:
 
 MetricsConfig:
   # Enable specifies whether the metrics are supposed to be collected and exported to OpsRamp
-  Enable: false
+  Enable: true
 
   # ListenAddr determines the interface and port on which Prometheus will
   # listen for requests for /metrics. Must be different from the main Trace Proxy
@@ -347,7 +347,7 @@ MetricsConfig:
   ListenAddr: '0.0.0.0:2112'
 
   # OpsRampAPI is the URL for the upstream OpsRamp API.
-  OpsRampAPI: "***REMOVED***"
+  OpsRampAPI: "<OPSRAMP_METRICS_API>"
 
   # ReportingInterval is the frequency specified in seconds at which
   # the metrics are collected and sent to OpsRamp

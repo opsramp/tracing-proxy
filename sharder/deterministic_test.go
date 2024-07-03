@@ -30,7 +30,7 @@ func TestWhichShard(t *testing.T) {
 	}
 	done := make(chan struct{})
 	defer close(done)
-	filePeers, err := peer.NewPeers(context.Background(), config, done)
+	filePeers, err := peer.NewPeers(context.Background(), config, done, &logger.NullLogger{})
 	assert.Equal(t, nil, err)
 	sharder := DeterministicSharder{
 		Config: config,
@@ -57,7 +57,7 @@ func GenID(numChars int) string {
 
 	id := make([]byte, numChars)
 	for i := 0; i < numChars; i++ {
-		id[i] = charset[rand.Intn(len(charset))]
+		id[i] = charset[rand.Intn(len(charset))] // #nosec G404
 	}
 	return string(id)
 }
@@ -83,7 +83,7 @@ func BenchmarkShardBulk(b *testing.B) {
 	}
 	done := make(chan struct{})
 	defer close(done)
-	filePeers, err := peer.NewPeers(context.Background(), config, done)
+	filePeers, err := peer.NewPeers(context.Background(), config, done, &logger.NullLogger{})
 	assert.Equal(b, nil, err)
 	sharder := DeterministicSharder{
 		Config: config,
@@ -128,7 +128,7 @@ func BenchmarkDeterministicShard(b *testing.B) {
 				}
 				done := make(chan struct{})
 				defer close(done)
-				filePeers, err := peer.NewPeers(context.Background(), config, done)
+				filePeers, err := peer.NewPeers(context.Background(), config, done, &logger.NullLogger{})
 				assert.Equal(b, nil, err)
 				sharder := DeterministicSharder{
 					Config: config,

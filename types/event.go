@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	APIKeyHeader = "X-OpsRamp-Team"
+	APIKeyHeader = "X-OpsRamp-Team" // #nosec G101
 
 	SampleRateHeader = "X-OpsRamp-Samplerate"
 	TimestampHeader  = "X-OpsRamp-Event-Time"
-	QueryTokenHeader = "X-OpsRamp-Refinery-Query"
+	QueryTokenHeader = "X-OpsRamp-Refinery-Query" // #nosec G101
 )
 
 // used to put a request ID into the request context for logging

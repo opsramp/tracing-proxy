@@ -44,12 +44,12 @@ OPSRAMP_CREDS_PATH='/config/data/config_tracing-proxy.json'
 #  Sample Format for ${OPSRAMP_CREDS_PATH}
 #  {
 #    "tracing-proxy": {
-#      "traces_api": "***REMOVED***",
-#      "metrics_api": "***REMOVED***",
-#      "auth_api": "***REMOVED***",
-#      "key": "***REMOVED***",
+#      "traces_api": "test.opsramp.net",
+#      "metrics_api": "test.opsramp.net",
+#      "auth_api": "test.opsramp.net",
+#      "key": "sdjfnsakdflasdflksjdkfjsdklfjals",
 #      "secret": "***REMOVED***",
-#      "tenant_id": "***REMOVED***"
+#      "tenant_id": "123e-fsdf-4r234r-dfbfsdbg"
 #    }
 #  }
 
