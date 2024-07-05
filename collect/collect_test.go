@@ -21,7 +21,7 @@ import (
 	"github.com/opsramp/tracing-proxy/types"
 )
 
-const legacyAPIKey = "***REMOVED***" // nolint
+const legacyAPIKey = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // nolint
 
 // TestAddRootSpan tests that adding a root span winds up with a trace object in
 // the cache and that that trace gets sent
