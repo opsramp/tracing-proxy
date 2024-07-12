@@ -8,6 +8,8 @@ package windows // import "github.com/open-telemetry/opentelemetry-collector-con
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -46,6 +48,13 @@ func (i *Input) Start(persister operator.Persister) error {
 		i.Errorf("Failed to open bookmark, continuing without previous bookmark: %s", err)
 		_ = i.persister.Delete(ctx, i.channel)
 	}
+
+	// Create or open the file with desired read/write permissions
+	f, err := os.OpenFile("text.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	defer f.Close()
+	// Now you can write your log messages to the file
+	log.SetOutput(f)
+	log.Println("offsetXML: ", offsetXML)
 
 	if offsetXML != "" {
 		if err := i.bookmark.Open(offsetXML); err != nil {
