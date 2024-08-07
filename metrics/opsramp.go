@@ -168,9 +168,19 @@ func (p *OpsRampMetrics) Start() error {
 
 func (p *OpsRampMetrics) ListenTimeseries() {
 
-	for timeSeries := range timeSeriesChannel {
-		// call request push with timeSeries payload
-		p.frameRequest(timeSeries)
+	//for timeSeries := range timeSeriesChannel {
+	//	// call request push with timeSeries payload
+	//	p.frameRequest(timeSeries)
+	//}
+	for {
+		select {
+		case timeSeries, ok := <-timeSeriesChannel:
+			if ok {
+				p.frameRequest(timeSeries)
+			} else {
+				p.Logger.Error().Logf("timeSeries channel error")
+			}
+		}
 	}
 
 }
@@ -670,7 +680,9 @@ func (p *OpsRampMetrics) Push() {
 			if metricsLength+metricLength > 250000 {
 				hasSent = true
 				go func() {
-					timeSeriesChannel <- timeSeries // Push timeSeries payload to channel
+					if len(timeSeries) > 0 {
+						timeSeriesChannel <- timeSeries // Push timeSeries payload to channel
+					}
 				}()
 				metricsLength = 0
 				timeSeries = []prompb.TimeSeries{}
@@ -827,7 +839,7 @@ func (p *OpsRampMetrics) Push() {
 			}
 			hasSent = false
 		}
-		if !hasSent {
+		if !hasSent && len(timeSeries) > 0 {
 			go func() {
 				timeSeriesChannel <- timeSeries
 			}()
