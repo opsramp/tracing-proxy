@@ -895,7 +895,9 @@ func (p *OpsRampMetrics) frameRequest(timeSeries []prompb.TimeSeries) {
 		p.Logger.Error().Logf("unexpected status code %d while pushing: %s", resp.StatusCode, body)
 		return
 	}
-	//p.Logger.Debug().Logf("metrics %s push response: %v", p.prefix, string(body))
+	if p.prefix == "upstream" {
+		p.Logger.Debug().Logf("metrics %s push response: %v, length of timeseries was: %v", p.prefix, string(body), len(timeSeries))
+	}
 }
 
 func (p *OpsRampMetrics) RenewClient() {
