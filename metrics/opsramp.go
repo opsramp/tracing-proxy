@@ -176,7 +176,9 @@ func (p *OpsRampMetrics) ListenTimeseries() {
 		select {
 		case timeSeries, ok := <-timeSeriesChannel:
 			if ok {
-				p.frameRequest(timeSeries)
+				if timeSeries != nil {
+					p.frameRequest(timeSeries)
+				}
 			} else {
 				p.Logger.Error().Logf("timeSeries channel error")
 			}
